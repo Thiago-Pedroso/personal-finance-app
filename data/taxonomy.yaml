@@ -1,0 +1,23 @@
+# Suas categorias e subcategorias. VOCÊ manda nisto — edite à vontade.
+# Formato: <Categoria>: [<sub>, <sub>, ...]
+# A categorização (regras + IA) só usa nomes que existem aqui. Ao adicionar/renomear,
+# avise o Claude para reclassificar o que for preciso.
+
+Alimentação:        [Supermercado, Restaurante, Delivery, Café/Padaria, Ocasiões especiais]
+Transporte:         [Combustível, App/Táxi, Transporte público, Estacionamento, Manutenção, Aluguel de veículo, Lava-jato]
+Moradia:            [Aluguel, Condomínio, Energia, Água, Internet/TV, Gás]
+Saúde:              [Plano de saúde, Farmácia, Consultas/Exames, Academia]
+Lazer:              [Streaming, Bares, Cinema/Eventos, Viagem, Hobbies]
+Compras:            [Vestuário, Eletrônicos, Casa, Presentes, Online]
+Serviços:           [Assinaturas, Profissionais, Seguros, Bancário/Tarifas, Barbearia]
+Trabalho:           [Impostos MEI, Assinaturas, Serviços]   # despesas de trabalho (contam no fluxo)
+Educação:           [Cursos, Livros]
+Impostos/Taxas:     [Impostos, Multas/Juros]
+Transferências:     [PIX enviado, PIX recebido, TED/DOC, Pagamento de cartão]
+Investimentos:      [Aporte, Resgate, Rendimentos]
+Reserva:            [Aporte, Resgate, Rendimento]   # poupança / cofrinhos (fora do fluxo)
+Formatura:          [Despesa, Recebido]   # dinheiro de comissão de formatura (não é pessoal; fora do fluxo)
+Compartilhado:      [Escritório, Evento, Outro]   # rateios reembolsáveis (fora do fluxo; anula com recebidos)
+Renda:              [Salário, Bolsa de pesquisa, Projetos PJ, Aluguel recebido, Ajuda de custo, Reembolso, Outras receitas]
+Doações:            [Pessoas, Instituições]   # dinheiro doado (saída real; conta no fluxo)
+Outros:             [A revisar]

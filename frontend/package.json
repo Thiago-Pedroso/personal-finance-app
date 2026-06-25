@@ -1,0 +1,26 @@
+{
+  "name": "finance-control-frontend",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "description": "Dashboard do Finance Control — leitura + edição via pipeline de regras.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 5273"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.4",
+    "@tanstack/react-table": "^8.20.6",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.15.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.0.0",
+    "vite": "^5.4.11"
+  }
+}

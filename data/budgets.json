@@ -1,0 +1,11 @@
+{
+  "income_plan": {
+    "recurring": 0,
+    "months": {}
+  },
+  "spending": {
+    "recurring": {},
+    "months": {}
+  },
+  "savings_goals": []
+}

@@ -1,0 +1,185 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "id": "r_0001",
+      "field": "description",
+      "match": "contains",
+      "value": "(IOF)",
+      "category": "Impostos/Taxas",
+      "subcategory": "Impostos",
+      "note": "IOF sobre compras",
+      "created_at": "2026-03-01"
+    },
+    {
+      "id": "r_0002",
+      "field": "description",
+      "match": "contains",
+      "value": "IRRF",
+      "category": "Impostos/Taxas",
+      "subcategory": "Impostos",
+      "note": "IRRF retido",
+      "created_at": "2026-03-01"
+    },
+    {
+      "id": "r_0003",
+      "field": "description",
+      "match": "contains",
+      "value": "PAGAMENTO FATURA CARTAO",
+      "category": "Transferências",
+      "subcategory": "Pagamento de cartão",
+      "note": "pagamento de fatura = movimentação interna",
+      "created_at": "2026-03-01"
+    },
+    {
+      "id": "r_0010",
+      "field": "description",
+      "match": "contains",
+      "value": "PAGAMENTO SALARIO",
+      "category": "Renda",
+      "subcategory": "Salário",
+      "note": "salário mensal",
+      "created_at": "2026-03-01"
+    },
+    {
+      "id": "r_0020",
+      "field": "description",
+      "match": "contains",
+      "value": "ALUGUEL",
+      "category": "Moradia",
+      "subcategory": "Aluguel",
+      "note": "aluguel mensal",
+      "created_at": "2026-03-01"
+    },
+    {
+      "id": "r_0021",
+      "field": "description",
+      "match": "contains",
+      "value": "ENERGIA",
+      "category": "Moradia",
+      "subcategory": "Energia",
+      "note": "conta de luz",
+      "created_at": "2026-03-01"
+    },
+    {
+      "id": "r_0022",
+      "field": "description",
+      "match": "contains",
+      "value": "AGUA",
+      "category": "Moradia",
+      "subcategory": "Água",
+      "note": "conta de água",
+      "created_at": "2026-03-01"
+    },
+    {
+      "id": "r_0023",
+      "field": "description",
+      "match": "contains",
+      "value": "INTERNET",
+      "category": "Moradia",
+      "subcategory": "Internet/TV",
+      "note": "internet fibra",
+      "created_at": "2026-03-01"
+    },
+    {
+      "id": "r_0030",
+      "field": "description",
+      "match": "contains",
+      "value": "NETFLIX",
+      "category": "Lazer",
+      "subcategory": "Streaming",
+      "note": "assinatura de streaming",
+      "created_at": "2026-03-01"
+    },
+    {
+      "id": "r_0040",
+      "field": "description",
+      "match": "contains",
+      "value": "ACADEMIA",
+      "category": "Saúde",
+      "subcategory": "Academia",
+      "note": "mensalidade academia",
+      "created_at": "2026-03-01"
+    },
+    {
+      "id": "r_0050",
+      "field": "description",
+      "match": "contains",
+      "value": "SUPERMERCADO",
+      "category": "Alimentação",
+      "subcategory": "Supermercado",
+      "note": "compras de mercado",
+      "created_at": "2026-03-01"
+    },
+    {
+      "id": "r_0051",
+      "field": "description",
+      "match": "contains",
+      "value": "RESTAURANTE",
+      "category": "Alimentação",
+      "subcategory": "Restaurante",
+      "note": "refeição fora",
+      "created_at": "2026-03-01"
+    },
+    {
+      "id": "r_0060",
+      "field": "description",
+      "match": "contains",
+      "value": "UBER",
+      "category": "Transporte",
+      "subcategory": "App/Táxi",
+      "note": "corridas por app",
+      "created_at": "2026-03-01"
+    },
+    {
+      "id": "r_0061",
+      "field": "description",
+      "match": "contains",
+      "value": "POSTO",
+      "category": "Transporte",
+      "subcategory": "Combustível",
+      "note": "abastecimento",
+      "created_at": "2026-03-01"
+    },
+    {
+      "id": "r_0070",
+      "field": "description",
+      "match": "contains",
+      "value": "DROGARIA",
+      "category": "Saúde",
+      "subcategory": "Farmácia",
+      "note": "farmácia",
+      "created_at": "2026-03-01"
+    },
+    {
+      "id": "r_0080",
+      "field": "description",
+      "match": "contains",
+      "value": "APLICACAO",
+      "category": "Investimentos",
+      "subcategory": "Aporte",
+      "note": "aporte renda fixa",
+      "created_at": "2026-03-01"
+    },
+    {
+      "id": "r_0081",
+      "field": "description",
+      "match": "contains",
+      "value": "RENDIMENTO AUTOMATICO",
+      "category": "Investimentos",
+      "subcategory": "Rendimentos",
+      "note": "rendimento de conta",
+      "created_at": "2026-03-01"
+    },
+    {
+      "id": "r_0090",
+      "field": "description",
+      "match": "contains",
+      "value": "LOJA ROUPAS",
+      "category": "Compras",
+      "subcategory": "Vestuário",
+      "note": "vestuário",
+      "created_at": "2026-03-01"
+    }
+  ]
+}

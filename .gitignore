@@ -1,0 +1,24 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Credentials (nunca commitar)
+.env
+
+# Node / frontend build
+node_modules/
+frontend/dist/
+
+# Arquivos de trabalho efêmeros da categorização
+data/.to_categorize.json
+data/.decisions.json
+data/.claude_queue.jsonl
+data/.bak/
+data/*.bak*

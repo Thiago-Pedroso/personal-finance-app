@@ -1,0 +1,17 @@
+{
+  "7e61536c-83f6-4ab1-9cc6-c98941a07f7e": {
+    "account_name": "Conta Corrente",
+    "item_id": "c32a7be9-071c-46e7-973e-e3dbd79ac27d",
+    "last_synced_at": "2026-05-31T12:00:00+00:00"
+  },
+  "f4569036-8031-4b75-9acf-dd211b18551e": {
+    "account_name": "Cartão de Crédito",
+    "item_id": "c32a7be9-071c-46e7-973e-e3dbd79ac27d",
+    "last_synced_at": "2026-05-31T12:00:00+00:00"
+  },
+  "f991491e-97dc-4b36-8800-24fac6c0ebd8": {
+    "account_name": "Conta Pagamento",
+    "item_id": "c32a7be9-071c-46e7-973e-e3dbd79ac27d",
+    "last_synced_at": "2026-05-31T12:00:00+00:00"
+  }
+}

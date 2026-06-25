@@ -1,0 +1,10 @@
+[project]
+name = "finance-control"
+version = "0.1.0"
+description = "Assistente de controle financeiro pessoal operado via Claude Code, com Open Finance (Pluggy)."
+requires-python = ">=3.13"
+dependencies = [
+    "pluggy-sdk>=1.0.0.post53",
+    "python-dotenv>=1.2.2",
+    "pyyaml>=6.0",
+]

@@ -1,0 +1,772 @@
+{
+  "month": "2026-03",
+  "income": 7700.0,
+  "expense": 4274.0,
+  "net": 3426.0,
+  "by_category": {
+    "Alimentação": {
+      "income": 0.0,
+      "expense": 1252.0,
+      "count": 9,
+      "subcategories": {
+        "Supermercado": {
+          "income": 0.0,
+          "expense": 1023.0,
+          "count": 4
+        },
+        "Restaurante": {
+          "income": 0.0,
+          "expense": 118.0,
+          "count": 2
+        },
+        "Café/Padaria": {
+          "income": 0.0,
+          "expense": 72.0,
+          "count": 2
+        },
+        "Delivery": {
+          "income": 0.0,
+          "expense": 39.0,
+          "count": 1
+        }
+      }
+    },
+    "Transporte": {
+      "income": 0.0,
+      "expense": 345.0,
+      "count": 5,
+      "subcategories": {
+        "App/Táxi": {
+          "income": 0.0,
+          "expense": 95.0,
+          "count": 4
+        },
+        "Combustível": {
+          "income": 0.0,
+          "expense": 250.0,
+          "count": 1
+        }
+      }
+    },
+    "Renda": {
+      "income": 7700.0,
+      "expense": 0.0,
+      "count": 2,
+      "subcategories": {
+        "Salário": {
+          "income": 6500.0,
+          "expense": 0.0,
+          "count": 1
+        },
+        "Projetos PJ": {
+          "income": 1200.0,
+          "expense": 0.0,
+          "count": 1
+        }
+      }
+    },
+    "Lazer": {
+      "income": 0.0,
+      "expense": 77.8,
+      "count": 2,
+      "subcategories": {
+        "Streaming": {
+          "income": 0.0,
+          "expense": 77.8,
+          "count": 2
+        }
+      }
+    },
+    "Saúde": {
+      "income": 0.0,
+      "expense": 164.4,
+      "count": 2,
+      "subcategories": {
+        "Farmácia": {
+          "income": 0.0,
+          "expense": 64.5,
+          "count": 1
+        },
+        "Academia": {
+          "income": 0.0,
+          "expense": 99.9,
+          "count": 1
+        }
+      }
+    },
+    "Moradia": {
+      "income": 0.0,
+      "expense": 2274.9,
+      "count": 4,
+      "subcategories": {
+        "Aluguel": {
+          "income": 0.0,
+          "expense": 1850.0,
+          "count": 1
+        },
+        "Energia": {
+          "income": 0.0,
+          "expense": 220.0,
+          "count": 1
+        },
+        "Água": {
+          "income": 0.0,
+          "expense": 85.0,
+          "count": 1
+        },
+        "Internet/TV": {
+          "income": 0.0,
+          "expense": 119.9,
+          "count": 1
+        }
+      }
+    },
+    "Compras": {
+      "income": 0.0,
+      "expense": 159.9,
+      "count": 1,
+      "subcategories": {
+        "Vestuário": {
+          "income": 0.0,
+          "expense": 159.9,
+          "count": 1
+        }
+      }
+    }
+  },
+  "movements": {
+    "Investimentos": {
+      "in": 13.43,
+      "out": 1000.0,
+      "count": 2,
+      "subcategories": {
+        "Rendimentos": {
+          "in": 13.43,
+          "out": 0.0,
+          "count": 1
+        },
+        "Aporte": {
+          "in": 0.0,
+          "out": 1000.0,
+          "count": 1
+        }
+      }
+    },
+    "Transferências": {
+      "in": 1500.0,
+      "out": 1500.0,
+      "count": 2,
+      "subcategories": {
+        "Pagamento de cartão": {
+          "in": 1500.0,
+          "out": 1500.0,
+          "count": 2
+        }
+      }
+    },
+    "Reserva": {
+      "in": 0.0,
+      "out": 400.0,
+      "count": 1,
+      "subcategories": {
+        "Aporte": {
+          "in": 0.0,
+          "out": 400.0,
+          "count": 1
+        }
+      }
+    }
+  },
+  "plan": {
+    "month": "2026-03",
+    "is_current": false,
+    "days_in_month": 31,
+    "days_elapsed": 31,
+    "days_left": 0,
+    "income_planned": 0.0,
+    "income_realized": 7700.0,
+    "total_planned": 0.0,
+    "total_realized": 4274.0,
+    "total_projected": 4274.0,
+    "planned_balance": 0.0,
+    "realized_balance": 3426.0,
+    "projected_balance": 3426.0,
+    "daily_allowed": 0.0,
+    "categories": [
+      {
+        "category": "Moradia",
+        "planned": 0.0,
+        "realized": 2274.9,
+        "remaining": -2274.9,
+        "projected": 2274.9,
+        "status": "sem_teto"
+      },
+      {
+        "category": "Alimentação",
+        "planned": 0.0,
+        "realized": 1252.0,
+        "remaining": -1252.0,
+        "projected": 1252.0,
+        "status": "sem_teto"
+      },
+      {
+        "category": "Transporte",
+        "planned": 0.0,
+        "realized": 345.0,
+        "remaining": -345.0,
+        "projected": 345.0,
+        "status": "sem_teto"
+      },
+      {
+        "category": "Saúde",
+        "planned": 0.0,
+        "realized": 164.4,
+        "remaining": -164.4,
+        "projected": 164.4,
+        "status": "sem_teto"
+      },
+      {
+        "category": "Compras",
+        "planned": 0.0,
+        "realized": 159.9,
+        "remaining": -159.9,
+        "projected": 159.9,
+        "status": "sem_teto"
+      },
+      {
+        "category": "Lazer",
+        "planned": 0.0,
+        "realized": 77.8,
+        "remaining": -77.8,
+        "projected": 77.8,
+        "status": "sem_teto"
+      }
+    ]
+  },
+  "transactions": [
+    {
+      "id": "0df49c58-dd64-4b49-92e3-263b10a7b9a8",
+      "date": "2026-03-01",
+      "description": "RENDIMENTO AUTOMATICO",
+      "counterparty": null,
+      "signed_amount": 13.433189874018016,
+      "type": "CREDIT",
+      "account_name": "Conta Corrente",
+      "category": "Investimentos",
+      "subcategory": "Rendimentos",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "b16218ba-ee6f-456a-9b5a-6b2f81f55216",
+      "date": "2026-03-03",
+      "description": "SUPERMERCADO BOM PRECO",
+      "counterparty": null,
+      "signed_amount": -321.0,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Alimentação",
+      "subcategory": "Supermercado",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "788428b4-aa3d-43e5-9578-c4b33ece40b2",
+      "date": "2026-03-04",
+      "description": "UBER *TRIP",
+      "counterparty": null,
+      "signed_amount": -18.0,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Transporte",
+      "subcategory": "App/Táxi",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "b72aa0a7-26b2-46a7-91fb-31901b68ba99",
+      "date": "2026-03-05",
+      "description": "PAGAMENTO SALARIO ACME LTDA",
+      "counterparty": null,
+      "signed_amount": 6500.0,
+      "type": "CREDIT",
+      "account_name": "Conta Corrente",
+      "category": "Renda",
+      "subcategory": "Salário",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "4eade15d-5c54-4c2c-8a6f-ab79505e92a8",
+      "date": "2026-03-06",
+      "description": "APLICACAO RENDA FIXA CDB",
+      "counterparty": null,
+      "signed_amount": -1000.0,
+      "type": "DEBIT",
+      "account_name": "Conta Corrente",
+      "category": "Investimentos",
+      "subcategory": "Aporte",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "d31d000a-8395-4f8c-be85-d41e7fa25a6d",
+      "date": "2026-03-06",
+      "description": "RESTAURANTE SABOR CASEIRO",
+      "counterparty": null,
+      "signed_amount": -50.0,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Alimentação",
+      "subcategory": "Restaurante",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "6389e489-7678-4eb7-80b5-83310730793c",
+      "date": "2026-03-07",
+      "description": "NETFLIX.COM",
+      "counterparty": null,
+      "signed_amount": -55.9,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Lazer",
+      "subcategory": "Streaming",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "a7864968-a57e-4809-b45b-c03327c5c5d8",
+      "date": "2026-03-08",
+      "description": "SPOTIFY",
+      "counterparty": null,
+      "signed_amount": -21.9,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Lazer",
+      "subcategory": "Streaming",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "5462cbba-c64e-42da-a24c-ad9a233a7930",
+      "date": "2026-03-09",
+      "description": "DROGARIA SAO PAULO",
+      "counterparty": null,
+      "signed_amount": -64.5,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Saúde",
+      "subcategory": "Farmácia",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "a77d7832-ab59-437d-bbd3-654766aaa363",
+      "date": "2026-03-09",
+      "description": "UBER *TRIP",
+      "counterparty": null,
+      "signed_amount": -24.0,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Transporte",
+      "subcategory": "App/Táxi",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "5aee4404-b16b-4233-9aec-dbcc09401501",
+      "date": "2026-03-10",
+      "description": "PAGAMENTO RECEBIDO",
+      "counterparty": null,
+      "signed_amount": 1500.0,
+      "type": "CREDIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Transferências",
+      "subcategory": "Pagamento de cartão",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "b44bec08-f1e3-4553-9c9c-92aa22049f85",
+      "date": "2026-03-10",
+      "description": "ALUGUEL IMOBILIARIA CENTRO",
+      "counterparty": null,
+      "signed_amount": -1850.0,
+      "type": "DEBIT",
+      "account_name": "Conta Corrente",
+      "category": "Moradia",
+      "subcategory": "Aluguel",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "d3c41fb5-d99b-47fc-97af-838f2a1ff371",
+      "date": "2026-03-10",
+      "description": "PAGAMENTO FATURA CARTAO",
+      "counterparty": null,
+      "signed_amount": -1500.0,
+      "type": "DEBIT",
+      "account_name": "Conta Corrente",
+      "category": "Transferências",
+      "subcategory": "Pagamento de cartão",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "4d1a68c6-6215-4ab5-bb75-7142600b5c7d",
+      "date": "2026-03-11",
+      "description": "MERCADO DIA A DIA",
+      "counterparty": null,
+      "signed_amount": -227.0,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Alimentação",
+      "subcategory": "Supermercado",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "20cbf57a-04a2-4cfe-a605-4edb0a40ffc1",
+      "date": "2026-03-12",
+      "description": "ENEL DISTRIBUICAO ENERGIA",
+      "counterparty": null,
+      "signed_amount": -220.0,
+      "type": "DEBIT",
+      "account_name": "Conta Corrente",
+      "category": "Moradia",
+      "subcategory": "Energia",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "d509b3fb-395f-4ff8-be30-712250936db4",
+      "date": "2026-03-12",
+      "description": "CIA SANEAMENTO AGUA",
+      "counterparty": null,
+      "signed_amount": -85.0,
+      "type": "DEBIT",
+      "account_name": "Conta Corrente",
+      "category": "Moradia",
+      "subcategory": "Água",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "62891e55-56e5-447c-bada-185745b54616",
+      "date": "2026-03-13",
+      "description": "PADARIA PAO QUENTE",
+      "counterparty": null,
+      "signed_amount": -45.0,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Alimentação",
+      "subcategory": "Café/Padaria",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "43f19184-c556-4851-b665-5d42fc54ea7d",
+      "date": "2026-03-14",
+      "description": "SMARTFIT ACADEMIA",
+      "counterparty": null,
+      "signed_amount": -99.9,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Saúde",
+      "subcategory": "Academia",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "962985aa-585d-410d-a284-1bcd1171050b",
+      "date": "2026-03-15",
+      "description": "NET INTERNET FIBRA",
+      "counterparty": null,
+      "signed_amount": -119.9,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Moradia",
+      "subcategory": "Internet/TV",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "6c125570-cac0-4735-b1ee-e6ed04e9510d",
+      "date": "2026-03-16",
+      "description": "UBER *TRIP",
+      "counterparty": null,
+      "signed_amount": -31.0,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Transporte",
+      "subcategory": "App/Táxi",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "bf7532ba-d66d-4b3b-8ad4-5504bfa4bea4",
+      "date": "2026-03-17",
+      "description": "CANTINA DA NONNA",
+      "counterparty": null,
+      "signed_amount": -68.0,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Alimentação",
+      "subcategory": "Restaurante",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "e43056d7-be8b-474b-875f-d33e9facf080",
+      "date": "2026-03-18",
+      "description": "POSTO SHELL COMBUSTIVEL",
+      "counterparty": null,
+      "signed_amount": -250.0,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Transporte",
+      "subcategory": "Combustível",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "d877e471-e735-4a69-a28a-5211f0af2445",
+      "date": "2026-03-19",
+      "description": "SUPERMERCADO BOM PRECO",
+      "counterparty": null,
+      "signed_amount": -294.0,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Alimentação",
+      "subcategory": "Supermercado",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "3c6f1ba1-86c8-413f-a42a-fdda58c26913",
+      "date": "2026-03-20",
+      "description": "PIX RECEBIDO PROJETO FREELANCE",
+      "counterparty": null,
+      "signed_amount": 1200.0,
+      "type": "CREDIT",
+      "account_name": "Conta Corrente",
+      "category": "Renda",
+      "subcategory": "Projetos PJ",
+      "category_source": "manual",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "38948a04-0293-43a5-8cb8-d7dca0d26823",
+      "date": "2026-03-21",
+      "description": "LOJA ROUPAS FASHION",
+      "counterparty": null,
+      "signed_amount": -159.9,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Compras",
+      "subcategory": "Vestuário",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "60d550f7-a08c-49ed-9f4f-6a1f94955834",
+      "date": "2026-03-22",
+      "description": "IFOOD *PEDIDO",
+      "counterparty": null,
+      "signed_amount": -39.0,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Alimentação",
+      "subcategory": "Delivery",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "b4b0bd7a-2fa2-4abe-9d9d-c9307d0b0230",
+      "date": "2026-03-24",
+      "description": "UBER *TRIP",
+      "counterparty": null,
+      "signed_amount": -22.0,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Transporte",
+      "subcategory": "App/Táxi",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "60d37258-ccaf-4239-8497-b90a7c8481bf",
+      "date": "2026-03-25",
+      "description": "PIX ENVIADO POUPANCA PESSOAL",
+      "counterparty": null,
+      "signed_amount": -400.0,
+      "type": "DEBIT",
+      "account_name": "Conta Corrente",
+      "category": "Reserva",
+      "subcategory": "Aporte",
+      "category_source": "manual",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "5aef9dbb-748b-4a0c-8382-32fd31ca97e8",
+      "date": "2026-03-26",
+      "description": "SUPERMERCADO BOM PRECO",
+      "counterparty": null,
+      "signed_amount": -181.0,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Alimentação",
+      "subcategory": "Supermercado",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    },
+    {
+      "id": "5ac63294-16a3-4179-afa4-8fb14c803e27",
+      "date": "2026-03-28",
+      "description": "CAFETERIA GRAOS",
+      "counterparty": null,
+      "signed_amount": -27.0,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Alimentação",
+      "subcategory": "Café/Padaria",
+      "category_source": "rule",
+      "reviewed": true,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null
+    }
+  ],
+  "savings": {
+    "current_total": 0,
+    "target_total": 0,
+    "pct": null,
+    "reserva_net_period": -400.0,
+    "reserva_month_net": -400.0,
+    "goals": []
+  },
+  "insights": [
+    {
+      "sev": "info",
+      "text": "Maior gasto: ALUGUEL IMOBILIARIA CENTRO R$ 1,850 (Moradia)"
+    }
+  ]
+}

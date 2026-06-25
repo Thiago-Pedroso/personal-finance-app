@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+/* ---- design tokens (tema escuro) — viram utilitários: bg-surface, text-muted… */
+@theme {
+  --color-bg: #0b0e13;
+  --color-surface: #141a22;
+  --color-surface2: #1b232e;
+  --color-border: #28323f;
+  --color-text: #e8eef5;
+  --color-muted: #8a97a6;
+  --color-faint: #5d6b7a;
+  --color-green: #36c98b;
+  --color-red: #f4685f;
+  --color-blue: #5aa2ff;
+  --color-amber: #e0a93b;
+  --color-violet: #b08cff;
+  --color-accent: #36c98b;
+
+  --radius-xl: 16px;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background:
+    radial-gradient(1100px 520px at 85% -8%, #1f6feb1f, transparent 60%),
+    radial-gradient(900px 500px at 5% 0%, #36c98b14, transparent 55%),
+    var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: #2c3744; border-radius: 99px; border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: #3a4654; background-clip: padding-box; }
+
+input, select, button, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 50% { opacity: .4; } }
+@keyframes slideup {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes overlay { from { opacity: 0; } to { opacity: 1; } }
+
+.tnum { font-variant-numeric: tabular-nums; }
+.fade-in { animation: slideup .18s ease-out; }

@@ -1,0 +1,1705 @@
+{
+  "generated_at": "2026-06-25T18:01:40.461653+00:00",
+  "currency": "BRL",
+  "taxonomy": {
+    "Alimentação": [
+      "Supermercado",
+      "Restaurante",
+      "Delivery",
+      "Café/Padaria",
+      "Ocasiões especiais"
+    ],
+    "Transporte": [
+      "Combustível",
+      "App/Táxi",
+      "Transporte público",
+      "Estacionamento",
+      "Manutenção",
+      "Aluguel de veículo",
+      "Lava-jato"
+    ],
+    "Moradia": [
+      "Aluguel",
+      "Condomínio",
+      "Energia",
+      "Água",
+      "Internet/TV",
+      "Gás"
+    ],
+    "Saúde": [
+      "Plano de saúde",
+      "Farmácia",
+      "Consultas/Exames",
+      "Academia"
+    ],
+    "Lazer": [
+      "Streaming",
+      "Bares",
+      "Cinema/Eventos",
+      "Viagem",
+      "Hobbies"
+    ],
+    "Compras": [
+      "Vestuário",
+      "Eletrônicos",
+      "Casa",
+      "Presentes",
+      "Online"
+    ],
+    "Serviços": [
+      "Assinaturas",
+      "Profissionais",
+      "Seguros",
+      "Bancário/Tarifas",
+      "Barbearia"
+    ],
+    "Trabalho": [
+      "Impostos MEI",
+      "Assinaturas",
+      "Serviços"
+    ],
+    "Educação": [
+      "Cursos",
+      "Livros"
+    ],
+    "Impostos/Taxas": [
+      "Impostos",
+      "Multas/Juros"
+    ],
+    "Transferências": [
+      "PIX enviado",
+      "PIX recebido",
+      "TED/DOC",
+      "Pagamento de cartão"
+    ],
+    "Investimentos": [
+      "Aporte",
+      "Resgate",
+      "Rendimentos"
+    ],
+    "Reserva": [
+      "Aporte",
+      "Resgate",
+      "Rendimento"
+    ],
+    "Formatura": [
+      "Despesa",
+      "Recebido"
+    ],
+    "Compartilhado": [
+      "Escritório",
+      "Evento",
+      "Outro"
+    ],
+    "Renda": [
+      "Salário",
+      "Bolsa de pesquisa",
+      "Projetos PJ",
+      "Aluguel recebido",
+      "Ajuda de custo",
+      "Reembolso",
+      "Outras receitas"
+    ],
+    "Doações": [
+      "Pessoas",
+      "Instituições"
+    ],
+    "Outros": [
+      "A revisar"
+    ]
+  },
+  "budgets": {
+    "income_plan": {
+      "recurring": 0,
+      "months": {}
+    },
+    "spending": {
+      "recurring": {},
+      "months": {}
+    },
+    "savings_goals": []
+  },
+  "recurring": [
+    {
+      "label": "ALUGUEL IMOBILIARIA CENTRO",
+      "amount": 1850.0,
+      "count": 3,
+      "months": 3,
+      "cadence": "mensal",
+      "category": "Moradia",
+      "last_date": "2026-05-10"
+    },
+    {
+      "label": "ENEL DISTRIBUICAO ENERGIA",
+      "amount": 212.0,
+      "count": 3,
+      "months": 3,
+      "cadence": "mensal",
+      "category": "Moradia",
+      "last_date": "2026-05-12"
+    },
+    {
+      "label": "LOJA ROUPAS FASHION",
+      "amount": 159.9,
+      "count": 3,
+      "months": 3,
+      "cadence": "mensal",
+      "category": "Compras",
+      "last_date": "2026-05-21"
+    },
+    {
+      "label": "NET INTERNET FIBRA",
+      "amount": 119.9,
+      "count": 3,
+      "months": 3,
+      "cadence": "mensal",
+      "category": "Moradia",
+      "last_date": "2026-05-15"
+    },
+    {
+      "label": "SMARTFIT ACADEMIA",
+      "amount": 99.9,
+      "count": 3,
+      "months": 3,
+      "cadence": "mensal",
+      "category": "Saúde",
+      "last_date": "2026-05-14"
+    },
+    {
+      "label": "UBER *TRIP",
+      "amount": 23.0,
+      "count": 12,
+      "months": 3,
+      "cadence": "semanal",
+      "category": "Transporte",
+      "last_date": "2026-05-24"
+    },
+    {
+      "label": "CIA SANEAMENTO AGUA",
+      "amount": 85.0,
+      "count": 3,
+      "months": 3,
+      "cadence": "mensal",
+      "category": "Moradia",
+      "last_date": "2026-05-12"
+    },
+    {
+      "label": "DROGARIA SAO PAULO",
+      "amount": 64.5,
+      "count": 3,
+      "months": 3,
+      "cadence": "mensal",
+      "category": "Saúde",
+      "last_date": "2026-05-09"
+    },
+    {
+      "label": "NETFLIX.COM",
+      "amount": 55.9,
+      "count": 3,
+      "months": 3,
+      "cadence": "mensal",
+      "category": "Lazer",
+      "last_date": "2026-05-07"
+    },
+    {
+      "label": "SPOTIFY",
+      "amount": 21.9,
+      "count": 3,
+      "months": 3,
+      "cadence": "mensal",
+      "category": "Lazer",
+      "last_date": "2026-05-08"
+    }
+  ],
+  "cashflow_excludes": [
+    "Compartilhado",
+    "Formatura",
+    "Investimentos",
+    "Reserva",
+    "Transferências"
+  ],
+  "months": [
+    {
+      "month": "2026-03",
+      "income": 7700.0,
+      "expense": 4274.0,
+      "net": 3426.0,
+      "by_category": {
+        "Alimentação": {
+          "income": 0.0,
+          "expense": 1252.0,
+          "count": 9,
+          "subcategories": {
+            "Supermercado": {
+              "income": 0.0,
+              "expense": 1023.0,
+              "count": 4
+            },
+            "Restaurante": {
+              "income": 0.0,
+              "expense": 118.0,
+              "count": 2
+            },
+            "Café/Padaria": {
+              "income": 0.0,
+              "expense": 72.0,
+              "count": 2
+            },
+            "Delivery": {
+              "income": 0.0,
+              "expense": 39.0,
+              "count": 1
+            }
+          }
+        },
+        "Transporte": {
+          "income": 0.0,
+          "expense": 345.0,
+          "count": 5,
+          "subcategories": {
+            "App/Táxi": {
+              "income": 0.0,
+              "expense": 95.0,
+              "count": 4
+            },
+            "Combustível": {
+              "income": 0.0,
+              "expense": 250.0,
+              "count": 1
+            }
+          }
+        },
+        "Renda": {
+          "income": 7700.0,
+          "expense": 0.0,
+          "count": 2,
+          "subcategories": {
+            "Salário": {
+              "income": 6500.0,
+              "expense": 0.0,
+              "count": 1
+            },
+            "Projetos PJ": {
+              "income": 1200.0,
+              "expense": 0.0,
+              "count": 1
+            }
+          }
+        },
+        "Lazer": {
+          "income": 0.0,
+          "expense": 77.8,
+          "count": 2,
+          "subcategories": {
+            "Streaming": {
+              "income": 0.0,
+              "expense": 77.8,
+              "count": 2
+            }
+          }
+        },
+        "Saúde": {
+          "income": 0.0,
+          "expense": 164.4,
+          "count": 2,
+          "subcategories": {
+            "Farmácia": {
+              "income": 0.0,
+              "expense": 64.5,
+              "count": 1
+            },
+            "Academia": {
+              "income": 0.0,
+              "expense": 99.9,
+              "count": 1
+            }
+          }
+        },
+        "Moradia": {
+          "income": 0.0,
+          "expense": 2274.9,
+          "count": 4,
+          "subcategories": {
+            "Aluguel": {
+              "income": 0.0,
+              "expense": 1850.0,
+              "count": 1
+            },
+            "Energia": {
+              "income": 0.0,
+              "expense": 220.0,
+              "count": 1
+            },
+            "Água": {
+              "income": 0.0,
+              "expense": 85.0,
+              "count": 1
+            },
+            "Internet/TV": {
+              "income": 0.0,
+              "expense": 119.9,
+              "count": 1
+            }
+          }
+        },
+        "Compras": {
+          "income": 0.0,
+          "expense": 159.9,
+          "count": 1,
+          "subcategories": {
+            "Vestuário": {
+              "income": 0.0,
+              "expense": 159.9,
+              "count": 1
+            }
+          }
+        }
+      },
+      "movements": {
+        "Investimentos": {
+          "in": 13.43,
+          "out": 1000.0,
+          "count": 2,
+          "subcategories": {
+            "Rendimentos": {
+              "in": 13.43,
+              "out": 0.0,
+              "count": 1
+            },
+            "Aporte": {
+              "in": 0.0,
+              "out": 1000.0,
+              "count": 1
+            }
+          }
+        },
+        "Transferências": {
+          "in": 1500.0,
+          "out": 1500.0,
+          "count": 2,
+          "subcategories": {
+            "Pagamento de cartão": {
+              "in": 1500.0,
+              "out": 1500.0,
+              "count": 2
+            }
+          }
+        },
+        "Reserva": {
+          "in": 0.0,
+          "out": 400.0,
+          "count": 1,
+          "subcategories": {
+            "Aporte": {
+              "in": 0.0,
+              "out": 400.0,
+              "count": 1
+            }
+          }
+        }
+      },
+      "plan": {
+        "month": "2026-03",
+        "is_current": false,
+        "days_in_month": 31,
+        "days_elapsed": 31,
+        "days_left": 0,
+        "income_planned": 0.0,
+        "income_realized": 7700.0,
+        "total_planned": 0.0,
+        "total_realized": 4274.0,
+        "total_projected": 4274.0,
+        "planned_balance": 0.0,
+        "realized_balance": 3426.0,
+        "projected_balance": 3426.0,
+        "daily_allowed": 0.0,
+        "categories": [
+          {
+            "category": "Moradia",
+            "planned": 0.0,
+            "realized": 2274.9,
+            "remaining": -2274.9,
+            "projected": 2274.9,
+            "status": "sem_teto"
+          },
+          {
+            "category": "Alimentação",
+            "planned": 0.0,
+            "realized": 1252.0,
+            "remaining": -1252.0,
+            "projected": 1252.0,
+            "status": "sem_teto"
+          },
+          {
+            "category": "Transporte",
+            "planned": 0.0,
+            "realized": 345.0,
+            "remaining": -345.0,
+            "projected": 345.0,
+            "status": "sem_teto"
+          },
+          {
+            "category": "Saúde",
+            "planned": 0.0,
+            "realized": 164.4,
+            "remaining": -164.4,
+            "projected": 164.4,
+            "status": "sem_teto"
+          },
+          {
+            "category": "Compras",
+            "planned": 0.0,
+            "realized": 159.9,
+            "remaining": -159.9,
+            "projected": 159.9,
+            "status": "sem_teto"
+          },
+          {
+            "category": "Lazer",
+            "planned": 0.0,
+            "realized": 77.8,
+            "remaining": -77.8,
+            "projected": 77.8,
+            "status": "sem_teto"
+          }
+        ]
+      }
+    },
+    {
+      "month": "2026-04",
+      "income": 7700.0,
+      "expense": 4311.0,
+      "net": 3389.0,
+      "by_category": {
+        "Alimentação": {
+          "income": 0.0,
+          "expense": 1297.0,
+          "count": 9,
+          "subcategories": {
+            "Supermercado": {
+              "income": 0.0,
+              "expense": 1046.0,
+              "count": 4
+            },
+            "Restaurante": {
+              "income": 0.0,
+              "expense": 129.0,
+              "count": 2
+            },
+            "Café/Padaria": {
+              "income": 0.0,
+              "expense": 78.0,
+              "count": 2
+            },
+            "Delivery": {
+              "income": 0.0,
+              "expense": 44.0,
+              "count": 1
+            }
+          }
+        },
+        "Transporte": {
+          "income": 0.0,
+          "expense": 345.0,
+          "count": 5,
+          "subcategories": {
+            "App/Táxi": {
+              "income": 0.0,
+              "expense": 95.0,
+              "count": 4
+            },
+            "Combustível": {
+              "income": 0.0,
+              "expense": 250.0,
+              "count": 1
+            }
+          }
+        },
+        "Renda": {
+          "income": 7700.0,
+          "expense": 0.0,
+          "count": 2,
+          "subcategories": {
+            "Salário": {
+              "income": 6500.0,
+              "expense": 0.0,
+              "count": 1
+            },
+            "Projetos PJ": {
+              "income": 1200.0,
+              "expense": 0.0,
+              "count": 1
+            }
+          }
+        },
+        "Lazer": {
+          "income": 0.0,
+          "expense": 77.8,
+          "count": 2,
+          "subcategories": {
+            "Streaming": {
+              "income": 0.0,
+              "expense": 77.8,
+              "count": 2
+            }
+          }
+        },
+        "Saúde": {
+          "income": 0.0,
+          "expense": 164.4,
+          "count": 2,
+          "subcategories": {
+            "Farmácia": {
+              "income": 0.0,
+              "expense": 64.5,
+              "count": 1
+            },
+            "Academia": {
+              "income": 0.0,
+              "expense": 99.9,
+              "count": 1
+            }
+          }
+        },
+        "Moradia": {
+          "income": 0.0,
+          "expense": 2266.9,
+          "count": 4,
+          "subcategories": {
+            "Aluguel": {
+              "income": 0.0,
+              "expense": 1850.0,
+              "count": 1
+            },
+            "Água": {
+              "income": 0.0,
+              "expense": 85.0,
+              "count": 1
+            },
+            "Energia": {
+              "income": 0.0,
+              "expense": 212.0,
+              "count": 1
+            },
+            "Internet/TV": {
+              "income": 0.0,
+              "expense": 119.9,
+              "count": 1
+            }
+          }
+        },
+        "Compras": {
+          "income": 0.0,
+          "expense": 159.9,
+          "count": 1,
+          "subcategories": {
+            "Vestuário": {
+              "income": 0.0,
+              "expense": 159.9,
+              "count": 1
+            }
+          }
+        }
+      },
+      "movements": {
+        "Investimentos": {
+          "in": 14.04,
+          "out": 1000.0,
+          "count": 2,
+          "subcategories": {
+            "Rendimentos": {
+              "in": 14.04,
+              "out": 0.0,
+              "count": 1
+            },
+            "Aporte": {
+              "in": 0.0,
+              "out": 1000.0,
+              "count": 1
+            }
+          }
+        },
+        "Transferências": {
+          "in": 1500.0,
+          "out": 1500.0,
+          "count": 2,
+          "subcategories": {
+            "Pagamento de cartão": {
+              "in": 1500.0,
+              "out": 1500.0,
+              "count": 2
+            }
+          }
+        },
+        "Reserva": {
+          "in": 0.0,
+          "out": 400.0,
+          "count": 1,
+          "subcategories": {
+            "Aporte": {
+              "in": 0.0,
+              "out": 400.0,
+              "count": 1
+            }
+          }
+        }
+      },
+      "plan": {
+        "month": "2026-04",
+        "is_current": false,
+        "days_in_month": 30,
+        "days_elapsed": 30,
+        "days_left": 0,
+        "income_planned": 0.0,
+        "income_realized": 7700.0,
+        "total_planned": 0.0,
+        "total_realized": 4311.0,
+        "total_projected": 4311.0,
+        "planned_balance": 0.0,
+        "realized_balance": 3389.0,
+        "projected_balance": 3389.0,
+        "daily_allowed": 0.0,
+        "categories": [
+          {
+            "category": "Moradia",
+            "planned": 0.0,
+            "realized": 2266.9,
+            "remaining": -2266.9,
+            "projected": 2266.9,
+            "status": "sem_teto"
+          },
+          {
+            "category": "Alimentação",
+            "planned": 0.0,
+            "realized": 1297.0,
+            "remaining": -1297.0,
+            "projected": 1297.0,
+            "status": "sem_teto"
+          },
+          {
+            "category": "Transporte",
+            "planned": 0.0,
+            "realized": 345.0,
+            "remaining": -345.0,
+            "projected": 345.0,
+            "status": "sem_teto"
+          },
+          {
+            "category": "Saúde",
+            "planned": 0.0,
+            "realized": 164.4,
+            "remaining": -164.4,
+            "projected": 164.4,
+            "status": "sem_teto"
+          },
+          {
+            "category": "Compras",
+            "planned": 0.0,
+            "realized": 159.9,
+            "remaining": -159.9,
+            "projected": 159.9,
+            "status": "sem_teto"
+          },
+          {
+            "category": "Lazer",
+            "planned": 0.0,
+            "realized": 77.8,
+            "remaining": -77.8,
+            "projected": 77.8,
+            "status": "sem_teto"
+          }
+        ]
+      }
+    },
+    {
+      "month": "2026-05",
+      "income": 7700.0,
+      "expense": 5622.4,
+      "net": 2077.6,
+      "by_category": {
+        "Alimentação": {
+          "income": 0.0,
+          "expense": 1368.0,
+          "count": 10,
+          "subcategories": {
+            "Supermercado": {
+              "income": 0.0,
+              "expense": 1039.0,
+              "count": 4
+            },
+            "Restaurante": {
+              "income": 0.0,
+              "expense": 217.0,
+              "count": 3
+            },
+            "Café/Padaria": {
+              "income": 0.0,
+              "expense": 70.0,
+              "count": 2
+            },
+            "Delivery": {
+              "income": 0.0,
+              "expense": 42.0,
+              "count": 1
+            }
+          }
+        },
+        "Transporte": {
+          "income": 0.0,
+          "expense": 1325.0,
+          "count": 6,
+          "subcategories": {
+            "App/Táxi": {
+              "income": 0.0,
+              "expense": 95.0,
+              "count": 4
+            },
+            "Combustível": {
+              "income": 0.0,
+              "expense": 1230.0,
+              "count": 2
+            }
+          }
+        },
+        "Renda": {
+          "income": 7700.0,
+          "expense": 0.0,
+          "count": 2,
+          "subcategories": {
+            "Salário": {
+              "income": 6500.0,
+              "expense": 0.0,
+              "count": 1
+            },
+            "Projetos PJ": {
+              "income": 1200.0,
+              "expense": 0.0,
+              "count": 1
+            }
+          }
+        },
+        "Lazer": {
+          "income": 0.0,
+          "expense": 77.8,
+          "count": 2,
+          "subcategories": {
+            "Streaming": {
+              "income": 0.0,
+              "expense": 77.8,
+              "count": 2
+            }
+          }
+        },
+        "Saúde": {
+          "income": 0.0,
+          "expense": 164.4,
+          "count": 2,
+          "subcategories": {
+            "Farmácia": {
+              "income": 0.0,
+              "expense": 64.5,
+              "count": 1
+            },
+            "Academia": {
+              "income": 0.0,
+              "expense": 99.9,
+              "count": 1
+            }
+          }
+        },
+        "Moradia": {
+          "income": 0.0,
+          "expense": 2243.9,
+          "count": 4,
+          "subcategories": {
+            "Aluguel": {
+              "income": 0.0,
+              "expense": 1850.0,
+              "count": 1
+            },
+            "Água": {
+              "income": 0.0,
+              "expense": 85.0,
+              "count": 1
+            },
+            "Energia": {
+              "income": 0.0,
+              "expense": 189.0,
+              "count": 1
+            },
+            "Internet/TV": {
+              "income": 0.0,
+              "expense": 119.9,
+              "count": 1
+            }
+          }
+        },
+        "Compras": {
+          "income": 0.0,
+          "expense": 159.9,
+          "count": 1,
+          "subcategories": {
+            "Vestuário": {
+              "income": 0.0,
+              "expense": 159.9,
+              "count": 1
+            }
+          }
+        },
+        "Outros": {
+          "income": 0.0,
+          "expense": 283.4,
+          "count": 2,
+          "subcategories": {
+            "—": {
+              "income": 0.0,
+              "expense": 283.4,
+              "count": 2
+            }
+          }
+        }
+      },
+      "movements": {
+        "Investimentos": {
+          "in": 12.73,
+          "out": 1000.0,
+          "count": 2,
+          "subcategories": {
+            "Rendimentos": {
+              "in": 12.73,
+              "out": 0.0,
+              "count": 1
+            },
+            "Aporte": {
+              "in": 0.0,
+              "out": 1000.0,
+              "count": 1
+            }
+          }
+        },
+        "Transferências": {
+          "in": 1500.0,
+          "out": 1500.0,
+          "count": 2,
+          "subcategories": {
+            "Pagamento de cartão": {
+              "in": 1500.0,
+              "out": 1500.0,
+              "count": 2
+            }
+          }
+        },
+        "Compartilhado": {
+          "in": 0.0,
+          "out": 80.0,
+          "count": 1,
+          "subcategories": {
+            "Outro": {
+              "in": 0.0,
+              "out": 80.0,
+              "count": 1
+            }
+          }
+        },
+        "Reserva": {
+          "in": 0.0,
+          "out": 400.0,
+          "count": 1,
+          "subcategories": {
+            "Aporte": {
+              "in": 0.0,
+              "out": 400.0,
+              "count": 1
+            }
+          }
+        }
+      },
+      "plan": {
+        "month": "2026-05",
+        "is_current": false,
+        "days_in_month": 31,
+        "days_elapsed": 31,
+        "days_left": 0,
+        "income_planned": 0.0,
+        "income_realized": 7700.0,
+        "total_planned": 0.0,
+        "total_realized": 5622.4,
+        "total_projected": 5622.4,
+        "planned_balance": 0.0,
+        "realized_balance": 2077.6,
+        "projected_balance": 2077.6,
+        "daily_allowed": 0.0,
+        "categories": [
+          {
+            "category": "Moradia",
+            "planned": 0.0,
+            "realized": 2243.9,
+            "remaining": -2243.9,
+            "projected": 2243.9,
+            "status": "sem_teto"
+          },
+          {
+            "category": "Alimentação",
+            "planned": 0.0,
+            "realized": 1368.0,
+            "remaining": -1368.0,
+            "projected": 1368.0,
+            "status": "sem_teto"
+          },
+          {
+            "category": "Transporte",
+            "planned": 0.0,
+            "realized": 1325.0,
+            "remaining": -1325.0,
+            "projected": 1325.0,
+            "status": "sem_teto"
+          },
+          {
+            "category": "Outros",
+            "planned": 0.0,
+            "realized": 283.4,
+            "remaining": -283.4,
+            "projected": 283.4,
+            "status": "sem_teto"
+          },
+          {
+            "category": "Saúde",
+            "planned": 0.0,
+            "realized": 164.4,
+            "remaining": -164.4,
+            "projected": 164.4,
+            "status": "sem_teto"
+          },
+          {
+            "category": "Compras",
+            "planned": 0.0,
+            "realized": 159.9,
+            "remaining": -159.9,
+            "projected": 159.9,
+            "status": "sem_teto"
+          },
+          {
+            "category": "Lazer",
+            "planned": 0.0,
+            "realized": 77.8,
+            "remaining": -77.8,
+            "projected": 77.8,
+            "status": "sem_teto"
+          }
+        ]
+      }
+    }
+  ],
+  "by_category_12m": [
+    {
+      "category": "Moradia",
+      "expense": 6785.7,
+      "income": 0.0,
+      "count": 12
+    },
+    {
+      "category": "Alimentação",
+      "expense": 3917.0,
+      "income": 0.0,
+      "count": 28
+    },
+    {
+      "category": "Transporte",
+      "expense": 2015.0,
+      "income": 0.0,
+      "count": 16
+    },
+    {
+      "category": "Saúde",
+      "expense": 493.2,
+      "income": 0.0,
+      "count": 6
+    },
+    {
+      "category": "Compras",
+      "expense": 479.7,
+      "income": 0.0,
+      "count": 3
+    },
+    {
+      "category": "Outros",
+      "expense": 283.4,
+      "income": 0.0,
+      "count": 2
+    },
+    {
+      "category": "Lazer",
+      "expense": 233.4,
+      "income": 0.0,
+      "count": 6
+    },
+    {
+      "category": "Renda",
+      "expense": 0.0,
+      "income": 23100.0,
+      "count": 6
+    }
+  ],
+  "recent": [
+    {
+      "id": "4da6b93a-b8f0-4d8a-869c-23c85fae6e7a",
+      "date": "2026-05-29",
+      "description": "POSTO SHELL COMBUSTIVEL",
+      "signed_amount": -980.0,
+      "category": "Transporte",
+      "subcategory": "Combustível",
+      "account_name": "Cartão de Crédito",
+      "needs_review": true
+    },
+    {
+      "id": "60716ff0-1a6d-4fa8-82de-90685a2936cc",
+      "date": "2026-05-28",
+      "description": "CAFETERIA GRAOS",
+      "signed_amount": -37.0,
+      "category": "Alimentação",
+      "subcategory": "Café/Padaria",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "492f5262-b4a6-4e48-8cfc-2b1e09cabe67",
+      "date": "2026-05-27",
+      "description": "DEBITO NAO IDENTIFICADO",
+      "signed_amount": -210.0,
+      "category": null,
+      "subcategory": null,
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "b7f71a07-a874-46f1-bbf0-3a3e10b9fb9f",
+      "date": "2026-05-26",
+      "description": "ATACADAO",
+      "signed_amount": -197.0,
+      "category": "Alimentação",
+      "subcategory": "Supermercado",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "44a0a3ee-4dba-44b5-a06c-f3a9bbf98816",
+      "date": "2026-05-25",
+      "description": "PIX ENVIADO POUPANCA PESSOAL",
+      "signed_amount": -400.0,
+      "category": "Reserva",
+      "subcategory": "Aporte",
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "ee36b41c-75c3-4579-8588-bcdbb60dde43",
+      "date": "2026-05-24",
+      "description": "UBER *TRIP",
+      "signed_amount": -22.0,
+      "category": "Transporte",
+      "subcategory": "App/Táxi",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "424be4fa-f8a2-4960-bc92-8cec81eaf66b",
+      "date": "2026-05-23",
+      "description": "PAGAMENTO PIX QRS LTDA",
+      "signed_amount": -73.4,
+      "category": null,
+      "subcategory": null,
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "ff28abe0-8b42-4e7f-9b4c-8851d150874e",
+      "date": "2026-05-22",
+      "description": "IFOOD *PEDIDO",
+      "signed_amount": -42.0,
+      "category": "Alimentação",
+      "subcategory": "Delivery",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "cbedf808-4b82-4138-adb2-1d836d2a0c44",
+      "date": "2026-05-21",
+      "description": "LOJA ROUPAS FASHION",
+      "signed_amount": -159.9,
+      "category": "Compras",
+      "subcategory": "Vestuário",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "54d40714-aea1-4127-97c9-083cbc717989",
+      "date": "2026-05-20",
+      "description": "PIX RECEBIDO PROJETO FREELANCE",
+      "signed_amount": 1200.0,
+      "category": "Renda",
+      "subcategory": "Projetos PJ",
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "f2166993-1562-42ee-8e62-a2726b8130cc",
+      "date": "2026-05-19",
+      "description": "ATACADAO",
+      "signed_amount": -286.0,
+      "category": "Alimentação",
+      "subcategory": "Supermercado",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "338f3296-af4d-4e43-9940-f85f514a8971",
+      "date": "2026-05-18",
+      "description": "POSTO SHELL COMBUSTIVEL",
+      "signed_amount": -250.0,
+      "category": "Transporte",
+      "subcategory": "Combustível",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "8d7adfd3-2e42-49c5-884d-429de3acec2f",
+      "date": "2026-05-17",
+      "description": "CANTINA DA NONNA",
+      "signed_amount": -81.0,
+      "category": "Alimentação",
+      "subcategory": "Restaurante",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "9013b67d-506e-4e7f-8118-a89b65e18f2e",
+      "date": "2026-05-16",
+      "description": "UBER *TRIP",
+      "signed_amount": -31.0,
+      "category": "Transporte",
+      "subcategory": "App/Táxi",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "5f6a161f-2eff-4d25-9151-398dc66b65f4",
+      "date": "2026-05-15",
+      "description": "RESTAURANTE PARRILLA",
+      "signed_amount": -160.0,
+      "category": null,
+      "subcategory": null,
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "fcea1920-0d65-40fc-87af-cffa32ad14e7",
+      "date": "2026-05-15",
+      "description": "NET INTERNET FIBRA",
+      "signed_amount": -119.9,
+      "category": "Moradia",
+      "subcategory": "Internet/TV",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "a4ae6f15-ecc1-43cc-b9d7-1be43d06b59c",
+      "date": "2026-05-14",
+      "description": "SMARTFIT ACADEMIA",
+      "signed_amount": -99.9,
+      "category": "Saúde",
+      "subcategory": "Academia",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "e0c776e2-8d99-4812-b9f4-baea9d0c15ff",
+      "date": "2026-05-13",
+      "description": "PADARIA PAO QUENTE",
+      "signed_amount": -33.0,
+      "category": "Alimentação",
+      "subcategory": "Café/Padaria",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "8d8df87f-93ee-47a1-891d-62cdef9a0d86",
+      "date": "2026-05-12",
+      "description": "CIA SANEAMENTO AGUA",
+      "signed_amount": -85.0,
+      "category": "Moradia",
+      "subcategory": "Água",
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "c556a710-19e9-4386-ae7c-6e3b0aaf6feb",
+      "date": "2026-05-12",
+      "description": "ENEL DISTRIBUICAO ENERGIA",
+      "signed_amount": -189.0,
+      "category": "Moradia",
+      "subcategory": "Energia",
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "5d8afe07-95d2-48c0-a30c-aa00720096c7",
+      "date": "2026-05-11",
+      "description": "SUPERMERCADO BOM PRECO",
+      "signed_amount": -215.0,
+      "category": "Alimentação",
+      "subcategory": "Supermercado",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "30d3360e-bd64-456f-a9b4-aef800aaa50b",
+      "date": "2026-05-10",
+      "description": "ALUGUEL IMOBILIARIA CENTRO",
+      "signed_amount": -1850.0,
+      "category": "Moradia",
+      "subcategory": "Aluguel",
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "89c403c7-3507-4092-8a28-eeec24ae55a6",
+      "date": "2026-05-10",
+      "description": "PAGAMENTO FATURA CARTAO",
+      "signed_amount": -1500.0,
+      "category": "Transferências",
+      "subcategory": "Pagamento de cartão",
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "cbe09e42-8d43-4554-b0d4-b058156eafa8",
+      "date": "2026-05-10",
+      "description": "PAGAMENTO RECEBIDO",
+      "signed_amount": 1500.0,
+      "category": "Transferências",
+      "subcategory": "Pagamento de cartão",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "25cff142-5ffb-489a-939d-de27ea4523e6",
+      "date": "2026-05-09",
+      "description": "DROGARIA SAO PAULO",
+      "signed_amount": -64.5,
+      "category": "Saúde",
+      "subcategory": "Farmácia",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "fcb039a4-f201-414a-a6d9-e858b7977abd",
+      "date": "2026-05-09",
+      "description": "UBER *TRIP",
+      "signed_amount": -24.0,
+      "category": "Transporte",
+      "subcategory": "App/Táxi",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "ebbcb165-7c94-4a65-906d-d685060c00c2",
+      "date": "2026-05-08",
+      "description": "SPOTIFY",
+      "signed_amount": -21.9,
+      "category": "Lazer",
+      "subcategory": "Streaming",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "e47fc45e-f236-437e-89b3-268c4ecde21f",
+      "date": "2026-05-07",
+      "description": "NETFLIX.COM",
+      "signed_amount": -55.9,
+      "category": "Lazer",
+      "subcategory": "Streaming",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "5588c76e-1284-4d2a-b8b0-e44fa7027b85",
+      "date": "2026-05-06",
+      "description": "APLICACAO RENDA FIXA CDB",
+      "signed_amount": -1000.0,
+      "category": "Investimentos",
+      "subcategory": "Aporte",
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "ed695063-d3cb-4bf9-aca9-42ca099d54f8",
+      "date": "2026-05-06",
+      "description": "RESTAURANTE SABOR CASEIRO",
+      "signed_amount": -56.0,
+      "category": "Alimentação",
+      "subcategory": "Restaurante",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "a4f9fefa-c4d7-452e-b212-1ee16ff778ff",
+      "date": "2026-05-05",
+      "description": "PAGAMENTO SALARIO ACME LTDA",
+      "signed_amount": 6500.0,
+      "category": "Renda",
+      "subcategory": "Salário",
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "a4ce72a7-c5f1-4958-aae9-85100edd7ea2",
+      "date": "2026-05-04",
+      "description": "UBER *TRIP",
+      "signed_amount": -18.0,
+      "category": "Transporte",
+      "subcategory": "App/Táxi",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "10c04cf1-d1d0-4234-9887-3219a622178e",
+      "date": "2026-05-03",
+      "description": "SUPERMERCADO BOM PRECO",
+      "signed_amount": -341.0,
+      "category": "Alimentação",
+      "subcategory": "Supermercado",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "88c2daba-0362-425d-9425-7b32ec641947",
+      "date": "2026-05-01",
+      "description": "RENDIMENTO AUTOMATICO",
+      "signed_amount": 12.73400099039229,
+      "category": "Investimentos",
+      "subcategory": "Rendimentos",
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "65fd8a83-71d2-4021-b147-f3ec6afbd0d8",
+      "date": "2026-04-28",
+      "description": "CAFETERIA GRAOS",
+      "signed_amount": -38.0,
+      "category": "Alimentação",
+      "subcategory": "Café/Padaria",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "816f74dc-6eec-46bc-a4f8-de4ec4c5f744",
+      "date": "2026-04-26",
+      "description": "ATACADAO",
+      "signed_amount": -189.0,
+      "category": "Alimentação",
+      "subcategory": "Supermercado",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "f021edaa-b9a1-4bd4-b546-3c78c5420019",
+      "date": "2026-04-25",
+      "description": "PIX ENVIADO POUPANCA PESSOAL",
+      "signed_amount": -400.0,
+      "category": "Reserva",
+      "subcategory": "Aporte",
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "a50fbaac-11b4-43f4-904e-1a2bd0194731",
+      "date": "2026-04-24",
+      "description": "UBER *TRIP",
+      "signed_amount": -22.0,
+      "category": "Transporte",
+      "subcategory": "App/Táxi",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "cd930123-0ff5-4a98-b035-47568a2ab139",
+      "date": "2026-04-22",
+      "description": "IFOOD *PEDIDO",
+      "signed_amount": -44.0,
+      "category": "Alimentação",
+      "subcategory": "Delivery",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "8c1b0d5a-b343-4722-aa66-f5d2320aaa69",
+      "date": "2026-04-21",
+      "description": "LOJA ROUPAS FASHION",
+      "signed_amount": -159.9,
+      "category": "Compras",
+      "subcategory": "Vestuário",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "0aaf27d9-9687-4664-b5c9-cafef9717252",
+      "date": "2026-04-20",
+      "description": "PIX RECEBIDO PROJETO FREELANCE",
+      "signed_amount": 1200.0,
+      "category": "Renda",
+      "subcategory": "Projetos PJ",
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "09ea789c-1ea0-4646-beec-038960978e73",
+      "date": "2026-04-19",
+      "description": "MERCADO DIA A DIA",
+      "signed_amount": -314.0,
+      "category": "Alimentação",
+      "subcategory": "Supermercado",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "7728a7a1-3505-4987-8218-064d170d2fc7",
+      "date": "2026-04-18",
+      "description": "POSTO SHELL COMBUSTIVEL",
+      "signed_amount": -250.0,
+      "category": "Transporte",
+      "subcategory": "Combustível",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "e8528cea-e614-43c5-aae3-aa3f51e44a81",
+      "date": "2026-04-17",
+      "description": "CANTINA DA NONNA",
+      "signed_amount": -67.0,
+      "category": "Alimentação",
+      "subcategory": "Restaurante",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "176f13e0-7605-4660-9645-47ba61ed93c7",
+      "date": "2026-04-16",
+      "description": "UBER *TRIP",
+      "signed_amount": -31.0,
+      "category": "Transporte",
+      "subcategory": "App/Táxi",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "2702e8be-85d6-44e9-8146-dc692773e626",
+      "date": "2026-04-15",
+      "description": "NET INTERNET FIBRA",
+      "signed_amount": -119.9,
+      "category": "Moradia",
+      "subcategory": "Internet/TV",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "29180dea-a0c7-4eec-9e13-cf9d069f4284",
+      "date": "2026-04-14",
+      "description": "SMARTFIT ACADEMIA",
+      "signed_amount": -99.9,
+      "category": "Saúde",
+      "subcategory": "Academia",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "ea2d16dd-5460-471a-955b-5fa3176aaaf9",
+      "date": "2026-04-13",
+      "description": "PADARIA PAO QUENTE",
+      "signed_amount": -40.0,
+      "category": "Alimentação",
+      "subcategory": "Café/Padaria",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "9dff29ba-0c62-4b94-807d-e01b956509fa",
+      "date": "2026-04-12",
+      "description": "CIA SANEAMENTO AGUA",
+      "signed_amount": -85.0,
+      "category": "Moradia",
+      "subcategory": "Água",
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "ebdf6f8f-6fbb-4ae3-9cbf-876e4fd49d8f",
+      "date": "2026-04-12",
+      "description": "ENEL DISTRIBUICAO ENERGIA",
+      "signed_amount": -212.0,
+      "category": "Moradia",
+      "subcategory": "Energia",
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "5114ef15-33c8-4b76-8f89-6770ecb59cf2",
+      "date": "2026-04-11",
+      "description": "MERCADO DIA A DIA",
+      "signed_amount": -222.0,
+      "category": "Alimentação",
+      "subcategory": "Supermercado",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "18b6a1d3-b438-4a43-9827-83b72f2e4764",
+      "date": "2026-04-10",
+      "description": "ALUGUEL IMOBILIARIA CENTRO",
+      "signed_amount": -1850.0,
+      "category": "Moradia",
+      "subcategory": "Aluguel",
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "40801ce6-66a5-4918-b2b4-cebe13d15142",
+      "date": "2026-04-10",
+      "description": "PAGAMENTO FATURA CARTAO",
+      "signed_amount": -1500.0,
+      "category": "Transferências",
+      "subcategory": "Pagamento de cartão",
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "921ae73b-d1e7-4462-934a-9dbdf2003e36",
+      "date": "2026-04-10",
+      "description": "PAGAMENTO RECEBIDO",
+      "signed_amount": 1500.0,
+      "category": "Transferências",
+      "subcategory": "Pagamento de cartão",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "1bbe66b9-538b-45be-a316-1b224d782477",
+      "date": "2026-04-09",
+      "description": "UBER *TRIP",
+      "signed_amount": -24.0,
+      "category": "Transporte",
+      "subcategory": "App/Táxi",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "2ad99edc-217a-4be6-b910-d8dfe7bfc7e7",
+      "date": "2026-04-09",
+      "description": "DROGARIA SAO PAULO",
+      "signed_amount": -64.5,
+      "category": "Saúde",
+      "subcategory": "Farmácia",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "9fd82649-9e9e-42a5-9a2d-9885c9c8bcc1",
+      "date": "2026-04-08",
+      "description": "SPOTIFY",
+      "signed_amount": -21.9,
+      "category": "Lazer",
+      "subcategory": "Streaming",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "21c84c94-7478-4af4-b9df-8550f90cbb1e",
+      "date": "2026-04-07",
+      "description": "NETFLIX.COM",
+      "signed_amount": -55.9,
+      "category": "Lazer",
+      "subcategory": "Streaming",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    },
+    {
+      "id": "724d604d-072b-4a1b-8450-aa4416fae102",
+      "date": "2026-04-06",
+      "description": "APLICACAO RENDA FIXA CDB",
+      "signed_amount": -1000.0,
+      "category": "Investimentos",
+      "subcategory": "Aporte",
+      "account_name": "Conta Corrente",
+      "needs_review": false
+    },
+    {
+      "id": "e523e892-ad7e-4eeb-8c69-e01370acc105",
+      "date": "2026-04-06",
+      "description": "RESTAURANTE SABOR CASEIRO",
+      "signed_amount": -62.0,
+      "category": "Alimentação",
+      "subcategory": "Restaurante",
+      "account_name": "Cartão de Crédito",
+      "needs_review": false
+    }
+  ],
+  "needs_review": 1,
+  "uncategorized": 2,
+  "review": [
+    {
+      "id": "4da6b93a-b8f0-4d8a-869c-23c85fae6e7a",
+      "date": "2026-05-29",
+      "description": "POSTO SHELL COMBUSTIVEL",
+      "counterparty": null,
+      "signed_amount": -980.0,
+      "type": "DEBIT",
+      "account_name": "Cartão de Crédito",
+      "category": "Transporte",
+      "subcategory": "Combustível",
+      "category_source": "rule",
+      "reviewed": false,
+      "needs_review": true,
+      "note": null,
+      "amount_override": null,
+      "splits": null,
+      "month": "2026-05"
+    },
+    {
+      "id": "492f5262-b4a6-4e48-8cfc-2b1e09cabe67",
+      "date": "2026-05-27",
+      "description": "DEBITO NAO IDENTIFICADO",
+      "counterparty": null,
+      "signed_amount": -210.0,
+      "type": "DEBIT",
+      "account_name": "Conta Corrente",
+      "category": null,
+      "subcategory": null,
+      "category_source": null,
+      "reviewed": false,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null,
+      "month": "2026-05"
+    },
+    {
+      "id": "424be4fa-f8a2-4960-bc92-8cec81eaf66b",
+      "date": "2026-05-23",
+      "description": "PAGAMENTO PIX QRS LTDA",
+      "counterparty": null,
+      "signed_amount": -73.4,
+      "type": "DEBIT",
+      "account_name": "Conta Corrente",
+      "category": null,
+      "subcategory": null,
+      "category_source": null,
+      "reviewed": false,
+      "needs_review": false,
+      "note": null,
+      "amount_override": null,
+      "splits": null,
+      "month": "2026-05"
+    }
+  ],
+  "total_transactions": 94,
+  "pending": 3
+}
