@@ -8,8 +8,8 @@ Claude Code categoriza o que sobra na conversa e aprende novas regras. Um dashbo
 
 > **Princípio central:** a categorização assistida por IA é feita pelo próprio agente do
 > Claude Code na conversa — **sem chave de API de modelo, sem custo extra**. O Python só faz
-> o trabalho mecânico (buscar, aplicar regras, agregar). Veja [`PLAN.md`](PLAN.md) para a
-> arquitetura completa e [`CLAUDE.md`](CLAUDE.md) para o contrato de operação.
+> o trabalho mecânico (buscar, aplicar regras, agregar). Veja [`CLAUDE.md`](CLAUDE.md) para o
+> contrato de operação.
 
 > ⚠️ **Os dados em `data/` são sintéticos/fictícios**, apenas para demonstração. Conecte suas
 > próprias contas via Pluggy para usar de verdade.
@@ -74,7 +74,6 @@ data/
   budgets.json  # orçamento / planejamento
   ledger.jsonl  # 1 transação por linha (canônico)
   reports/      # YYYY-MM.{json,md} + dashboard.json
-PLAN.md         # plano e arquitetura
 CLAUDE.md       # contrato de operação (lido pelo Claude Code a cada sessão)
 ```
 
