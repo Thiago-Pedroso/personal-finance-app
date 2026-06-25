@@ -83,7 +83,3 @@ CLAUDE.md       # contrato de operação (lido pelo Claude Code a cada sessão)
 `.env` contém as credenciais da Pluggy e **nunca deve ser commitado** (está no `.gitignore`).
 Arquivos efêmeros de trabalho (`data/.decisions.json`, `data/.claude_queue.jsonl`, backups)
 também ficam fora do git.
-
-## Licença
-
-MIT — veja [`LICENSE`](LICENSE).
