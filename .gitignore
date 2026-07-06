@@ -9,6 +9,10 @@ wheels/
 # Virtual environments
 .venv
 
+# Contrato de operação do Claude Code: versionar neste projeto (colaborativo),
+# sobrescrevendo a regra do gitignore global do usuário.
+!CLAUDE.md
+
 # Credentials (nunca commitar)
 .env
 credentials.json
