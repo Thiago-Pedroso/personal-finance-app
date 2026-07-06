@@ -1,0 +1,21 @@
+name: gitleaks
+
+# Varredura de segredos: barra o merge se alguém commitar chave/token por engano.
+# Roda em todo PR e em pushes para a main, escaneando o histórico completo.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # histórico completo p/ escanear todos os commits do PR
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # gitleaks-action é gratuito para contas pessoais e repositórios públicos.
+          # Só ORGANIZAÇÕES precisam definir GITLEAKS_LICENSE.

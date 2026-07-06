@@ -13,10 +13,15 @@ wheels/
 # sobrescrevendo a regra do gitignore global do usuário.
 !CLAUDE.md
 
-# Credentials (nunca commitar)
+# Credenciais e segredos (NUNCA commitar) — padrões amplos de propósito
 .env
-credentials.json
+.env.*
+!.env.example
+credentials*.json
+service_account*.json
+*-service-account*.json
 token.json
+*.pem
 
 # Node / frontend build
 node_modules/
@@ -27,17 +32,9 @@ frontend/dist/
 .claude/
 skills-lock.json
 
-# Estado de sync antigo (agora vive no Sheets; arquivo local é vestigial)
-data/.sync_state.json
-
-# Arquivos de trabalho efêmeros da categorização
-data/.to_categorize.json
-data/.decisions.json
-data/.budget_input.json
-data/.claude_queue.jsonl
-data/.bak/
-data/*.bak*
-
-# Relatórios gerados localmente a partir do Google Sheets (regeneráveis; não versionar).
-# Os dados reais vivem no Sheets; só os fixtures sintéticos em data/seed/ são versionados.
-data/reports/
+# ---- data/: BLINDADO para repo público de finanças ----------------------------
+# Ignora TUDO em data/ exceto os fixtures SINTÉTICOS em data/seed/. Assim nenhum dado
+# real (ledger, relatórios, sync_state, orçamento, fila) cabe num commit — nem mesmo
+# em arquivos novos que ninguém previu. A fonte da verdade dos dados é o Google Sheets.
+data/*
+!data/seed/
