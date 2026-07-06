@@ -4,12 +4,11 @@ Primeira regra que casa vence (ordem da lista = prioridade).
 Match em descrição/lojista é case- e acento-insensível.
 """
 
-import json
 import re
 import unicodedata
 from datetime import datetime, timezone
 
-from .config import RULES_FILE
+from . import sheets
 
 _TEXT_FIELDS = ("description", "merchant_name", "counterparty")
 
@@ -23,13 +22,12 @@ def norm(s: str | None) -> str:
 
 
 def load_rules() -> dict:
-    if RULES_FILE.exists():
-        return json.loads(RULES_FILE.read_text())
-    return {"version": 1, "rules": []}
+    """Lê a aba Rules. Mantém o formato {"version", "rules": [...]} do pipeline."""
+    return {"version": sheets.SCHEMA_VERSION, "rules": sheets.read_records("Rules")}
 
 
 def save_rules(data: dict) -> None:
-    RULES_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+    sheets.write_records("Rules", data.get("rules", []))
 
 
 def _key(field: str, value: str) -> str:

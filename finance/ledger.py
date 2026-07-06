@@ -1,9 +1,13 @@
-"""Ledger canônico em JSONL (1 transação por linha). Chave = id da Pluggy."""
+"""Ledger canônico na aba **Ledger** do Google Sheets. Chave = id da Pluggy.
 
-import json
+A interface é a mesma de sempre — `load_ledger()` devolve `{id: rec}` e `save_ledger()` grava
+o dict inteiro. Só o backend mudou de arquivo JSONL para uma aba do Sheets (1 request por
+operação). Todo o resto do pipeline continua igual.
+"""
+
 from datetime import datetime, timezone
 
-from .config import LEDGER_FILE
+from . import sheets
 
 # Campos da NOSSA categorização — preservados ao re-sincronizar.
 _OURS = ("category", "subcategory", "category_source", "rule_id", "needs_review",
@@ -86,22 +90,12 @@ def normalize(tx, account, item_id) -> dict:
 
 
 def load_ledger() -> dict:
-    records: dict = {}
-    if LEDGER_FILE.exists():
-        for line in LEDGER_FILE.read_text().splitlines():
-            line = line.strip()
-            if line:
-                rec = json.loads(line)
-                records[rec["id"]] = rec
-    return records
+    return {rec["id"]: rec for rec in sheets.read_records("Ledger")}
 
 
 def save_ledger(records: dict) -> None:
     rows = sorted(records.values(), key=lambda r: (r["date"], r["id"]))
-    LEDGER_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with LEDGER_FILE.open("w") as f:
-        for r in rows:
-            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    sheets.write_records("Ledger", rows)
 
 
 def upsert(existing: dict, incoming: list) -> tuple[int, int]:

@@ -6,13 +6,14 @@ import path from 'node:path'
 import { execFile } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
+// Fonte da verdade dos dados = Google Sheets (via pipeline Python). Aqui o middleware só
+// lê os relatórios gerados localmente e delega escritas ao Python, que fala com o Sheets.
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DATA = path.join(ROOT, 'data')
 const REPORTS_DIR = path.join(DATA, 'reports')
 const DECISIONS = path.join(DATA, '.decisions.json')
 const QUEUE = path.join(DATA, '.claude_queue.jsonl')
-const BUDGETS = path.join(DATA, 'budgets.json')
-const BAK = path.join(DATA, '.bak')
+const BUDGET_INPUT = path.join(DATA, '.budget_input.json')
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -41,26 +42,14 @@ function run(cmd, args) {
   })
 }
 
-function backup(targets = ['ledger.jsonl', 'rules.json']) {
-  fs.mkdirSync(BAK, { recursive: true })
-  const ts = new Date().toISOString().replace(/[:.]/g, '-')
-  for (const f of targets) {
-    const src = path.join(DATA, f)
-    if (fs.existsSync(src)) fs.copyFileSync(src, path.join(BAK, `${f}.${ts}`))
-  }
-  // mantém só os 12 backups mais recentes de cada arquivo
-  const files = fs.readdirSync(BAK)
-  for (const base of targets) {
-    const mine = files.filter((x) => x.startsWith(base + '.')).sort()
-    for (const old of mine.slice(0, -12)) fs.unlinkSync(path.join(BAK, old))
-  }
-}
+// Sem backup local: os dados vivem no Google Sheets, que já mantém histórico de versões
+// nativo (Arquivo → Histórico de versões). Reverter = restaurar uma versão da planilha.
 
 async function applyBudget(b) {
-  backup(['budgets.json'])
-  fs.writeFileSync(BUDGETS, JSON.stringify(b, null, 2) + '\n')
-  const r = await run('uv', ['run', 'python', '-m', 'finance.report'])
-  return { ok: r.ok, step: r.ok ? 'done' : 'report',
+  // grava o orçamento num arquivo temp e deixa o Python salvar no Sheets + regerar relatórios
+  fs.writeFileSync(BUDGET_INPUT, JSON.stringify(b, null, 2) + '\n')
+  const r = await run('uv', ['run', 'python', '-m', 'finance.budgets', 'set', BUDGET_INPUT])
+  return { ok: r.ok, step: r.ok ? 'done' : 'budget',
     log: r.stdout.trim(), stderr: r.stderr.trim() }
 }
 
@@ -82,7 +71,6 @@ async function applyEdit(p) {
     return { ok: true, mode: 'queue', queued: p.ids.length }
   }
 
-  backup()
   const learn = p.mode === 'rule'
   const decisions = { assignments: [], rules: [] }
   const noteVal = p.note == null ? '' : String(p.note)

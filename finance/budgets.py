@@ -1,7 +1,7 @@
 """Planejamento financeiro: tetos por categoria, renda esperada, metas.
 
-Fonte da verdade: `data/budgets.json` (versionado, editável por você, pelo
-dashboard ou por mim na conversa). Estrutura:
+Fonte da verdade: a chave `budgets` na aba **Config** do Google Sheets (editável por você,
+pelo dashboard ou por mim na conversa). Estrutura:
 
   {
     "income_plan": { "recurring": 14000, "months": { "2026-05": 16000 } },
@@ -18,13 +18,15 @@ Teto efetivo do mês m p/ a categoria c =
 CLI:
   uv run python -m finance.budgets            # mês mais recente do ledger
   uv run python -m finance.budgets 2026-05    # mês específico
+  uv run python -m finance.budgets set <f>    # salva o JSON de <f> no Sheets + roda report
+                                              # (usado pelo dashboard)
 """
 
 import json
 import sys
 from collections import defaultdict
 
-from .config import BUDGETS_FILE
+from . import sheets
 
 # Categorias que não são "gasto" de fluxo de caixa (não têm teto de orçamento).
 NON_CASHFLOW = {"Transferências", "Investimentos", "Reserva", "Formatura",
@@ -40,14 +42,11 @@ def default() -> dict:
 
 
 def load() -> dict:
-    if not BUDGETS_FILE.exists():
-        return default()
-    try:
-        data = json.loads(BUDGETS_FILE.read_text())
-    except json.JSONDecodeError:
+    data = sheets.read_config("budgets")
+    if not isinstance(data, dict):
         return default()
     d = default()
-    d.update(data or {})
+    d.update(data)
     d["income_plan"] = {**default()["income_plan"], **d.get("income_plan", {})}
     d["spending"] = {**default()["spending"], **d.get("spending", {})}
     d.setdefault("savings_goals", [])
@@ -55,7 +54,7 @@ def load() -> dict:
 
 
 def save(data: dict) -> None:
-    BUDGETS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+    sheets.write_config("budgets", data)
 
 
 def planned_spending(b: dict, month: str) -> dict:
@@ -131,8 +130,31 @@ def _cli(month: str | None) -> None:
           f"realizado R$ {income - tot_r:,.2f}")
 
 
+def _set_from_file(path: str) -> None:
+    """Salva o JSON de `path` como orçamento no Sheets e regenera os relatórios."""
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    if not isinstance(data, dict) or "spending" not in data:
+        sys.exit("Payload inválido: esperado objeto com chave 'spending'.")
+    save(data)
+    from . import report
+    argv = sys.argv
+    sys.argv = ["finance.report"]  # report.main() usa argparse (lê sys.argv)
+    try:
+        report.main()
+    finally:
+        sys.argv = argv
+    print("Orçamento salvo no Sheets e relatórios atualizados.")
+
+
 def main() -> None:
-    _cli(sys.argv[1] if len(sys.argv) > 1 else None)
+    args = sys.argv[1:]
+    if args and args[0] == "set":
+        if len(args) < 2:
+            sys.exit("Uso: python -m finance.budgets set <arquivo.json>")
+        _set_from_file(args[1])
+        return
+    _cli(args[0] if args else None)
 
 
 if __name__ == "__main__":

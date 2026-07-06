@@ -7,22 +7,20 @@ Uso:
 """
 
 import argparse
-import json
 from datetime import datetime, timedelta, timezone
 
 from . import ledger as L
 from . import pluggy_client as pc
-from .config import BACKFILL_DAYS, SYNC_STATE_FILE, ensure_dirs
+from . import sheets
+from .config import BACKFILL_DAYS, ensure_dirs
 
 
 def _load_state() -> dict:
-    if SYNC_STATE_FILE.exists():
-        return json.loads(SYNC_STATE_FILE.read_text())
-    return {}
+    return sheets.read_config("sync_state", {}) or {}
 
 
 def _save_state(state: dict) -> None:
-    SYNC_STATE_FILE.write_text(json.dumps(state, indent=2, ensure_ascii=False) + "\n")
+    sheets.write_config("sync_state", state)
 
 
 def main() -> None:

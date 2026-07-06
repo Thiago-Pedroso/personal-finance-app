@@ -11,14 +11,29 @@ wheels/
 
 # Credentials (nunca commitar)
 .env
+credentials.json
+token.json
 
 # Node / frontend build
 node_modules/
 frontend/dist/
 
+# Ferramentas locais de agente (skills instaladas localmente; não versionar)
+.agents/
+.claude/
+skills-lock.json
+
+# Estado de sync antigo (agora vive no Sheets; arquivo local é vestigial)
+data/.sync_state.json
+
 # Arquivos de trabalho efêmeros da categorização
 data/.to_categorize.json
 data/.decisions.json
+data/.budget_input.json
 data/.claude_queue.jsonl
 data/.bak/
 data/*.bak*
+
+# Relatórios gerados localmente a partir do Google Sheets (regeneráveis; não versionar).
+# Os dados reais vivem no Sheets; só os fixtures sintéticos em data/seed/ são versionados.
+data/reports/
