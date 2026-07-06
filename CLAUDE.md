@@ -25,6 +25,9 @@ Controle financeiro pessoal operado via Claude Code. As transações chegam do O
 > `ledger.jsonl` para commitar — o git guarda só código, docs e os fixtures sintéticos de
 > `data/seed/`. O histórico dos dados fica no *Histórico de versões* da própria planilha.
 
+Para abrir o dashboard no dia a dia: **`./start.sh`** (atualiza os relatórios a partir do Sheets
+e sobe o front num comando só; `./start.sh --sync` puxa da Pluggy antes).
+
 Comandos úteis de inspeção (só leitura, seguros):
 ```bash
 uv run python main.py                          # confere conexão Sheets + Pluggy

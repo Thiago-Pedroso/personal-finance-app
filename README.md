@@ -104,13 +104,20 @@ cd frontend && npm install
 
 ## Operação (fluxo recorrente)
 
-Em linguagem natural com o Claude Code, ou direto pelo CLI:
+Para abrir o app no dia a dia, um comando só (atualiza os relatórios a partir do Sheets e sobe
+o dashboard):
+
+```bash
+./start.sh            # atualiza + dashboard em http://localhost:5273
+./start.sh --sync     # puxa transações novas da Pluggy antes de atualizar
+```
+
+Ou os passos individuais, em linguagem natural com o Claude Code ou direto pelo CLI:
 
 ```bash
 uv run python -m finance.sync --days 30     # puxa transações novas da Pluggy → Sheets
 uv run python -m finance.categorize         # categoriza (+ apply --learn)
 uv run python -m finance.report             # gera relatórios locais a partir do Sheets
-cd frontend && npm run dev                   # dashboard em http://localhost:5273
 ```
 
 Comandos de inspeção (somente leitura):
