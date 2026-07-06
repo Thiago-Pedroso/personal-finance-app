@@ -11,6 +11,8 @@ cd "$(dirname "$0")"
 if [ "${1:-}" = "--sync" ]; then
   echo "==> Sincronizando com a Pluggy..."
   uv run python -m finance.sync --days 30
+  echo "==> Aplicando regras de categorizacao nas transacoes novas..."
+  uv run python -m finance.categorize
 fi
 
 echo "==> Atualizando relatorios a partir do Google Sheets..."
