@@ -37,6 +37,9 @@ def default() -> dict:
     return {
         "income_plan": {"recurring": 0, "months": {}},
         "spending": {"recurring": {}, "months": {}},
+        # quanto pretendo APORTAR por mês em cada categoria de poupança
+        # (Investimentos, Reserva) — plano de fluxo, não saldo-alvo.
+        "savings_plan": {"recurring": {}, "months": {}},
         "savings_goals": [],
     }
 
@@ -49,6 +52,7 @@ def load() -> dict:
     d.update(data)
     d["income_plan"] = {**default()["income_plan"], **d.get("income_plan", {})}
     d["spending"] = {**default()["spending"], **d.get("spending", {})}
+    d["savings_plan"] = {**default()["savings_plan"], **d.get("savings_plan", {})}
     d.setdefault("savings_goals", [])
     return d
 
@@ -61,6 +65,13 @@ def planned_spending(b: dict, month: str) -> dict:
     """Teto efetivo por categoria no mês (recorrente + override do mês)."""
     rec = dict(b.get("spending", {}).get("recurring", {}) or {})
     rec.update(b.get("spending", {}).get("months", {}).get(month, {}) or {})
+    return {k: float(v) for k, v in rec.items() if v not in (None, "")}
+
+
+def planned_savings(b: dict, month: str) -> dict:
+    """Aporte planejado por categoria de poupança no mês (recorrente + override)."""
+    rec = dict(b.get("savings_plan", {}).get("recurring", {}) or {})
+    rec.update(b.get("savings_plan", {}).get("months", {}).get(month, {}) or {})
     return {k: float(v) for k, v in rec.items() if v not in (None, "")}
 
 

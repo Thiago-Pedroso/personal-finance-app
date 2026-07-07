@@ -8,7 +8,7 @@ import { postBudget } from '../lib/api.js'
 import { brl, brl0, signedBrl, monthLabel } from '../lib/format.js'
 import {
   Save, RotateCcw, Wand2, Plus, Trash2, TrendingUp, AlertTriangle,
-  Info, Repeat,
+  Info, Repeat, PiggyBank,
 } from 'lucide-react'
 
 const STATUS = {
@@ -32,6 +32,9 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
     b.spending ??= { recurring: {}, months: {} }
     b.spending.recurring ??= {}
     b.spending.months ??= {}
+    b.savings_plan ??= { recurring: {}, months: {} }
+    b.savings_plan.recurring ??= {}
+    b.savings_plan.months ??= {}
     b.savings_goals ??= []
     return b
   }, [dash.budgets])
@@ -65,6 +68,37 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
     else n.spending.months[month][c] = x
     if (!Object.keys(n.spending.months[month]).length)
       delete n.spending.months[month]
+    return n
+  })
+  // plano de aportes (poupança/investimento) — espelha os tetos, mas a meta é
+  // ATINGIR/superar. "Aportado" = só aportes (out), sem resgate nem rendimento.
+  const savCats = dash.poupanca_cats || []
+  const savOv = d.savings_plan.months[month] || {}
+  const effSav = (c) => (savOv[c] ?? d.savings_plan.recurring[c] ?? 0)
+  const isRend = (str) => (str || '').toLowerCase().includes('rendiment')
+  const aportadoOf = (c) => {
+    const b = (mdata.poupanca || {})[c]
+    if (!b) return 0
+    let ap = 0
+    for (const [str, v] of Object.entries(b.subcategories || {}))
+      if (!isRend(str)) ap += v.out || 0
+    return ap
+  }
+  const setSavRec = (c, v) => setD((s) => {
+    const n = clone(s); const x = parseFloat(v)
+    n.savings_plan.recurring ??= {}
+    if (v === '' || isNaN(x)) delete n.savings_plan.recurring[c]
+    else n.savings_plan.recurring[c] = x
+    return n
+  })
+  const setSavOv = (c, v) => setD((s) => {
+    const n = clone(s); const x = parseFloat(v)
+    n.savings_plan.months ??= {}
+    n.savings_plan.months[month] ??= {}
+    if (v === '' || isNaN(x)) delete n.savings_plan.months[month][c]
+    else n.savings_plan.months[month][c] = x
+    if (!Object.keys(n.savings_plan.months[month]).length)
+      delete n.savings_plan.months[month]
     return n
   })
   const setIncome = (k, v) => setD((s) => {
@@ -104,6 +138,8 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
   const incPlan = (d.income_plan.months?.[month] ?? d.income_plan.recurring) || 0
   const totPlanned = catList.reduce((a, c) => a + (+eff(c) || 0), 0)
   const totReal = plan.total_realized || 0
+  const savPlanned = savCats.reduce((a, c) => a + (+effSav(c) || 0), 0)
+  const savReal = savCats.reduce((a, c) => a + aportadoOf(c), 0)
   const sevIcon = { alert: AlertTriangle, warn: AlertTriangle, info: Info }
 
   return (
@@ -145,7 +181,7 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
           <Card key={l} className="p-4">
             <div className="text-[11px] font-semibold uppercase tracking-wider
               text-muted">{l}</div>
-            <div className={`mt-1 text-[22px] font-bold ${c}`}>{v}</div>
+            <div className={`mt-1 text-[22px] font-bold tnum ${c}`}>{v}</div>
             <div className="mt-0.5 text-[12px] text-faint">{s}</div>
           </Card>
         ))}
@@ -250,6 +286,95 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
           </table>
         </div>
       </Card>
+
+      {/* plano de aportes (quanto poupar/investir por mês) */}
+      {savCats.length > 0 && (
+        <Card>
+          <CardHead
+            title={<span className="flex items-center gap-2">
+              <PiggyBank className="size-4 text-violet" /> Quanto poupar por mês
+            </span>}
+            sub="meta de aporte por categoria — o realizado conta só os aportes (resgate e rendimento não entram)"
+            right={<span className="text-[12px] text-muted">
+              meta <b className="tnum text-text">{brl0(savPlanned)}</b> · aportado{' '}
+              <b className="tnum text-violet">{brl0(savReal)}</b></span>} />
+          <div className="overflow-x-auto px-2 pb-3">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="border-b border-border text-left text-[11px]
+                  uppercase tracking-wide text-faint">
+                  <th className="px-3 py-2">Categoria</th>
+                  <th className="px-3 py-2 w-36">Aporte/mês</th>
+                  <th className="px-3 py-2 w-36">Só {monthLabel(month)}</th>
+                  <th className="px-3 py-2 text-right">Aportado</th>
+                  <th className="px-3 py-2 text-right">Falta</th>
+                  <th className="px-3 py-2 w-[26%]">Progresso</th>
+                </tr>
+              </thead>
+              <tbody>
+                {savCats.map((c) => {
+                  const planned = +effSav(c) || 0
+                  const realized = aportadoOf(c)
+                  const pct = planned ? Math.min(realized / planned * 100, 100) : 0
+                  const met = planned > 0 && realized >= planned
+                  const lab = !planned ? 'sem meta'
+                    : met ? 'batido'
+                      : realized > 0 ? 'aportando' : 'a começar'
+                  const tcol = met ? 'text-green'
+                    : !planned ? 'text-faint' : 'text-violet'
+                  return (
+                    <tr key={c} className="border-b border-border/60">
+                      <td className="px-3 py-2 font-medium">
+                        <span className="flex items-center gap-2">
+                          {(() => { const M = catMeta(c); return (
+                            <M.Icon className="size-3.5"
+                              style={{ color: M.color }} />) })()}
+                          {c}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <input type="number" value={d.savings_plan.recurring[c] ?? ''}
+                          onChange={(e) => setSavRec(c, e.target.value)}
+                          placeholder="—"
+                          className={inputCls('w-28 py-1')} />
+                      </td>
+                      <td className="px-3 py-2">
+                        <input type="number" value={savOv[c] ?? ''}
+                          onChange={(e) => setSavOv(c, e.target.value)}
+                          placeholder="herda"
+                          className={inputCls('w-28 py-1')} />
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <button onClick={() => drill?.drill(
+                          `${c} — ${monthLabel(month)}`, { cats: [c] })}
+                          className="tnum font-medium hover:text-violet">
+                          {brl(realized)}</button>
+                      </td>
+                      <td className={`px-3 py-2 text-right tnum ${
+                        met ? 'text-green' : 'text-muted'}`}>
+                        {!planned ? '—'
+                          : met ? `+${brl0(realized - planned)}`
+                            : brl(planned - realized)}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <div className="relative h-2 flex-1 overflow-hidden
+                            rounded-full bg-white/[0.06]">
+                            <div className="absolute inset-y-0 left-0 rounded-full"
+                              style={{ width: `${pct}%`,
+                                background: met ? '#36c98b' : '#b08cff' }} />
+                          </div>
+                          <span className={`w-20 text-right text-[11px] ${tcol}`}>
+                            {lab}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* metas de poupança */}
