@@ -1,8 +1,9 @@
 export function Card({ className = '', children, ...p }) {
   return (
-    <div {...p} className={`rounded-2xl border border-border bg-surface/80
-      backdrop-blur shadow-[0_1px_0_#ffffff0a_inset,0_10px_30px_#00000040]
-      ${className}`}>
+    <div {...p} className={`rounded-2xl border border-border/90 bg-surface/70
+      backdrop-blur-xl ring-1 ring-inset ring-white/[0.04]
+      shadow-[0_1px_0_#ffffff0f_inset,0_20px_46px_-16px_#00000080]
+      transition-colors duration-150 ${className}`}>
       {children}
     </div>
   )
@@ -22,8 +23,8 @@ export function CardHead({ title, sub, right }) {
 }
 
 const VARIANTS = {
-  primary: 'bg-green text-[#04130c] hover:brightness-110 font-semibold',
-  default: 'bg-surface2 border border-border hover:border-faint',
+  primary: 'bg-brand text-white font-semibold shadow-[0_2px_12px_#5b9dff45] hover:brightness-105',
+  default: 'bg-surface2/80 border border-border hover:border-faint',
   ghost: 'bg-transparent hover:bg-surface2',
   danger: 'bg-red/15 text-red border border-red/40 hover:bg-red/25',
 }

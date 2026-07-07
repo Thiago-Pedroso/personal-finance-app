@@ -19,8 +19,8 @@ export function MultiSelect({ label, options, value, onChange }) {
           bg-surface2 px-3 py-2 text-[13px] hover:border-faint">
         <span className="text-muted">{label}</span>
         {value.length > 0 && (
-          <span className="rounded-full bg-green/20 px-1.5 text-[11px]
-            font-semibold text-green">{value.length}</span>
+          <span className="rounded-full bg-brand/20 px-1.5 text-[11px]
+            font-semibold text-brand">{value.length}</span>
         )}
         <ChevronDown className="size-3.5 text-faint" />
       </button>
@@ -39,7 +39,7 @@ export function MultiSelect({ label, options, value, onChange }) {
               className="flex w-full items-center justify-between rounded-lg
                 px-2.5 py-1.5 text-left text-[13px] hover:bg-white/5">
               <span className="truncate">{o}</span>
-              {value.includes(o) && <Check className="size-3.5 text-green" />}
+              {value.includes(o) && <Check className="size-3.5 text-brand" />}
             </button>
           ))}
         </div>
