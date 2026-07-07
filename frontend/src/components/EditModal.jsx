@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Modal } from './ui/Modal.jsx'
-import { Button } from './ui/primitives.jsx'
+import { Button, Spinner } from './ui/primitives.jsx'
 import { inputCls } from './ui/MultiSelect.jsx'
 import { useToast } from './ui/Toast.jsx'
-import { postEdit } from '../lib/api.js'
+import { postEdit, postExclude } from '../lib/api.js'
 import { signedBrl, brl, dayMonth } from '../lib/format.js'
 import {
   Tag, Sparkles, MessageSquare, SplitSquareHorizontal, Plus, Trash2, Users,
+  EyeOff, Eye,
 } from 'lucide-react'
 
 const MODES = [
@@ -40,11 +41,14 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, onSaved }) {
   const [match, setMatch] = useState('contains')
   const [value, setValue] = useState('')
   const [byType, setByType] = useState(false)
+  const [ruleExcl, setRuleExcl] = useState(false)
   const [note, setNote] = useState(
     () => (txns.length === 1 ? txns[0]?.note : '') || '')
   const [saving, setSaving] = useState(false)
+  const [excluding, setExcluding] = useState(false)
 
   const single = txns.length === 1
+  const allExcluded = txns.length > 0 && txns.every((x) => x.excluded)
   const absTotal = Math.abs(first.signed_amount || 0)
   const sign = (first.signed_amount || 0) < 0 ? -1 : 1
   const existingSplits = single && Array.isArray(first.splits) ? first.splits : null
@@ -133,6 +137,7 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, onSaved }) {
           field, match, value: ruleValue,
           ...(byType ? { type: first.type } : {}),
         }
+        if (ruleExcl) payload.excluded = true
       }
       if (mode === 'split') {
         payload.category = null
@@ -150,7 +155,9 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, onSaved }) {
         t(`Lançamento dividido em ${rows.length} partes.`, 'success')
       } else {
         t(`Aplicado a ${ids.length} lançamento(s)` +
-          (mode === 'rule' ? ' + regra aprendida.' : '.'), 'success')
+          (mode === 'rule'
+            ? (ruleExcl ? ' + regra que já rasura o que casar.' : ' + regra aprendida.')
+            : '.'), 'success')
       }
       onSaved(mode !== 'queue')
       onClose()
@@ -158,6 +165,23 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, onSaved }) {
       t('Erro ao salvar: ' + e.message, 'error', 7000)
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function toggleExclude() {
+    setExcluding(true)
+    try {
+      await postExclude(ids, !allExcluded)
+      t(allExcluded
+        ? `${ids.length} lançamento(s) restaurado(s).`
+        : `${ids.length} lançamento(s) rasurado(s) — fora dos relatórios.`,
+        'success')
+      onSaved(true)
+      onClose()
+    } catch (e) {
+      t('Erro: ' + e.message, 'error', 7000)
+    } finally {
+      setExcluding(false)
     }
   }
 
@@ -188,9 +212,9 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, onSaved }) {
             <button key={m.k} onClick={() => setMode(m.k)}
               className={`rounded-xl border px-3 py-2.5 text-left transition
                 ${mode === m.k
-                  ? 'border-green/50 bg-green/10'
+                  ? 'border-brand/50 bg-brand/10'
                   : 'border-border bg-surface2 hover:border-faint'}`}>
-              <I className={`size-4 ${mode === m.k ? 'text-green' : 'text-muted'}`} />
+              <I className={`size-4 ${mode === m.k ? 'text-brand' : 'text-muted'}`} />
               <div className="mt-1.5 text-[13px] font-semibold">{m.label}</div>
             </button>
           )
@@ -325,6 +349,16 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, onSaved }) {
               onChange={(e) => setByType(e.target.checked)} />
             só quando o tipo for {first.type} (evita casar entrada com saída)
           </label>
+          <label className={`mt-2 flex items-center gap-2 rounded-lg border px-2
+            py-1.5 text-[12px] transition ${ruleExcl
+              ? 'border-amber/40 bg-amber/5 text-amber'
+              : 'border-transparent text-muted'}`}>
+            <input type="checkbox" checked={ruleExcl}
+              onChange={(e) => setRuleExcl(e.target.checked)} />
+            <EyeOff className="size-3.5" />
+            já entram <b className="font-semibold">rasuradas</b> — fora de todos os
+            relatórios (ótimo p/ aplicação/recompra compromissada)
+          </label>
           {preview != null && (
             <p className="mt-2 text-[12px] text-blue">
               ≈ {preview} lançamento(s) deste mês casam — a aplicação é
@@ -356,6 +390,39 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, onSaved }) {
 trata como Compartilhado e anula com o que ele me mandou…"
             className={inputCls('mt-1 w-full resize-y')} />
         </label>
+      )}
+
+      {/* rasurar: tira de todos os relatórios, reversível */}
+      {mode !== 'queue' && (
+        <div className={`mt-4 flex items-center justify-between gap-3 rounded-xl
+          border px-3 py-2.5 ${allExcluded
+            ? 'border-amber/40 bg-amber/5' : 'border-border bg-surface2/40'}`}>
+          <div className="text-[12px] text-muted">
+            <div className="flex items-center gap-1.5 font-semibold text-text">
+              {allExcluded
+                ? <><Eye className="size-3.5 text-amber" /> Rasurado</>
+                : <><EyeOff className="size-3.5" /> Rasurar</>}
+            </div>
+            <p className="mt-0.5">
+              {allExcluded
+                ? `Fora de todos os relatórios. Restaure pra ${single
+                    ? 'ele voltar' : 'eles voltarem'} a contar.`
+                : `Tira ${single ? 'este lançamento' : 'estes lançamentos'} de `
+                  + 'todos os relatórios (fluxo, poupança, gráficos). Reversível.'}
+            </p>
+          </div>
+          <button onClick={toggleExclude} disabled={excluding}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border
+              px-3 py-1.5 text-[12px] font-semibold transition
+              disabled:cursor-wait disabled:opacity-70 ${allExcluded
+                ? 'border-amber/50 bg-amber/10 text-amber hover:bg-amber/20'
+                : 'border-border text-muted hover:border-faint hover:text-text'}`}>
+            {excluding && <Spinner className="size-3.5" />}
+            {excluding
+              ? (allExcluded ? 'Restaurando…' : 'Rasurando…')
+              : allExcluded ? 'Restaurar' : 'Rasurar'}
+          </button>
+        </div>
       )}
     </Modal>
   )

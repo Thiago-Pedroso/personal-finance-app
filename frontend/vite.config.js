@@ -99,17 +99,30 @@ async function applyEdit(p) {
       subcategory: p.subcategory || null,
       note: `dashboard ${new Date().toISOString().slice(0, 10)}`,
       ...(p.rule.type ? { type: p.rule.type } : {}),
+      ...(p.excluded ? { excluded: true } : {}),
     })
+  }
+  // "rasurar": tira o lançamento dos agregados (reversível). Pode vir sozinho
+  // ou junto de uma recategorização. Não mexe na nota se não veio nota.
+  if (p.excluded !== undefined) {
+    const val = !!p.excluded
+    if (decisions.assignments.length) {
+      for (const a of decisions.assignments) a.excluded = val
+    } else {
+      const ex = { ids: p.ids, excluded: val }
+      if (p.note != null && p.note !== '') ex.note = String(p.note)
+      decisions.assignments.push(ex)
+    }
   }
   fs.writeFileSync(DECISIONS, JSON.stringify(decisions, null, 2) + '\n')
 
-  const args = ['run', 'python', '-m', 'finance.categorize', 'apply']
+  // um processo só: apply + report reaproveitam o ledger/taxonomia em memória
+  // (evita subir 2º processo e reler tudo do Sheets).
+  const args = ['run', 'python', '-m', 'finance.categorize', 'apply', '--report']
   if (learn) args.push('--learn')
   const a = await run('uv', args)
-  if (!a.ok) return { ok: false, step: 'categorize', ...a }
-  const r = await run('uv', ['run', 'python', '-m', 'finance.report'])
-  return { ok: r.ok, step: r.ok ? 'done' : 'report',
-    log: (a.stdout + r.stdout).trim(), stderr: (a.stderr + r.stderr).trim() }
+  return { ok: a.ok, step: a.ok ? 'done' : 'categorize',
+    log: a.stdout.trim(), stderr: a.stderr.trim() }
 }
 
 function financeServer() {

@@ -147,13 +147,15 @@ def prepare() -> None:
 
 
 # ----------------------------------------------------------------------------- apply
-def apply(learn: bool) -> None:
-    tax = T.load()
+def apply(learn: bool, do_report: bool = False) -> None:
+    tax, treats = T.load_all()   # 1 leitura da Taxonomy p/ taxonomia + tratamentos
     rules_data = R.load_rules()
     ledger = L.load_ledger()
     if not DECISIONS_FILE.exists():
         sys.exit(f"Não encontrei {DECISIONS_FILE}. O agente deve gravá-lo antes.")
     dec = json.loads(DECISIONS_FILE.read_text())
+    # foto do estado antes das mudanças p/ gravar só as linhas que de fato mudarem
+    before = {tid: L.snapshot(rec) for tid, rec in ledger.items()}
 
     # 1) aprende regras novas
     new_rules = []
@@ -161,7 +163,8 @@ def apply(learn: bool) -> None:
         r = R.add_rule(rules_data, rd["field"], rd.get("match", "contains"),
                        rd["value"], rd["category"], rd.get("subcategory"),
                        rd.get("note", ""), rd.get("type"),
-                       rd.get("amount_abs_min"), rd.get("amount_abs_max"))
+                       rd.get("amount_abs_min"), rd.get("amount_abs_max"),
+                       bool(rd.get("excluded")))
         new_rules.append(r)
     if learn or new_rules:
         R.save_rules(rules_data)
@@ -178,6 +181,8 @@ def apply(learn: bool) -> None:
                        category_source="rule", rule_id=m["id"],
                        needs_review=_anomaly(rec, m["id"], ledger),
                        reviewed=not _anomaly(rec, m["id"], ledger))
+            if m.get("excluded"):    # regra rasura: tira dos relatórios (retroativo)
+                rec["excluded"] = True
             reapplied += 1
 
     # 3) atribuições explícitas (id a id)
@@ -185,9 +190,20 @@ def apply(learn: bool) -> None:
     for a in dec.get("assignments", []):
         cat, sub = a.get("category"), a.get("subcategory")
         splits = a.get("splits")
+        # exclusão ("rasurar"): tira o lançamento de todos os agregados,
+        # reversível. Pode vir sozinha ou junto de uma recategorização.
+        only_flag = ("excluded" in a) and not cat and not splits \
+            and "amount_override" not in a
         for tid in a["ids"]:
             rec = ledger.get(tid)
             if not rec:
+                continue
+            if "excluded" in a:
+                rec["excluded"] = bool(a["excluded"])
+            if only_flag:
+                if "note" in a:
+                    rec["note"] = (a["note"] or None)
+                assigned += 1
                 continue
             # override manual de valor (ex.: compra em dólar gravada errada).
             # Aplica antes do split p/ a soma bater com o valor efetivo.
@@ -226,17 +242,26 @@ def apply(learn: bool) -> None:
     invalid = [(r["id"], r["category"], r["subcategory"]) for r in ledger.values()
                if r["category"] and not T.valid(tax, r["category"], r["subcategory"])]
 
-    L.save_ledger(ledger)
+    changed = {tid for tid, rec in ledger.items()
+               if L.snapshot(rec) != before.get(tid)}
+    L.save_ledger(ledger, changed_ids=changed)
     TO_CATEGORIZE_FILE.unlink(missing_ok=True)
     DECISIONS_FILE.unlink(missing_ok=True)
 
     print(f"Regras novas: {len(new_rules)} | reaplicadas por regra: {reapplied} | "
-          f"atribuições: {assigned} | provisórias confirmadas: {confirmed}")
+          f"atribuições: {assigned} | provisórias confirmadas: {confirmed} | "
+          f"linhas gravadas: {len(changed)}")
     if invalid:
         print(f"\n⚠ {len(invalid)} fora da taxonomia (corrija taxonomy.yaml ou as decisões):")
         for tid, c, s in invalid[:15]:
             print(f"  {tid}: {c} / {s}")
     _print_stats(ledger)
+
+    # regera os relatórios no MESMO processo, reaproveitando o ledger e a
+    # taxonomia já em memória — evita reler tudo do Sheets num 2º processo.
+    if do_report:
+        from . import report as RP
+        RP.generate(recs=list(ledger.values()), taxonomy=tax, treatments=treats)
 
 
 # ----------------------------------------------------------------------------- stats
@@ -267,11 +292,13 @@ def main() -> None:
                     choices=["prepare", "apply", "stats"])
     ap.add_argument("--learn", action="store_true",
                     help="(apply) persiste as regras novas em rules.json")
+    ap.add_argument("--report", action="store_true",
+                    help="(apply) já regera os relatórios no mesmo processo")
     args = ap.parse_args()
     if args.command == "prepare":
         prepare()
     elif args.command == "apply":
-        apply(args.learn)
+        apply(args.learn, args.report)
     else:
         stats()
 

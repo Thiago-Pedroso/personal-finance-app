@@ -89,14 +89,19 @@ def add_rule(data: dict, field: str, match: str, value: str,
              category: str, subcategory: str | None, note: str = "",
              txn_type: str | None = None,
              amount_abs_min: float | None = None,
-             amount_abs_max: float | None = None) -> dict:
-    """Adiciona uma regra (idempotente por field+match+valor norm.+tipo+faixa)."""
+             amount_abs_max: float | None = None,
+             excluded: bool = False) -> dict:
+    """Adiciona uma regra (idempotente por field+match+valor norm.+tipo+faixa).
+
+    `excluded=True` faz a regra rasurar (tirar dos relatórios) tudo que casar."""
     k = (field, match, _key(field, value), txn_type,
          amount_abs_min, amount_abs_max)
     for r in data["rules"]:
         if (r["field"], r.get("match", "contains"),
                 _key(r["field"], r["value"]), r.get("type"),
                 r.get("amount_abs_min"), r.get("amount_abs_max")) == k:
+            if excluded:              # permite "promover" regra existente a rasurar
+                r["excluded"] = True
             return r  # já existe
     rule = {
         "id": _next_id(data["rules"]),
@@ -114,5 +119,7 @@ def add_rule(data: dict, field: str, match: str, value: str,
         rule["amount_abs_min"] = amount_abs_min
     if amount_abs_max is not None:
         rule["amount_abs_max"] = amount_abs_max
+    if excluded:
+        rule["excluded"] = True
     data["rules"].append(rule)
     return rule

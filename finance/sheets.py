@@ -23,7 +23,7 @@ import time
 from pathlib import Path
 
 import gspread
-from gspread.utils import ValueRenderOption
+from gspread.utils import ValueRenderOption, rowcol_to_a1
 
 from .config import GOOGLE_SA_CREDENTIALS, ROOT, SHEET_ID
 
@@ -53,17 +53,17 @@ LEDGER_SCHEMA = [
     ("category", "opt"), ("subcategory", "opt"), ("category_source", "opt"),
     ("rule_id", "opt"), ("needs_review", "bool"), ("reviewed", "bool"),
     ("splits", "json"), ("note", "opt"), ("amount_override", "fnum"),
-    ("synced_at", "opt"),
+    ("excluded", "bool"), ("synced_at", "opt"),
 ]
 
 RULES_SCHEMA = [
     ("id", "str"), ("field", "str"), ("match", "str"), ("value", "str"),
     ("category", "str"), ("subcategory", "opt"), ("note", "opt"),
     ("type", "opt"), ("amount_abs_min", "fnum"), ("amount_abs_max", "fnum"),
-    ("created_at", "opt"),
+    ("excluded", "bool"), ("created_at", "opt"),
 ]
 
-TAXONOMY_SCHEMA = [("Category", "str"), ("Subcategories", "str")]
+TAXONOMY_SCHEMA = [("Category", "str"), ("Subcategories", "str"), ("Treatment", "str")]
 
 SCHEMAS = {
     "Ledger": LEDGER_SCHEMA,
@@ -246,6 +246,38 @@ def write_records(tab: str, records: list[dict]) -> None:
     ws = _ws(tab)
     ws.resize(rows=max(len(matrix), 1), cols=len(header))
     ws.update(values=matrix, range_name="A1", value_input_option="RAW")
+
+
+@_retry
+def update_changed_rows(tab: str, records: list[dict], changed_ids: set,
+                        id_field: str = "id") -> int:
+    """Atualiza SÓ as linhas cujo id está em `changed_ids`, casando pela posição
+    na lista `records` (que deve estar na MESMA ordem já gravada na planilha).
+
+    Reescrever a aba inteira custa caro no Sheets (ex.: ~2,8s p/ 1853 linhas do
+    Ledger); quando só algumas linhas mudaram, mandamos um `batch_update` enxuto.
+    Segurança: se a contagem de linhas da planilha divergir do esperado
+    (alguém inseriu/removeu linhas fora daqui), cai para a reescrita total.
+    Retorna quantas linhas foram enviadas (-1 se caiu no full rewrite)."""
+    schema = SCHEMAS[tab]
+    header = [name for name, _ in schema]
+    ws = _ws(tab)
+    # invariante mantido por write_records: planilha tem len(records)+1 linhas.
+    # Se divergir, alguém mexeu na estrutura -> reescreve tudo (seguro).
+    if ws.row_count != len(records) + 1:
+        write_records(tab, records)
+        return -1
+    reqs = []
+    for i, rec in enumerate(records):
+        if rec.get(id_field) in changed_ids:
+            line = [_val_to_cell(kind, rec.get(name)) for name, kind in schema]
+            rn = i + 2  # 1-based + cabeçalho
+            rng = f"{rowcol_to_a1(rn, 1)}:{rowcol_to_a1(rn, len(header))}"
+            reqs.append({"range": rng, "values": [line]})
+    if not reqs:
+        return 0
+    ws.batch_update(reqs, value_input_option="RAW")
+    return len(reqs)
 
 
 # ---------------------------------------------------------------------------- Config

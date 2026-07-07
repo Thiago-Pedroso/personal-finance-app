@@ -39,12 +39,15 @@ function mergeMovements(target, src) {
 export function aggregateYear(year, monthsAgg, txns, savings) {
   const by_category = {}
   const movements = {}
-  let income = 0, expense = 0
+  const poupanca = {}
+  let income = 0, expense = 0, saved = 0
   for (const m of monthsAgg) {
     income += m.income || 0
     expense += m.expense || 0
+    saved += m.saved || 0
     mergeByCategory(by_category, m.by_category)
     mergeMovements(movements, m.movements)
+    mergeMovements(poupanca, m.poupanca)
   }
   return {
     month: year,
@@ -52,8 +55,10 @@ export function aggregateYear(year, monthsAgg, txns, savings) {
     income: Math.round(income * 100) / 100,
     expense: Math.round(expense * 100) / 100,
     net: Math.round((income - expense) * 100) / 100,
+    saved: Math.round(saved * 100) / 100,
     by_category,
     movements,
+    poupanca,
     transactions: txns,
     plan: null,
     savings: savings || null,

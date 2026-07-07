@@ -9,6 +9,8 @@ import { Overview } from './components/Overview.jsx'
 import { Categories } from './components/Categories.jsx'
 import { Movements } from './components/Movements.jsx'
 import { Planejamento } from './components/Planejamento.jsx'
+import { Tools } from './components/Tools.jsx'
+import { Poupanca } from './components/Poupanca.jsx'
 import { Review } from './components/Review.jsx'
 import { TransactionsTable } from './components/TransactionsTable.jsx'
 import { EditModal } from './components/EditModal.jsx'
@@ -20,6 +22,8 @@ const TABS = [
   ['txns', 'Transações'],
   ['cats', 'Categorias'],
   ['plan', 'Planejamento'],
+  ['tools', 'Ferramentas'],
+  ['poup', 'Poupança'],
   ['movs', 'Movimentações'],
   ['review', 'Revisar'],
 ]
@@ -86,12 +90,16 @@ function Shell() {
     + d.queue.length
 
   return (
-    <div className="mx-auto max-w-[1240px] px-5 pb-24 pt-7">
+    <div className="relative z-[1] mx-auto max-w-[1240px] px-5 pb-24 pt-7">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-[22px] font-bold
             tracking-tight">
-            <Wallet className="size-5 text-green" /> Finance Control
+            <span className="grid size-8 place-items-center rounded-xl
+              bg-brand/10 text-brand ring-1 ring-brand/20">
+              <Wallet className="size-[18px]" />
+            </span>
+            Finance Control
           </h1>
           <p className="mt-1 text-[12px] text-faint">
             {dash.total_transactions} transações · atualizado{' '}
@@ -110,13 +118,14 @@ function Shell() {
                 font-bold">{d.queue.length}</span>
             </button>
           )}
-          <div className="flex overflow-hidden rounded-xl border border-border
-            text-[12.5px]">
+          <div className="flex gap-1 rounded-xl border border-border
+            bg-surface2/70 p-1 text-[12.5px]">
             {['month', 'year'].map((mo) => (
               <button key={mo} onClick={() => d.setMode(mo)}
-                className={`px-3 py-2 font-medium transition ${d.mode === mo
-                  ? 'bg-green text-[#04130c]'
-                  : 'bg-surface2 text-muted hover:text-text'}`}>
+                className={`rounded-lg px-3.5 py-1.5 font-semibold transition ${
+                  d.mode === mo
+                    ? 'bg-brand text-white shadow-[0_1px_8px_#5b9dff55]'
+                    : 'text-muted hover:text-text'}`}>
                 {mo === 'month' ? 'Mês' : 'Ano'}
               </button>
             ))}
@@ -148,7 +157,8 @@ function Shell() {
         </div>
       </header>
 
-      <nav className="mt-6 flex flex-wrap gap-1 border-b border-border">
+      <nav className="sticky top-0 z-20 -mx-5 mt-6 flex flex-wrap gap-1 border-b
+        border-border px-5 pt-2 backdrop-blur-md">
         {TABS.map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`relative px-4 py-2.5 text-[14px] font-semibold
@@ -160,7 +170,7 @@ function Shell() {
                 font-bold text-amber">{pend}</span>
             )}
             {tab === k && <span className="absolute inset-x-3 -bottom-px h-0.5
-              rounded-full bg-green" />}
+              rounded-full bg-brand" />}
           </button>
         ))}
       </nav>
@@ -179,6 +189,7 @@ function Shell() {
         {tab === 'txns' && (
           <TransactionsTable txns={mdata.transactions || []} openEdit={openEdit}
             presetCat={txnPreset} queuedIds={queuedIds}
+            treatments={dash.treatments} excludedCount={dash.excluded_count}
             title={`Transações — ${monthLabel(month)}`} />
         )}
         {tab === 'cats' && (
@@ -195,6 +206,10 @@ function Shell() {
           <Planejamento dash={dash} mdata={mdata} month={month}
             onSaved={d.refresh} />
         ))}
+        {tab === 'tools' && <Tools dash={dash} />}
+        {tab === 'poup' && (
+          <Poupanca dash={dash} mdata={mdata} month={month} />
+        )}
         {tab === 'movs' && (
           <Movements dash={dash} mdata={mdata} month={month} />
         )}
@@ -206,7 +221,7 @@ function Shell() {
       </main>
 
       <DrillDrawer txns={mdata.transactions || []} openEdit={openEdit}
-        queuedIds={queuedIds} />
+        queuedIds={queuedIds} treatments={dash.treatments} />
 
       {edit.open && (
         <EditModal open={edit.open} onClose={closeEdit} txns={edit.rows}

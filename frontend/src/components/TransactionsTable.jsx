@@ -19,15 +19,21 @@ function effLabels(t) {
 import {
   Search, Pencil, ChevronLeft, ChevronRight, X, ArrowUpDown,
   ArrowUp, ArrowDown, SlidersHorizontal, StickyNote, MessageSquare,
+  PiggyBank, ArrowLeftRight, EyeOff,
 } from 'lucide-react'
 
 const EMPTY = { q: '', cats: [], accs: [], flow: '', rev: false,
-  d0: '', d1: '', a0: '', a1: '', sub: '', queued: false }
+  d0: '', d1: '', a0: '', a1: '', sub: '', queued: false, excl: false }
 
 export function TransactionsTable({ txns, openEdit, title, presetCat,
-  initialFilter, compact, pageSize = 25, queuedIds }) {
+  initialFilter, compact, pageSize = 25, queuedIds, treatments,
+  excludedCount = 0 }) {
   const qids = queuedIds || new Set()
   const isQueued = (id) => qids.has && qids.has(id)
+  const treatOf = (cat) => (treatments || {})[cat] || 'fluxo'
+  // mostra o filtro se há rasurados nesta view OU em qualquer lugar do app
+  const viewExcl = useMemo(() => txns.filter((t) => t.excluded).length, [txns])
+  const showExclToggle = viewExcl > 0 || excludedCount > 0
   const [f, setF] = useState(EMPTY)
   const [sorting, setSorting] = useState([{ id: 'date', desc: true }])
   const [sel, setSel] = useState({})
@@ -53,6 +59,7 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
     const a0 = f.a0 === '' ? null : +f.a0
     const a1 = f.a1 === '' ? null : +f.a1
     return txns.filter((t) => {
+      if (t.excluded && !f.excl) return false
       const tcats = effLabels(t)
       const tsubs = t.splits?.length
         ? t.splits.map((s) => s.subcategory || '')
@@ -77,8 +84,11 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
     })
   }, [txns, f, queuedIds])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  const totIn = rows.reduce((a, t) => t.signed_amount > 0 ? a + t.signed_amount : a, 0)
-  const totOut = rows.reduce((a, t) => t.signed_amount < 0 ? a + t.signed_amount : a, 0)
+  // excluídos ("rasurados") não entram nos totais mesmo quando visíveis
+  const totIn = rows.reduce((a, t) =>
+    !t.excluded && t.signed_amount > 0 ? a + t.signed_amount : a, 0)
+  const totOut = rows.reduce((a, t) =>
+    !t.excluded && t.signed_amount < 0 ? a + t.signed_amount : a, 0)
 
   const columns = useMemo(() => [
     {
@@ -135,6 +145,30 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
             <MessageSquare className="size-3" />fila
           </span>
         ) : null
+        // badge do tratamento (poupança/movimento não são fluxo de gastos)
+        const tr = e.kind === 'split' ? 'fluxo' : treatOf(e.label)
+        const tb = tr === 'poupança' ? (
+          <span title="Poupança — não é gasto"
+            className="inline-flex items-center rounded-full border
+              border-violet/40 bg-violet/15 px-1.5 py-0.5 text-violet cursor-help">
+            <PiggyBank className="size-3" />
+          </span>
+        ) : tr === 'movimento' ? (
+          <span title="Movimento — auditoria, fora do fluxo"
+            className="inline-flex items-center rounded-full border border-border
+              bg-surface2 px-1.5 py-0.5 text-faint cursor-help">
+            <ArrowLeftRight className="size-3" />
+          </span>
+        ) : null
+        // rasurado: fora de todos os relatórios
+        const xb = t.excluded ? (
+          <span title="Rasurado — fora de todos os relatórios"
+            className="inline-flex items-center gap-1 rounded-full border
+              border-amber/40 bg-amber/10 px-1.5 py-0.5 text-[11px] font-semibold
+              text-amber cursor-help no-underline">
+            <EyeOff className="size-3" />rasurado
+          </span>
+        ) : null
         if (e.kind === 'split') {
           return (
             <div className="flex flex-wrap items-center gap-1.5">
@@ -144,26 +178,26 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
                   title={`${s.category}${s.subcategory ? '/' + s.subcategory : ''} ${signedBrl(s.amount)}`}
                   onClick={() => pick(s.category)} />
               ))}
-              {qb}
+              {qb}{xb}
             </div>
           )
         }
         if (e.kind === 'uncat') {
           return (
-            <span className="flex items-center gap-2">
+            <span className="flex flex-wrap items-center gap-2">
               <CategoryTag uncategorized hint={e.hint}
                 onClick={() => pick('Sem categoria')} />
               {t.needs_review && <Badge tone="amber">revisar</Badge>}
-              {qb}
+              {tb}{qb}{xb}
             </span>
           )
         }
         return (
-          <span className="flex items-center gap-2">
+          <span className="flex flex-wrap items-center gap-2">
             <CategoryTag category={e.label} subcategory={e.subcategory}
               onClick={() => pick(e.label)} />
             {t.needs_review && <Badge tone="amber">revisar</Badge>}
-            {qb}
+            {tb}{qb}{xb}
           </span>
         )
       },
@@ -187,7 +221,7 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
         </button>
       ),
     },
-  ], [openEdit, queuedIds])  // eslint-disable-line react-hooks/exhaustive-deps
+  ], [openEdit, queuedIds, treatments])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // agrupa por dia quando ordenado por data (padrão) — some a coluna Data
   const grouped = (sorting[0]?.id || 'date') === 'date'
@@ -307,6 +341,17 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
               só fila do Claude
             </label>
           )}
+          {showExclToggle && (
+            <label className="flex items-center gap-2 rounded-xl border
+              border-amber/40 bg-amber/10 px-3 py-2 text-[12px] text-amber">
+              <input type="checkbox" checked={f.excl}
+                onChange={(e) => set('excl', e.target.checked)} />
+              <EyeOff className="size-3.5" /> mostrar rasurados
+              {viewExcl > 0
+                ? <span className="tnum font-semibold">({viewExcl})</span>
+                : <span className="text-amber/60">(nenhum neste mês)</span>}
+            </label>
+          )}
           {active && (
             <Button variant="ghost" onClick={() => setF(EMPTY)}>
               <X className="size-3.5" /> limpar
@@ -326,9 +371,9 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
       </div>
 
       {selected.length > 0 && (
-        <div className="flex items-center justify-between gap-3 bg-green/10
+        <div className="flex items-center justify-between gap-3 bg-brand/[0.08]
           px-5 py-2.5 text-[13px]">
-          <span className="font-medium text-green">
+          <span className="font-medium text-brand">
             {selected.length} selecionado(s)</span>
           <div className="flex gap-2">
             <Button variant="primary" onClick={() => openEdit(selected)}>
@@ -398,9 +443,11 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
                 out.push(
                   <tr key={r.id}
                     className={`border-b border-border/60 hover:bg-white/[0.03]
-                      ${r.getIsSelected() ? 'bg-green/[0.06]'
-                        : isQueued(r.original.id)
-                          ? 'bg-blue/[0.05] border-l-2 border-l-blue/50' : ''}`}>
+                      ${r.original.excluded
+                        ? 'opacity-45 [&_td]:line-through'
+                        : r.getIsSelected() ? 'bg-brand/[0.07]'
+                          : isQueued(r.original.id)
+                            ? 'bg-blue/[0.05] border-l-2 border-l-blue/50' : ''}`}>
                     {r.getVisibleCells().map((c) => (
                       <td key={c.id} className="px-4 py-2.5 align-top">
                         {flexRender(c.column.columnDef.cell, c.getContext())}

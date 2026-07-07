@@ -21,15 +21,26 @@ from . import ledger as L
 from . import taxonomy as T
 from .config import REPORTS_DIR, ensure_dirs
 
-# Categorias que NÃO contam como gasto/receita no fluxo de caixa.
-NON_CASHFLOW = {"Transferências", "Investimentos", "Reserva", "Formatura",
-                "Compartilhado"}
+# Tratamento por categoria (fluxo|poupança|movimento) — fonte da verdade é a taxonomia.
+# Carregado uma vez em main(); as funções abaixo consultam via _tr().
+_TREAT: dict = {}
+
+
+def _tr(cat: str | None) -> str:
+    return T.treatment_of(_TREAT, cat)
+
+
+def _is_rendimento(sub: str | None) -> bool:
+    """Rendimento de investimento: cresce o patrimônio, mas NÃO é 'poupado da renda'
+    (não entra na taxa de poupança). Detectado pela subcategoria."""
+    return "RENDIMENT" in _norm(sub)
+
 
 # Campos de cada transação embutidos nos arquivos mensais (consumidos pelo front).
 _TXN_FIELDS = ("id", "date", "description", "counterparty", "signed_amount",
                "type", "account_name", "category", "subcategory",
                "category_source", "reviewed", "needs_review", "note",
-               "amount_override")
+               "amount_override", "excluded")
 
 # Subcategorias que são tipo de transação (palpite da Pluggy), não categoria real.
 _TYPE_SUBS = {"PIX recebido", "PIX enviado", "TED/DOC"}
@@ -38,6 +49,8 @@ _TYPE_SUBS = {"PIX recebido", "PIX enviado", "TED/DOC"}
 def _is_pending(r: dict) -> bool:
     """Precisa de ação do usuário: sem categoria, anomalia, ou palpite da
     Pluggy não confirmado (tipo de transação ≠ categoria de verdade)."""
+    if r.get("excluded"):        # rasurado sai de tudo, inclusive das pendências
+        return False
     if r.get("splits"):
         return False
     if not r["category"]:
@@ -50,28 +63,40 @@ def _is_pending(r: dict) -> bool:
     return False
 
 
+def _flowbucket():
+    return defaultdict(lambda: {
+        "in": 0.0, "out": 0.0, "count": 0,
+        "subcategories": defaultdict(lambda: {"in": 0.0, "out": 0.0, "count": 0})})
+
+
 def _blank() -> dict:
-    return {"income": 0.0, "expense": 0.0, "by_category": defaultdict(
-        lambda: {"income": 0.0, "expense": 0.0, "count": 0,
-                 "subcategories": defaultdict(lambda: {"income": 0.0, "expense": 0.0,
-                                                       "count": 0})}),
-            "movements": defaultdict(lambda: {
-                "in": 0.0, "out": 0.0, "count": 0,
-                "subcategories": defaultdict(
-                    lambda: {"in": 0.0, "out": 0.0, "count": 0})})}
+    return {"income": 0.0, "expense": 0.0, "saved": 0.0,
+            "by_category": defaultdict(
+                lambda: {"income": 0.0, "expense": 0.0, "count": 0,
+                         "subcategories": defaultdict(
+                             lambda: {"income": 0.0, "expense": 0.0, "count": 0})}),
+            # movimento (auditoria) e poupança (Poupado) — cada um seu balde in/out
+            "movements": _flowbucket(),
+            "poupanca": _flowbucket()}
 
 
 def _post(bucket: dict, amt: float, cat: str, sub: str) -> None:
     cat = cat or "Outros"
     sub = sub or "—"
-    if cat in NON_CASHFLOW:
-        m = bucket["movements"][cat]
+    treat = _tr(cat)
+    if treat != "fluxo":
+        key = "poupanca" if treat == "poupança" else "movements"
+        m = bucket[key][cat]
         side = "in" if amt > 0 else "out"
         m[side] += abs(amt)
         m["count"] += 1
         ms = m["subcategories"][sub]
         ms[side] += abs(amt)
         ms["count"] += 1
+        # Poupado = só APORTES (o que saiu da conta pra poupança). Resgate (entrada,
+        # amt>0) NÃO conta — tirar de um cofrinho não é poupar. Rendimento também não.
+        if treat == "poupança" and not _is_rendimento(sub) and amt < 0:
+            bucket["saved"] += -amt
         return
     c = bucket["by_category"][cat]
     s = c["subcategories"][sub]
@@ -115,8 +140,11 @@ def _month_json(month: str, b: dict) -> dict:
         "income": round(b["income"], 2),
         "expense": round(b["expense"], 2),
         "net": round(b["income"] - b["expense"], 2),
+        # Poupado no mês (aportes − resgates). Sobra líquida = net − saved (no front).
+        "saved": round(b["saved"], 2),
         "by_category": _undefault(b["by_category"]),
         "movements": _undefault(b["movements"]),
+        "poupanca": _undefault(b["poupanca"]),
     }
 
 
@@ -268,7 +296,7 @@ def _insights(plan: dict, mj: dict, prev_mj: dict | None,
                 f"(R$ {p:,.0f} → R$ {a:,.0f})"})
     cash = [t for t in txns
             if t["signed_amount"] < 0 and not t.get("splits")
-            and (t["category"] or "") not in NON_CASHFLOW]
+            and not t.get("excluded") and _tr(t["category"]) == "fluxo"]
     if cash:
         big = min(cash, key=lambda t: t["signed_amount"])
         out.append({"sev": "info", "text":
@@ -290,10 +318,10 @@ def _recurring(recs: list) -> list:
     """Assinaturas/recorrências: agrupa por lojista, cadência ~regular."""
     groups: dict = defaultdict(list)
     for r in recs:
-        if r["signed_amount"] >= 0 or r.get("splits"):
+        if r.get("excluded") or r["signed_amount"] >= 0 or r.get("splits"):
             continue
         cat = r["category"] or "Outros"
-        if cat in NON_CASHFLOW or cat == "Alimentação":
+        if _tr(cat) != "fluxo" or cat == "Alimentação":
             continue
         if (r.get("subcategory") or "") == "Combustível":
             continue
@@ -341,13 +369,19 @@ def _recurring(recs: list) -> list:
     return out[:40]
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser(description="Relatórios financeiros.")
-    ap.add_argument("--month", help="Gera só esse mês (YYYY-MM).")
-    args = ap.parse_args()
+def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
+             month=None) -> None:
+    """Gera os relatórios (arquivos em REPORTS_DIR).
 
+    Aceita ledger/taxonomia/tratamentos/budgets já carregados para evitar reler
+    do Google Sheets quando o chamador (ex.: categorize.apply) já os tem em
+    memória — cada leitura do Sheets custa ~0,5–2s. O que vier None é lido sob
+    demanda."""
     ensure_dirs()
-    recs = list(L.load_ledger().values())
+    global _TREAT
+    _TREAT = treatments if treatments is not None else T.load_treatments()
+    if recs is None:
+        recs = list(L.load_ledger().values())
     if not recs:
         raise SystemExit("Ledger vazio. Rode antes: uv run python -m finance.sync --backfill")
 
@@ -364,27 +398,28 @@ def main() -> None:
     for r in recs:
         m = r["date"][:7]
         months.setdefault(m, _blank())
-        _add(months[m], r)
-        month_txns.setdefault(m, []).append(r)
+        month_txns.setdefault(m, []).append(r)   # lista mostra tudo (rasurado incluso)
+        if not r.get("excluded"):                 # mas rasurado não entra nos agregados
+            _add(months[m], r)
 
     ordered = sorted(months)
     # Agregados enxutos (vão para o dashboard.json — carga rápida, sem transações).
     month_jsons = {m: _month_json(m, months[m]) for m in ordered}
 
     # ---- planejamento por mês (teto vs realizado, ritmo) + poupança acumulada
-    bud = B.load()
+    bud = budgets if budgets is not None else B.load()
     today = date.today()
     cum_in = cum_out = 0.0
     savings_by_month: dict = {}
     for m in ordered:
-        rsv = month_jsons[m]["movements"].get("Reserva", {"in": 0.0, "out": 0.0})
+        rsv = month_jsons[m]["poupanca"].get("Reserva", {"in": 0.0, "out": 0.0})
         cum_in += rsv["in"]
         cum_out += rsv["out"]
         savings_by_month[m] = _savings(bud, cum_in, cum_out,
                                        rsv["in"], rsv["out"])
         month_jsons[m]["plan"] = _plan_for_month(bud, month_jsons[m], m, today)
 
-    targets = [args.month] if args.month else ordered
+    targets = [month] if month else ordered
     for i, m in enumerate(ordered):
         if m not in targets:
             continue
@@ -403,11 +438,13 @@ def main() -> None:
     # ---- dashboard.json (consumido pelo frontend)
     by_cat12: dict = defaultdict(lambda: {"expense": 0.0, "income": 0.0, "count": 0})
     for r in recs:
+        if r.get("excluded"):
+            continue
         parts = (r["splits"] if r.get("splits")
                  else [{"amount": r["signed_amount"], "category": r["category"]}])
         for pt in parts:
             cat = pt.get("category") or "Outros"
-            if cat in NON_CASHFLOW:
+            if _tr(cat) != "fluxo":
                 continue
             c = by_cat12[cat]
             a = pt["amount"]
@@ -417,10 +454,14 @@ def main() -> None:
     dash = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "currency": "BRL",
-        "taxonomy": T.load(),
+        "taxonomy": taxonomy if taxonomy is not None else T.load(),
         "budgets": bud,
         "recurring": _recurring(recs),
-        "cashflow_excludes": sorted(NON_CASHFLOW),
+        # tratamento por categoria (fonte da verdade da taxonomia) + listas derivadas
+        "treatments": _TREAT,
+        "cashflow_excludes": sorted(c for c, t in _TREAT.items() if t != "fluxo"),
+        "poupanca_cats": sorted(c for c, t in _TREAT.items() if t == "poupança"),
+        "movimento_cats": sorted(c for c, t in _TREAT.items() if t == "movimento"),
         "months": [month_jsons[m] for m in ordered],
         "by_category_12m": sorted(
             ({"category": k, **{kk: round(vv, 2) for kk, vv in v.items()}}
@@ -428,9 +469,12 @@ def main() -> None:
         "recent": [{k: r[k] for k in ("id", "date", "description", "signed_amount",
                                       "category", "subcategory", "account_name",
                                       "needs_review")} for r in recent],
-        "needs_review": sum(1 for r in recs if r["needs_review"]),
+        "needs_review": sum(1 for r in recs
+                            if r["needs_review"] and not r.get("excluded")),
         "uncategorized": sum(1 for r in recs
-                             if not r["category"] and not r.get("splits")),
+                             if not r["category"] and not r.get("splits")
+                             and not r.get("excluded")),
+        "excluded_count": sum(1 for r in recs if r.get("excluded")),
         # tudo que precisa de ação (histórico inteiro) — consumido pela aba Revisar
         "review": [{**{k: r.get(k) for k in _TXN_FIELDS},
                      "splits": r.get("splits"), "month": r["date"][:7]}
@@ -446,6 +490,13 @@ def main() -> None:
     print(f"Relatórios gerados em {REPORTS_DIR} ({len(targets)} mês(es) + dashboard.json)")
     print(f"Último mês {last['month']}: receitas R$ {last['income']:,.2f} | "
           f"gastos R$ {last['expense']:,.2f} | saldo R$ {last['net']:,.2f}")
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description="Relatórios financeiros.")
+    ap.add_argument("--month", help="Gera só esse mês (YYYY-MM).")
+    args = ap.parse_args()
+    generate(month=args.month)
 
 
 if __name__ == "__main__":

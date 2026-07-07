@@ -5,13 +5,22 @@ o dict inteiro. Só o backend mudou de arquivo JSONL para uma aba do Sheets (1 r
 operação). Todo o resto do pipeline continua igual.
 """
 
+import json
 from datetime import datetime, timezone
 
 from . import sheets
 
 # Campos da NOSSA categorização — preservados ao re-sincronizar.
 _OURS = ("category", "subcategory", "category_source", "rule_id", "needs_review",
-         "reviewed", "splits", "note", "amount_override")
+         "reviewed", "splits", "note", "amount_override", "excluded")
+
+
+def snapshot(rec: dict) -> str:
+    """String estável dos campos que a categorização pode alterar. Serve pra
+    detectar quais linhas de fato mudaram e gravar só elas (o reapply toca em
+    muitos registros por igual sem alterar valor)."""
+    return json.dumps({k: rec.get(k) for k in _OURS},
+                      ensure_ascii=False, sort_keys=True)
 
 
 def effective_amount(rec: dict) -> float:
@@ -85,6 +94,9 @@ def normalize(tx, account, item_id) -> dict:
         # ex.: compra em dólar que a Pluggy gravou no valor errado). None = usa
         # signed_amount. Preservado no re-sync (está em _OURS).
         "amount_override": None,
+        # "rasurado": sai de TODOS os agregados/relatórios, mas continua no ledger
+        # (visível riscado na lista). Reversível. Preservado no re-sync (_OURS).
+        "excluded": False,
         "synced_at": _now_iso(),
     }
 
@@ -93,9 +105,14 @@ def load_ledger() -> dict:
     return {rec["id"]: rec for rec in sheets.read_records("Ledger")}
 
 
-def save_ledger(records: dict) -> None:
+def save_ledger(records: dict, changed_ids: set | None = None) -> None:
+    """Grava o ledger. Com `changed_ids` (conjunto de ids alterados) manda só
+    essas linhas pro Sheets (batch enxuto); sem ele, reescreve a aba inteira."""
     rows = sorted(records.values(), key=lambda r: (r["date"], r["id"]))
-    sheets.write_records("Ledger", rows)
+    if changed_ids is None:
+        sheets.write_records("Ledger", rows)
+    else:
+        sheets.update_changed_rows("Ledger", rows, changed_ids)
 
 
 def upsert(existing: dict, incoming: list) -> tuple[int, int]:

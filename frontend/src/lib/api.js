@@ -32,5 +32,9 @@ export const updateQueue = (index, patch) =>
 //            rule?{field,match,value,type}, note?, samples? }
 export const postEdit = (payload) => postJSON('/api/edit', payload)
 
+// rasurar/restaurar: tira (ou devolve) lançamentos dos agregados, reversível.
+export const postExclude = (ids, excluded) =>
+  postJSON('/api/edit', { mode: 'exclude', ids, excluded })
+
 // budgets = { income_plan, spending:{recurring,months}, savings_goals }
 export const postBudget = (budgets) => postJSON('/api/budget', budgets)

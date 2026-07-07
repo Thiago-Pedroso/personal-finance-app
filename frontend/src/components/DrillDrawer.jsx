@@ -4,7 +4,7 @@ import { useDrill } from '../lib/useDrill.jsx'
 
 // Slide-over global: qualquer número do dashboard abre aqui as transações
 // que o compõem (progressive disclosure), com a tabela completa + edição.
-export function DrillDrawer({ txns, openEdit, queuedIds }) {
+export function DrillDrawer({ txns, openEdit, queuedIds, treatments }) {
   const d = useDrill()
   if (!d) return null
   return (
@@ -12,7 +12,7 @@ export function DrillDrawer({ txns, openEdit, queuedIds }) {
       title={d.title || 'Transações'} sub="filtrado a partir do número clicado">
       {d.open && (
         <TransactionsTable txns={txns} openEdit={openEdit} compact
-          queuedIds={queuedIds}
+          queuedIds={queuedIds} treatments={treatments}
           title="Lançamentos" initialFilter={d.filter} />
       )}
     </Drawer>

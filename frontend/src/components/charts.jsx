@@ -1,6 +1,6 @@
 import {
   ResponsiveContainer, ComposedChart, Bar, Line, XAxis, YAxis,
-  CartesianGrid, Tooltip, Cell, PieChart, Pie, BarChart,
+  CartesianGrid, Tooltip, Cell, PieChart, Pie, BarChart, AreaChart, Area,
 } from 'recharts'
 import { Receipt } from 'lucide-react'
 import { brl, brl0, monthShortY } from '../lib/format.js'
@@ -11,6 +11,28 @@ export const PALETTE = [
   '#4dd0c4', '#ef79b6', '#9bd1ff', '#ffb35c', '#7ee7a8',
   '#79b8ff', '#ffe066', '#c98bff', '#7adf6f',
 ]
+
+// sparkline inline (SVG puro) — tendência enxuta dentro de um KPI
+export function Sparkline({ data, color = '#79838f', width = 76, height = 26 }) {
+  const vals = (data || []).filter((v) => v != null && !Number.isNaN(v))
+  if (vals.length < 2) return null
+  const min = Math.min(...vals), max = Math.max(...vals)
+  const rng = max - min || 1
+  const pad = 2
+  const pts = data.map((v, i) => [
+    (i / (data.length - 1)) * (width - pad * 2) + pad,
+    height - pad - ((v - min) / rng) * (height - pad * 2),
+  ])
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ')
+  const last = pts[pts.length - 1]
+  return (
+    <svg width={width} height={height} className="overflow-visible" aria-hidden="true">
+      <path d={d} fill="none" stroke={color} strokeWidth="1.5"
+        strokeLinejoin="round" strokeLinecap="round" opacity="0.85" />
+      <circle cx={last[0]} cy={last[1]} r="2.2" fill={color} />
+    </svg>
+  )
+}
 
 function TipBox({ rows, label }) {
   return (
@@ -30,16 +52,16 @@ function TipBox({ rows, label }) {
   )
 }
 
-export function CashflowChart({ months, selected, onSelect }) {
+export function CashflowChart({ months, selected, onSelect, showSaved }) {
   const data = months.map((m) => ({ ...m, lbl: monthShortY(m.month) }))
   return (
     <ResponsiveContainer width="100%" height={300}>
       <ComposedChart data={data} margin={{ top: 8, right: 8, left: 4, bottom: 0 }}
         onClick={(e) => e?.activeLabel &&
           onSelect(data.find((d) => d.lbl === e.activeLabel)?.month)}>
-        <CartesianGrid stroke="#28323f" strokeDasharray="3 5" vertical={false} />
+        <CartesianGrid stroke="#2c313a" strokeDasharray="3 5" vertical={false} />
         <XAxis dataKey="lbl" tick={{ fill: '#8a97a6', fontSize: 11 }}
-          axisLine={{ stroke: '#28323f' }} tickLine={false} />
+          axisLine={{ stroke: '#2c313a' }} tickLine={false} />
         <YAxis tickFormatter={brl0} width={64}
           tick={{ fill: '#5d6b7a', fontSize: 11 }} axisLine={false}
           tickLine={false} />
@@ -49,6 +71,9 @@ export function CashflowChart({ months, selected, onSelect }) {
               { k: 'Receitas', v: payload[0]?.payload.income, c: '#36c98b' },
               { k: 'Gastos', v: payload[0]?.payload.expense, c: '#f4685f' },
               { k: 'Saldo', v: payload[0]?.payload.net, c: '#5aa2ff' },
+              ...(showSaved
+                ? [{ k: 'Poupado', v: payload[0]?.payload.saved, c: '#b08cff' }]
+                : []),
             ]} />
           ) : null} />
         <Bar dataKey="income" radius={[4, 4, 0, 0]} maxBarSize={16}
@@ -63,6 +88,11 @@ export function CashflowChart({ months, selected, onSelect }) {
         </Bar>
         <Line type="monotone" dataKey="net" stroke="#5aa2ff" strokeWidth={2}
           dot={{ r: 2.5, fill: '#5aa2ff' }} activeDot={{ r: 4 }} />
+        {showSaved && (
+          <Line type="monotone" dataKey="saved" stroke="#b08cff" strokeWidth={2}
+            strokeDasharray="5 3" dot={{ r: 2, fill: '#b08cff' }}
+            activeDot={{ r: 4 }} />
+        )}
       </ComposedChart>
     </ResponsiveContainer>
   )
@@ -174,11 +204,51 @@ export function HBars({ items, color = '#f4685f', onClick, onOpen, byCat }) {
   )
 }
 
+// evolução de patrimônio: área empilhada aportado (azul) + juros (verde), amostra anual
+export function WealthChart({ series }) {
+  const data = series.filter((s) => s.m % 12 === 0).map((s) => ({
+    yr: s.m / 12, aportado: s.contributed, juros: s.interest,
+  }))
+  return (
+    <ResponsiveContainer width="100%" height={230}>
+      <AreaChart data={data} margin={{ top: 8, right: 8, left: 4, bottom: 0 }}>
+        <defs>
+          <linearGradient id="wAport" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#5b9dff" stopOpacity={0.45} />
+            <stop offset="100%" stopColor="#5b9dff" stopOpacity={0.04} />
+          </linearGradient>
+          <linearGradient id="wJuros" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#41cf8f" stopOpacity={0.5} />
+            <stop offset="100%" stopColor="#41cf8f" stopOpacity={0.04} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid stroke="#2c313a" strokeDasharray="3 5" vertical={false} />
+        <XAxis dataKey="yr" tickFormatter={(y) => `${y}a`}
+          tick={{ fill: '#7e8a97', fontSize: 11 }}
+          axisLine={{ stroke: '#2c313a' }} tickLine={false} />
+        <YAxis tickFormatter={brl0} width={64}
+          tick={{ fill: '#7e8a97', fontSize: 11 }} axisLine={false} tickLine={false} />
+        <Tooltip cursor={{ stroke: '#3a4450' }}
+          content={({ active, payload, label }) => active && payload?.length ? (
+            <TipBox label={`Ano ${label}`} rows={[
+              { k: 'Aportado', v: payload.find((p) => p.dataKey === 'aportado')?.value, c: '#5b9dff' },
+              { k: 'Juros', v: payload.find((p) => p.dataKey === 'juros')?.value, c: '#41cf8f' },
+            ]} />
+          ) : null} />
+        <Area type="monotone" dataKey="aportado" stackId="1" stroke="#5b9dff"
+          strokeWidth={1.5} fill="url(#wAport)" isAnimationActive={false} />
+        <Area type="monotone" dataKey="juros" stackId="1" stroke="#41cf8f"
+          strokeWidth={1.5} fill="url(#wJuros)" isAnimationActive={false} />
+      </AreaChart>
+    </ResponsiveContainer>
+  )
+}
+
 export function TrendBars({ data, color = '#f4685f' }) {
   return (
     <ResponsiveContainer width="100%" height={210}>
       <BarChart data={data} margin={{ top: 6, right: 6, left: 4, bottom: 0 }}>
-        <CartesianGrid stroke="#28323f" strokeDasharray="3 5" vertical={false} />
+        <CartesianGrid stroke="#2c313a" strokeDasharray="3 5" vertical={false} />
         <XAxis dataKey="lbl" tick={{ fill: '#8a97a6', fontSize: 10 }}
           axisLine={{ stroke: '#28323f' }} tickLine={false} interval={0} />
         <YAxis tickFormatter={brl0} width={58}

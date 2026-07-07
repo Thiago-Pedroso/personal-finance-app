@@ -20,6 +20,7 @@ from pathlib import Path
 import yaml
 
 from . import sheets
+from . import taxonomy as T
 from .config import SEED_DIR
 
 
@@ -75,10 +76,9 @@ def main() -> None:
     print(f"  Ledger:   {len(fx['ledger'])} transações")
     sheets.write_records("Rules", fx["rules"])
     print(f"  Rules:    {len(fx['rules'])} regras")
-    records_tax = [{"Category": c, "Subcategories": ", ".join(subs or [])}
-                   for c, subs in fx["taxonomy"].items()]
-    sheets.write_records("Taxonomy", records_tax)
-    print(f"  Taxonomy: {len(records_tax)} categorias")
+    # grava categorias + coluna Treatment (default via fallback legado por categoria)
+    T.save(fx["taxonomy"])
+    print(f"  Taxonomy: {len(fx['taxonomy'])} categorias (com Treatment)")
     sheets.write_config("budgets", fx["budgets"])
     sheets.write_config("sync_state", {})
     sheets.write_config("schema_version", sheets.SCHEMA_VERSION)

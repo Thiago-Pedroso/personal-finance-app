@@ -5,7 +5,8 @@ import { brl, signedBrl, monthLabel } from '../lib/format.js'
 
 export function Movements({ dash, mdata, month }) {
   const drill = useDrill()
-  const cats = dash.cashflow_excludes || []
+  // só categorias de tratamento "movimento" (poupança tem visão própria)
+  const cats = dash.movimento_cats || dash.cashflow_excludes || []
   const agg = {}
   cats.forEach((c) => (agg[c] = { in: 0, out: 0, count: 0 }))
   dash.months.forEach((m) =>
@@ -48,8 +49,8 @@ export function Movements({ dash, mdata, month }) {
               </div>
               <button onClick={() => drill?.drill(
                 `${c} — ${monthLabel(month)}`, { cats: [c] })}
-                className={`mt-2 block text-[22px] font-bold hover:opacity-80 ${
-                  net >= 0 ? 'text-green' : 'text-red'}`}>
+                className={`mt-2 block text-[22px] font-bold tnum
+                  hover:opacity-80 ${net >= 0 ? 'text-green' : 'text-red'}`}>
                 {signedBrl(net)}</button>
               <div className="mt-1 flex gap-4 text-[12.5px] text-muted">
                 <span className="text-green">entrou {brl(cm.in)}</span>
@@ -72,7 +73,7 @@ export function Movements({ dash, mdata, month }) {
               )}
               <div className="mt-3 flex justify-between border-t border-border
                 pt-2 text-[12px] text-faint">
-                <span>acumulado 13m · {ca.count}x</span>
+                <span>acumulado {dash.months.length}m · {ca.count}x</span>
                 <span className={`tnum ${ca.in - ca.out >= 0 ? 'text-green'
                   : 'text-red'}`}>{signedBrl(ca.in - ca.out)}</span>
               </div>

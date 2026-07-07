@@ -10,7 +10,7 @@ function Stat({ label, value, tone }) {
     <Card className="p-5">
       <div className="text-[12px] font-semibold uppercase tracking-wider
         text-muted">{label}</div>
-      <div className={`mt-1.5 text-[28px] font-bold ${tone}`}>{value}</div>
+      <div className={`mt-1.5 text-[28px] font-bold tnum ${tone}`}>{value}</div>
     </Card>
   )
 }
@@ -145,7 +145,8 @@ export function Review({ dash, queue, queuedIds, onRemoveQueue,
       )}
 
       <TransactionsTable txns={pend} openEdit={openEdit} pageSize={50}
-        queuedIds={queuedIds}
+        queuedIds={queuedIds} treatments={dash.treatments}
+        excludedCount={dash.excluded_count}
         title={`Pendências — todo o histórico (${pend.length})`} />
     </div>
   )
