@@ -370,7 +370,7 @@ def _recurring(recs: list) -> list:
 
 
 def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
-             month=None) -> None:
+             month=None, category_meta=None) -> None:
     """Gera os relatórios (arquivos em REPORTS_DIR).
 
     Aceita ledger/taxonomia/tratamentos/budgets já carregados para evitar reler
@@ -379,7 +379,12 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
     demanda."""
     ensure_dirs()
     global _TREAT
-    _TREAT = treatments if treatments is not None else T.load_treatments()
+    if treatments is None or taxonomy is None or category_meta is None:
+        tax_l, treat_l, meta_l = T.load_full()   # 1 request serve aos três
+        taxonomy = taxonomy if taxonomy is not None else tax_l
+        treatments = treatments if treatments is not None else treat_l
+        category_meta = category_meta if category_meta is not None else meta_l
+    _TREAT = treatments
     if recs is None:
         recs = list(L.load_ledger().values())
     if not recs:
@@ -454,7 +459,9 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
     dash = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "currency": "BRL",
-        "taxonomy": taxonomy if taxonomy is not None else T.load(),
+        "taxonomy": taxonomy,
+        # cor/ícone por categoria: vêm da planilha, o front cai num neutro se faltar
+        "category_meta": category_meta or {},
         "budgets": bud,
         "recurring": _recurring(recs),
         # tratamento por categoria (fonte da verdade da taxonomia) + listas derivadas

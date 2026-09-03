@@ -63,7 +63,8 @@ RULES_SCHEMA = [
     ("excluded", "bool"), ("created_at", "opt"),
 ]
 
-TAXONOMY_SCHEMA = [("Category", "str"), ("Subcategories", "str"), ("Treatment", "str")]
+TAXONOMY_SCHEMA = [("Category", "str"), ("Subcategories", "str"), ("Treatment", "str"),
+                   ("Color", "opt"), ("Icon", "opt")]
 
 SCHEMAS = {
     "Ledger": LEDGER_SCHEMA,

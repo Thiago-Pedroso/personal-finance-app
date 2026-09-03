@@ -54,15 +54,31 @@ def load_treatments() -> dict:
 def load_all() -> tuple[dict, dict]:
     """Lê a aba Taxonomy UMA vez e devolve (taxonomia, tratamentos). Evita 2
     requests quando o chamador precisa dos dois (ex.: categorize.apply)."""
+    tax, treats, _ = load_full()
+    return tax, treats
+
+
+def load_meta() -> dict:
+    """Cor e ícone por categoria, para o dashboard. Colunas opcionais."""
+    return load_full()[2]
+
+
+def load_full() -> tuple[dict, dict, dict]:
+    """(taxonomia, tratamentos, meta) numa leitura só."""
     tax: dict = {}
     treats: dict = {}
+    meta: dict = {}
     for rec in sheets.read_records("Taxonomy"):
         cat = (rec.get("Category") or "").strip()
         if not cat:
             continue
         tax[cat] = _split_subs(rec.get("Subcategories"))
         treats[cat] = _norm_treatment(rec.get("Treatment"), cat)
-    return tax, treats
+        color = (rec.get("Color") or "").strip()
+        icon = (rec.get("Icon") or "").strip()
+        if color or icon:
+            meta[cat] = {"color": color or None, "icon": icon or None}
+    return tax, treats, meta
 
 
 def treatment_of(treatments: dict, cat: str | None) -> str:
@@ -72,12 +88,15 @@ def treatment_of(treatments: dict, cat: str | None) -> str:
     return _LEGACY_TREATMENT.get(cat or "", "fluxo")
 
 
-def save(tax: dict, treatments: dict | None = None) -> None:
+def save(tax: dict, treatments: dict | None = None, meta: dict | None = None) -> None:
     """Grava o dict {categoria: [subs]} na aba Taxonomy (usado pelo seed).
-    `treatments` (opcional) define o Tratamento por categoria; ausente = fallback legado."""
+    `treatments` define o Tratamento; `meta` traz {cat: {color, icon}}. Ambos opcionais."""
     treatments = treatments or {}
+    meta = meta or {}
     records = [{"Category": cat, "Subcategories": ", ".join(subs or []),
-                "Treatment": _norm_treatment(treatments.get(cat), cat)}
+                "Treatment": _norm_treatment(treatments.get(cat), cat),
+                "Color": (meta.get(cat) or {}).get("color"),
+                "Icon": (meta.get(cat) or {}).get("icon")}
                for cat, subs in tax.items()]
     sheets.write_records("Taxonomy", records)
 
