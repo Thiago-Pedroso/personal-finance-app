@@ -7,6 +7,7 @@ import { DrillProvider } from './lib/useDrill.jsx'
 import { Spinner, Button } from './components/ui/primitives.jsx'
 import { Overview } from './components/Overview.jsx'
 import { Categories } from './components/Categories.jsx'
+import { Tags } from './components/Tags.jsx'
 import { Movements } from './components/Movements.jsx'
 import { Planejamento } from './components/Planejamento.jsx'
 import { Tools } from './components/Tools.jsx'
@@ -21,6 +22,7 @@ const TABS = [
   ['overview', 'Visão Geral'],
   ['txns', 'Transações'],
   ['cats', 'Categorias'],
+  ['tags', 'Tags'],
   ['plan', 'Planejamento'],
   ['tools', 'Ferramentas'],
   ['poup', 'Poupança'],
@@ -197,6 +199,9 @@ function Shell() {
           <Categories dash={dash} mdata={mdata} month={month}
             selectedCat={selCat} setSelectedCat={setSelCat} goTxns={goTxns} />
         )}
+        {tab === 'tags' && (
+          <Tags dash={dash} mdata={mdata} period={month} />
+        )}
         {tab === 'plan' && (d.mode === 'year' ? (
           <div className="rounded-2xl border border-border bg-surface/80 px-6
             py-12 text-center text-[14px] text-muted">
@@ -227,6 +232,7 @@ function Shell() {
       {edit.open && (
         <EditModal open={edit.open} onClose={closeEdit} txns={edit.rows}
           taxonomy={dash.taxonomy} allTxns={mdata.transactions || []}
+          availableTags={dash.tags || []}
           onSaved={onSaved} />
       )}
     </div>

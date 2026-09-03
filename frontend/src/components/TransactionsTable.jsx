@@ -22,7 +22,7 @@ import {
   PiggyBank, ArrowLeftRight, EyeOff,
 } from 'lucide-react'
 
-const EMPTY = { q: '', cats: [], accs: [], flow: '', rev: false,
+const EMPTY = { q: '', cats: [], tags: [], accs: [], flow: '', rev: false,
   d0: '', d1: '', a0: '', a1: '', sub: '', queued: false, excl: false }
 
 export function TransactionsTable({ txns, openEdit, title, presetCat,
@@ -53,6 +53,9 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
     () => [...new Set(txns.flatMap(effLabels))].sort(), [txns])
   const accOpts = useMemo(
     () => [...new Set(txns.map((t) => t.account_name))].sort(), [txns])
+  const tagOpts = useMemo(
+    () => [...new Set(txns.flatMap((transaction) => transaction.tags || []))].sort(),
+    [txns])
   // opções de subcategoria: restringe às categorias selecionadas (todas, se nenhuma)
   const subOpts = useMemo(() => {
     const inScope = f.cats.length
@@ -75,6 +78,8 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
         : [t.subcategory || '']
       if (f.cats.length && !tcats.some((c) => f.cats.includes(c))) return false
       if (f.sub && !tsubs.includes(f.sub)) return false
+      if (f.tags.length && !f.tags.every(
+        (tag) => (t.tags || []).includes(tag))) return false
       if (f.accs.length && !f.accs.includes(t.account_name)) return false
       if (f.flow === 'in' && t.signed_amount <= 0) return false
       if (f.flow === 'out' && t.signed_amount >= 0) return false
@@ -86,7 +91,8 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
       if (a0 != null && abs < a0) return false
       if (a1 != null && abs > a1) return false
       if (q) {
-        const hay = `${t.description} ${t.counterparty || ''} ${t.category || ''} ${t.subcategory || ''}`.toLowerCase()
+        const hay = (`${t.description} ${t.counterparty || ''} ${t.category || ''} `
+          + `${t.subcategory || ''} ${(t.tags || []).join(' ')}`).toLowerCase()
         if (!hay.includes(q)) return false
       }
       return true
@@ -335,6 +341,8 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
             <option value="">Subcategoria (todas)</option>
             {subOpts.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
+          <MultiSelect label="Tags" options={tagOpts} value={f.tags}
+            onChange={(value) => set('tags', value)} />
           <MultiSelect label="Conta" options={accOpts} value={f.accs}
             onChange={(v) => set('accs', v)} />
           <select value={f.flow} onChange={(e) => set('flow', e.target.value)}

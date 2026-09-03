@@ -58,7 +58,7 @@ let lock = Promise.resolve()
 const serialize = (fn) => (lock = lock.then(fn, fn))
 
 async function applyEdit(p) {
-  // p = { mode, ids[], category, subcategory, rule?{field,match,value,type}, note? }
+  // p = { mode, ids[], category, subcategory, tags_add[], tags_remove[] }
   if (p.mode === 'queue') {
     const line = JSON.stringify({
       ts: new Date().toISOString(),
@@ -74,7 +74,13 @@ async function applyEdit(p) {
   const learn = p.mode === 'rule'
   const decisions = { assignments: [], rules: [] }
   const noteVal = p.note == null ? '' : String(p.note)
-  if (p.mode === 'split' && Array.isArray(p.splits) && p.splits.length) {
+  if (p.mode === 'tags') {
+    decisions.assignments.push({
+      ids: p.ids,
+      tags_add: Array.isArray(p.tags_add) ? p.tags_add : [],
+      tags_remove: Array.isArray(p.tags_remove) ? p.tags_remove : [],
+    })
+  } else if (p.mode === 'split' && Array.isArray(p.splits) && p.splits.length) {
     decisions.assignments.push({
       ids: p.ids,
       note: noteVal,
