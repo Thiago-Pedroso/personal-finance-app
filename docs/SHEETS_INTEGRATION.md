@@ -151,7 +151,8 @@ descarta o que não existir na sua taxonomia. Sem a aba, o mapa cai no fixture.
 |---|---|
 | `budgets` | o objeto de orçamento inteiro (income_plan, spending, savings_goals) |
 | `sync_state` | cursores de sincronização por conta |
-| `schema_version` | versão do esquema (atualmente `2`) |
+| `timezone` | fuso IANA usado nas datas locais, por exemplo `America/Sao_Paulo` |
+| `schema_version` | versão do esquema (atualmente `3`) |
 
 ---
 
@@ -187,8 +188,10 @@ Os **relatórios** (`data/reports/*.json`) continuam gerados **localmente** por 
 regeneráveis e ficam no `.gitignore`.
 
 Atualizações de schema são aplicadas por `uv run python -m finance.migrate`. O `start.sh`, o
-sync e a categorização também conferem a versão antes de gravar. A migração da versão 2 apenas
-acrescenta a coluna `tags` ao final do `Ledger`; os valores antigos permanecem intactos.
+sync e a categorização também conferem a versão antes de gravar. A migração da versão 3 adiciona
+`Config[timezone]` e recalcula datas importadas da Pluggy a partir do timestamp UTC. Use
+`uv run python -m finance.migrate --dry-run` para conferir a quantidade de registros antes de
+gravar. Datas de lançamentos manuais são preservadas.
 
 ### Coerção de tipos (o ponto crítico)
 

@@ -125,6 +125,7 @@ uv run python -m finance.sync --days 30     # puxa transações novas da Pluggy 
 uv run python -m finance.categorize         # categoriza (+ apply --learn)
 uv run python -m finance.report             # gera relatórios locais a partir do Sheets
 uv run python -m finance.migrate            # acrescenta campos novos sem apagar dados
+uv run python -m finance.migrate --dry-run  # confere migrações de data sem gravar
 ```
 
 Comandos de inspeção (somente leitura):

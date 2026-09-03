@@ -8,8 +8,15 @@ operação). Todo o resto do pipeline continua igual.
 import json
 import unicodedata
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from . import sheets
+from .config import DEFAULT_TIMEZONE
+from .transaction_dates import (
+    local_transaction_date,
+    normalize_provider_datetime,
+    resolve_timezone,
+)
 
 # Campos da NOSSA categorização — preservados ao re-sincronizar.
 _OURS = ("category", "subcategory", "category_source", "rule_id", "needs_review",
@@ -75,8 +82,9 @@ def signed_amount(amount: float, tx_type: str | None) -> float:
     return amount  # fallback: confia no sinal da Pluggy (convenção de conta)
 
 
-def normalize(tx, account, item_id) -> dict:
-    dt = tx.var_date
+def normalize(tx, account, item_id, local_timezone: ZoneInfo | None = None) -> dict:
+    local_timezone = local_timezone or resolve_timezone(DEFAULT_TIMEZONE)
+    dt = normalize_provider_datetime(tx.var_date)
     cc = tx.credit_card_metadata
     installment = None
     if cc and cc.installment_number and cc.total_installments:
@@ -94,7 +102,7 @@ def normalize(tx, account, item_id) -> dict:
         "account_id": str(account.id),
         "account_name": account.marketing_name or account.name,
         "account_type": account.type,
-        "date": dt.date().isoformat(),
+        "date": local_transaction_date(dt, local_timezone),
         "datetime": dt.isoformat(),
         "description": (tx.description or "").strip(),
         "amount": tx.amount,

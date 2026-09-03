@@ -48,7 +48,10 @@ uv run python -m finance.categorize stats
 | `Rules` | regras de categorização | `finance/rules.py` |
 | `Taxonomy` | categorias → subcategorias | `finance/taxonomy.py` |
 | `PluggyMap` | categoria da Pluggy → taxonomia pessoal | `finance/pluggy_map.py` |
-| `Config` | blobs JSON: `budgets`, `sync_state`, `schema_version` | `finance/budgets.py`, `finance/sync.py` |
+| `Config` | blobs JSON: `budgets`, `sync_state`, `timezone`, `schema_version` | `finance/budgets.py`, `finance/sync.py` |
+
+`Config[timezone]` guarda o fuso IANA usado para transformar timestamps UTC da Pluggy em datas
+locais. O padrão é `America/Sao_Paulo`; nunca derive datas financeiras do fuso do computador.
 
 A camada de acesso é `finance/sheets.py` (auth via Service Account, 1 request por operação,
 retry com backoff). Se algo falhar, `uv run python main.py` dá o diagnóstico. Para (re)inicializar

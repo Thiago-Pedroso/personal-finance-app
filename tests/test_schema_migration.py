@@ -32,7 +32,7 @@ class FakeSheet:
         return worksheet
 
 
-def test_schema_migration_appends_tags_only():
+def test_schema_migration_adds_missing_fields():
     worksheets = [
         FakeWorksheet(tab, [name for name, _ in schema]
                       if tab != "Ledger"
@@ -52,11 +52,12 @@ def test_schema_migration_appends_tags_only():
     ledger = next(worksheet for worksheet in worksheets
                   if worksheet.title == "Ledger")
     assert ledger.header == [name for name, _ in sheets.LEDGER_SCHEMA]
-    assert changes == ["coluna Ledger.tags"]
-    assert config["schema_version"] == 2
+    assert changes == ["coluna Ledger.tags", "Config.timezone"]
+    assert config["timezone"] == "America/Sao_Paulo"
+    assert config["schema_version"] == 3
     assert sheets.ensure_current_schema() == []
 
 
 if __name__ == "__main__":
-    test_schema_migration_appends_tags_only()
-    print("ok  test_schema_migration_appends_tags_only")
+    test_schema_migration_adds_missing_fields()
+    print("ok  test_schema_migration_adds_missing_fields")

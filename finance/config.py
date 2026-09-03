@@ -39,6 +39,7 @@ GOOGLE_SA_CREDENTIALS = os.environ.get("GOOGLE_SA_CREDENTIALS", "credentials.jso
 
 # Janela máxima de histórico que a Pluggy disponibiliza no backfill.
 BACKFILL_DAYS = 365
+DEFAULT_TIMEZONE = "America/Sao_Paulo"
 
 
 def ensure_dirs() -> None:

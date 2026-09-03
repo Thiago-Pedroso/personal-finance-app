@@ -24,9 +24,9 @@ from pathlib import Path
 import gspread
 from gspread.utils import ValueRenderOption, rowcol_to_a1
 
-from .config import GOOGLE_SA_CREDENTIALS, ROOT, SHEET_ID
+from .config import DEFAULT_TIMEZONE, GOOGLE_SA_CREDENTIALS, ROOT, SHEET_ID
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # Escopos: Sheets (ler/gravar) + Drive (abrir a planilha por ID / criar abas).
 _SCOPES = [
@@ -359,8 +359,11 @@ def ensure_current_schema() -> list[str]:
         config_worksheet.update(values=[["key", "value"]], range_name="A1",
                                 value_input_option="RAW")
         worksheets[CONFIG_TAB] = config_worksheet
-    elif read_config("schema_version", 0) == SCHEMA_VERSION:
-        return []
+    else:
+        schema_version = read_config("schema_version", 0)
+        configured_timezone = read_config("timezone")
+        if schema_version == SCHEMA_VERSION and configured_timezone is not None:
+            return []
     changes = []
     for tab, schema in SCHEMAS.items():
         expected_header = [name for name, _ in schema]
@@ -391,6 +394,9 @@ def ensure_current_schema() -> list[str]:
                          value_input_option="RAW")
         changes.extend(f"coluna {tab}.{name}" for name in missing_header)
     reset_cache()
+    if read_config("timezone") is None:
+        write_config("timezone", DEFAULT_TIMEZONE)
+        changes.append("Config.timezone")
     write_config("schema_version", SCHEMA_VERSION)
     return changes
 

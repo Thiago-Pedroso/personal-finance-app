@@ -13,6 +13,7 @@ from . import ledger as L
 from . import pluggy_client as pc
 from . import sheets
 from .config import BACKFILL_DAYS, ensure_dirs
+from .transaction_dates import load_timezone
 
 
 def _load_state() -> dict:
@@ -39,6 +40,7 @@ def main() -> None:
     api_key = pc.get_api_key()
     state = _load_state()
     ledger = L.load_ledger()
+    local_timezone = load_timezone()
     run_started = datetime.now(timezone.utc)
 
     total_added = total_updated = 0
@@ -62,7 +64,7 @@ def main() -> None:
                 txs = pc.fetch_transactions(
                     client, acc_id, var_from=var_from, created_at_from=created_at_from
                 )
-                recs = [L.normalize(t, acc, item_id) for t in txs]
+                recs = [L.normalize(t, acc, item_id, local_timezone) for t in txs]
                 a, u = L.upsert(ledger, recs)
                 total_added += a
                 total_updated += u

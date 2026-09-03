@@ -21,7 +21,7 @@ import yaml
 
 from . import sheets
 from . import taxonomy as T
-from .config import SEED_DIR
+from .config import DEFAULT_TIMEZONE, SEED_DIR
 
 
 def _parse_taxonomy(raw: dict) -> tuple[dict, dict, dict]:
@@ -108,8 +108,9 @@ def main() -> None:
     print(f"  PluggyMap:{len(pmap)} categorias da Pluggy mapeadas")
     sheets.write_config("budgets", fx["budgets"])
     sheets.write_config("sync_state", {})
+    sheets.write_config("timezone", DEFAULT_TIMEZONE)
     sheets.write_config("schema_version", sheets.SCHEMA_VERSION)
-    print("  Config:   budgets, sync_state, schema_version")
+    print("  Config:   budgets, sync_state, timezone, schema_version")
 
     info = sheets.check()
     print(f"\nPronto! Banco de demonstração criado em '{info['title']}'.")
