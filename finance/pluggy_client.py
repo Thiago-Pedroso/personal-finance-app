@@ -1,26 +1,14 @@
 """Cliente Pluggy: autenticação e busca paginada de contas/transações."""
 
 import os
+from urllib.parse import parse_qs, urlparse
 
 from dotenv import load_dotenv
 import pluggy_sdk
 from pluggy_sdk import ApiClient, Configuration
-from pluggy_sdk.models import AuthRequest, CreditCardMetadata, Item
+from pluggy_sdk.models import AuthRequest, Item
 
 load_dotenv()
-
-# Bug do SDK: a API devolve payeeMCC como int, mas o model declara StrictStr.
-_original_cc_from_dict = CreditCardMetadata.from_dict.__func__
-
-
-@classmethod
-def _patched_cc_from_dict(cls, obj):
-    if obj and obj.get("payeeMCC") is not None:
-        obj = {**obj, "payeeMCC": str(obj["payeeMCC"])}
-    return _original_cc_from_dict(cls, obj)
-
-
-CreditCardMetadata.from_dict = _patched_cc_from_dict
 
 # Bug do SDK: a API devolve products novos (ex.: EXCHANGE_OPERATIONS) que esta
 # versão do SDK ainda não conhece e rejeita na validação. Filtramos para os
@@ -72,9 +60,9 @@ def fetch_transactions(
     account_id: str,
     var_from=None,
     created_at_from=None,
-    page_size: int = 500,
 ) -> list:
-    """Busca todas as transações da conta paginando até o fim.
+    """Busca todas as transações da conta paginando até o fim (endpoint v2, cursor-based;
+    o v1 paginado por `page`/`page_size` foi descontinuado pela Pluggy).
 
     - `var_from`: filtro por DATA da transação (usado no backfill).
     - `created_at_from`: filtro pela data de INSERÇÃO na Pluggy (usado no incremental;
@@ -82,17 +70,22 @@ def fetch_transactions(
     """
     api = pluggy_sdk.TransactionApi(client)
     out: list = []
-    page = 1
+    after = None
     while True:
-        kwargs = {"account_id": account_id, "page_size": page_size, "page": page}
+        kwargs = {"account_id": account_id}
         if var_from is not None:
-            kwargs["var_from"] = var_from
+            kwargs["date_from"] = var_from
         if created_at_from is not None:
             kwargs["created_at_from"] = created_at_from
-        resp = api.transactions_list(**kwargs)
+        if after is not None:
+            kwargs["after"] = after
+        resp = api.transactions_list_by_cursor(**kwargs)
         out.extend(resp.results)
-        total_pages = int(resp.total_pages or 1)
-        if page >= total_pages or not resp.results:
+        if not resp.next:
             break
-        page += 1
+        # `next` vem como querystring completa (ex.: "?after=<cursor>"); a API só aceita
+        # o valor de `after` isolado e já decodificado.
+        after = parse_qs(urlparse(resp.next).query).get("after", [None])[0]
+        if not after:
+            break
     return out
