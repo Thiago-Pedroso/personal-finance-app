@@ -38,7 +38,16 @@ sheets.write_records = lambda tab, recs: STORE.__setitem__(tab, copy.deepcopy(li
 sheets.read_config = lambda key, default=None: copy.deepcopy(STORE["Config"].get(key, default))
 sheets.write_config = lambda key, val: STORE["Config"].__setitem__(key, copy.deepcopy(val))
 sheets.ensure_tabs = lambda: None
+sheets.ensure_current_schema = lambda: []
 sheets.check = lambda: {"title": "TEST", "url": "mem://", "tabs": list(STORE)}
+
+
+def update_changed_rows(tab, records, changed_ids, id_field="id"):
+    STORE[tab] = copy.deepcopy(list(records))
+    return len(changed_ids)
+
+
+sheets.update_changed_rows = update_changed_rows
 
 
 def _seed():
@@ -78,6 +87,22 @@ def test_end_to_end():
     assert saved["category"] == "Alimentação" and saved["subcategory"] == "Restaurante"
     assert saved["category_source"] == "manual" and saved["note"] == "teste"
 
+    DECISIONS_FILE.write_text(json.dumps({"assignments": [{
+        "ids": [target], "tags_add": ["Viagem Teste", "  viagem   teste  ", "Evento"]
+    }]}))
+    categorize.apply(learn=False)
+    saved = {r["id"]: r for r in STORE["Ledger"]}[target]
+    assert saved["category"] == "Alimentação"
+    assert saved["tags"] == ["Evento", "Viagem Teste"]
+
+    DECISIONS_FILE.write_text(json.dumps({"assignments": [{
+        "ids": [target], "tags_remove": ["viágem teste"]
+    }]}))
+    categorize.apply(learn=False)
+    saved = {r["id"]: r for r in STORE["Ledger"]}[target]
+    assert saved["category"] == "Alimentação"
+    assert saved["tags"] == ["Evento"]
+
     # relatórios: gera a partir do store e confere o dashboard
     from finance import report
     import sys
@@ -90,6 +115,11 @@ def test_end_to_end():
     dash = json.loads((REPORTS_DIR / "dashboard.json").read_text())
     assert dash["total_transactions"] == 94
     assert dash["months"], "dashboard sem meses"
+    assert dash["tags"] == ["Evento"]
+    tagged_month = json.loads((REPORTS_DIR / f"{saved['date'][:7]}.json").read_text())
+    tagged_transaction = next(transaction for transaction in tagged_month["transactions"]
+                              if transaction["id"] == target)
+    assert tagged_transaction["tags"] == ["Evento"]
     print(f"  ledger={len(led)}  meses={len(dash['months'])}  "
           f"pendências={dash['pending']}  categorias12m={len(dash['by_category_12m'])}")
 
