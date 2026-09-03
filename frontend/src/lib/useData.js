@@ -20,7 +20,7 @@ export function useData() {
 
   const loadDash = useCallback(async () => {
     const d = await getDashboard()
-    setCategoryMeta(d.category_meta)   // cor/ícone por categoria, antes de renderizar
+    setCategoryMeta(d.category_meta, d.subcategory_meta)
     setDash(d)
     const last = d.months[d.months.length - 1]?.month
     setMonth((c) => c || last)

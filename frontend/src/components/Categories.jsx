@@ -3,7 +3,7 @@ import { Card, CardHead, Button } from './ui/primitives.jsx'
 import { inputCls } from './ui/MultiSelect.jsx'
 import { TrendBars, HBars } from './charts.jsx'
 import { useDrill } from '../lib/useDrill.jsx'
-import { catMeta } from '../lib/categories.jsx'
+import { catMeta, subcategoryMeta } from '../lib/categories.jsx'
 import { brl, signedBrl, fmtPct, monthShortY, monthLabel } from '../lib/format.js'
 import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 import { ArrowRight } from 'lucide-react'
@@ -39,7 +39,8 @@ export function Categories({ dash, mdata, month, selectedCat, setSelectedCat,
   const selCur = (mdata.by_category || {})[sel]
   const subs = selCur ? Object.entries(selCur.subcategories || {})
     .map(([label, s]) => ({ label, value: incomeDom ? s.income : s.expense,
-      count: s.count })).filter((s) => s.value > 0)
+      count: s.count, color: subcategoryMeta(sel, label).color }))
+    .filter((s) => s.value > 0)
     .sort((a, b) => b.value - a.value) : []
 
   const cmp = allCats.map((c) => {

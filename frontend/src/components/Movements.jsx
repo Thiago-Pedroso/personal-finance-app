@@ -1,5 +1,5 @@
 import { Card } from './ui/primitives.jsx'
-import { catMeta } from '../lib/categories.jsx'
+import { catMeta, SubcategoryTag } from '../lib/categories.jsx'
 import { useDrill } from '../lib/useDrill.jsx'
 import { brl, signedBrl, monthLabel } from '../lib/format.js'
 import { SensitiveAmount } from './ui/SensitiveValue.jsx'
@@ -67,7 +67,7 @@ export function Movements({ dash, mdata, month }) {
                       `${c} / ${x.s} — ${monthLabel(month)}`,
                       { cats: [c], sub: x.s })}
                       className="flex justify-between hover:text-text">
-                      <span>{x.s}</span>
+                      <SubcategoryTag category={c} subcategory={x.s} size="xs" />
                       <span className={`tnum ${x.net >= 0 ? 'text-green'
                         : 'text-red'}`}>
                         <SensitiveAmount>{signedBrl(x.net)}</SensitiveAmount>

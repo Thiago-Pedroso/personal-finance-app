@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Card, CardHead, Button, Badge } from './ui/primitives.jsx'
+import { Card, CardHead, Button } from './ui/primitives.jsx'
 import { inputCls } from './ui/MultiSelect.jsx'
 import { TransactionsTable } from './TransactionsTable.jsx'
+import { CategoryTag } from '../lib/categories.jsx'
 import { signedBrl } from '../lib/format.js'
 import { Trash2, MessageSquare, Pencil, Check, X } from 'lucide-react'
 
@@ -41,9 +42,8 @@ function QueueItem({ q, taxonomy, onUpdate, onRemove }) {
           {new Date(q.ts).toLocaleString('pt-BR')} · {q.ids.length} lançamento(s)
           {q.edited_at && <span className="italic">· editado</span>}
           {q.suggestion && (
-            <Badge tone="blue">{q.suggestion.category}
-              {q.suggestion.subcategory
-                ? ` / ${q.suggestion.subcategory}` : ''}</Badge>
+            <CategoryTag size="xs" category={q.suggestion.category}
+              subcategory={q.suggestion.subcategory} />
           )}
         </div>
         {!edit && (

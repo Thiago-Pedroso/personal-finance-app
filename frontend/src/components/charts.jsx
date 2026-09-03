@@ -5,6 +5,7 @@ import {
 import { Receipt } from 'lucide-react'
 import { brl, brl0, monthShortY } from '../lib/format.js'
 import { catColor, catMeta } from '../lib/categories.jsx'
+import { readableAccent } from '../lib/colors.js'
 import { usePrivacy } from '../lib/usePrivacy.jsx'
 import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 
@@ -110,9 +111,10 @@ const REST_LABEL = 'Outras categorias'
 
 export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
   const { valuesHidden } = usePrivacy()
-  const colorOf = (label, i) =>
-    label === REST_LABEL ? '#8a97a6'
-      : palette ? PALETTE[i % PALETTE.length] : catColor(label)
+  const colorOf = (slice, index) =>
+    slice.label === REST_LABEL ? '#8a97a6'
+      : slice.color || (palette ? PALETTE[index % PALETTE.length]
+        : catColor(slice.label))
   const visible = slices.filter((s) => s.value > 0)
     .sort((a, b) => b.value - a.value)
   const rest = visible.slice(MAX_SLICES)
@@ -132,7 +134,7 @@ export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
             outerRadius={90} paddingAngle={1.5} stroke="none"
             onClick={(d) => d.label !== REST_LABEL && onSelect?.(d.label)}>
             {data.map((d, i) => <Cell key={d.label} className="cursor-pointer"
-              fill={colorOf(d.label, i)} />)}
+              fill={colorOf(d, i)} />)}
           </Pie>
           <Tooltip content={({ active, payload }) => active && payload?.length ? (
             <div className="rounded-xl border border-border bg-surface2/95
@@ -161,7 +163,7 @@ export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
               <span className="flex items-center gap-2">
                 {M ? <M.Icon className="size-3.5" style={{ color: M.color }} />
                   : <i className="size-2.5 rounded-[3px]"
-                      style={{ background: colorOf(s.label, i) }} />}
+                      style={{ background: colorOf(s, i) }} />}
                 {isRest ? `${s.label} (${s.rest})` : s.label}
               </span>
               <span className="tnum text-muted">
@@ -200,16 +202,18 @@ export function HBars({ items, color = '#f4685f', onClick, onOpen, byCat,
     <div className="flex flex-col gap-2.5">
       {items.map((it) => {
         const M = byCat ? catMeta(it.label) : null
-        const bar = byCat ? M.color : color
+        const bar = byCat ? M.color : it.color || color
         return (
         <div key={it.key ?? it.label} className="group">
           <div className="mb-1 flex items-center justify-between gap-2
             text-[13px]">
             <button onClick={() => onClick?.(it.label)}
               className={`flex flex-1 items-center gap-1.5 font-medium
-                text-left ${onClick ? 'cursor-pointer hover:text-green'
-                  : 'cursor-default'}`}>
-              {M && <M.Icon className="size-3.5" style={{ color: M.color }} />}
+                text-left ${onClick ? 'cursor-pointer hover:brightness-125'
+                  : 'cursor-default'}`}
+              style={it.color ? { color: readableAccent(it.color) } : undefined}>
+              {M && <M.Icon className="size-3.5"
+                style={{ color: readableAccent(M.color) }} />}
               {it.label}
               {it.count != null && <span className="ml-1 text-[11px]
                 text-faint">{it.count}x</span>}

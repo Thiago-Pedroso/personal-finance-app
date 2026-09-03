@@ -6,7 +6,9 @@ import {
 import { Card } from './ui/primitives.jsx'
 import { MultiSelect, inputCls } from './ui/MultiSelect.jsx'
 import { Badge, Button } from './ui/primitives.jsx'
-import { effectiveCategory, CategoryTag } from '../lib/categories.jsx'
+import {
+  effectiveCategory, CategoryTag, SubcategoryTag,
+} from '../lib/categories.jsx'
 import { signedBrl, brl, fullDate, longDate } from '../lib/format.js'
 import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 
@@ -191,6 +193,7 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
               <Badge tone="violet">dividido</Badge>
               {e.splits.map((s, k) => (
                 <CategoryTag key={k} size="xs" category={s.category}
+                  subcategory={s.subcategory}
                   title={`${s.category}${s.subcategory ? '/' + s.subcategory : ''} ${signedBrl(s.amount)}`}
                   onClick={() => pick(s.category)} />
               ))}
@@ -226,14 +229,9 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
         if (e.kind !== 'cat' || !e.subcategory) {
           return <span className="text-faint">—</span>
         }
-        return (
-          <button onClick={() => set('sub', e.subcategory)}
-            className="whitespace-nowrap rounded-md px-1.5 py-0.5 text-[12.5px]
-              text-muted hover:bg-surface2 hover:text-text"
-            title="Filtrar por esta subcategoria">
-            {e.subcategory}
-          </button>
-        )
+        return <SubcategoryTag category={e.label} subcategory={e.subcategory}
+          onClick={() => set('sub', e.subcategory)}
+          title="Filtrar por esta subcategoria" />
       },
     },
     { accessorKey: 'account_name', header: 'Conta', enableSorting: false,

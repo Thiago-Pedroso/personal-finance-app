@@ -5,6 +5,9 @@ import {
   ShoppingCart, Plane, HeartHandshake, Receipt, Shirt, Gift, Dog,
   CarTaxiFront, Undo2,
 } from 'lucide-react'
+import {
+  derivedAccent, taxonomyChipStyle, validHexColor,
+} from './colors.js'
 
 // Registry de ícones: nome (vindo da planilha) -> componente.
 const ICONS = {
@@ -20,9 +23,11 @@ const FALLBACK = { Icon: Shapes, color: '#8a97a6' }
 // Variável de módulo em vez de contexto: o dado é global, carrega uma vez, e
 // assim os 12 componentes que chamam catMeta() não precisam mudar.
 let META = {}
+let SUBCATEGORY_META = {}
 
-export function setCategoryMeta(meta) {
+export function setCategoryMeta(meta, subcategoryMeta) {
   META = meta || {}
+  SUBCATEGORY_META = subcategoryMeta || {}
 }
 
 export const UNCAT = { Icon: HelpCircle, color: '#e0a93b' }
@@ -30,9 +35,17 @@ export const UNCAT = { Icon: HelpCircle, color: '#e0a93b' }
 export const catMeta = (name) => {
   const m = META[name]
   if (!m) return FALLBACK
-  return { Icon: ICONS[m.icon] || FALLBACK.Icon, color: m.color || FALLBACK.color }
+  const color = validHexColor(m.color, FALLBACK.color)
+  return { Icon: ICONS[m.icon] || FALLBACK.Icon, color }
 }
 export const catColor = (name) => catMeta(name).color
+
+export function subcategoryMeta(category, subcategory) {
+  const configured = SUBCATEGORY_META[category]?.[subcategory] || {}
+  const color = validHexColor(configured.color, null)
+    || derivedAccent(catColor(category), `${category}:${subcategory}`)
+  return { Icon: configured.icon ? ICONS[configured.icon] || null : null, color }
+}
 
 // Tipos de transferência que a Pluggy "chuta" — não são categoria de verdade.
 const TYPE_SUBS = new Set(['PIX recebido', 'PIX enviado', 'TED/DOC'])
@@ -52,30 +65,42 @@ export function effectiveCategory(t) {
 }
 
 // Chip: ícone colorido + nome. `onClick` torna clicável (filtrar/drill).
-export function CategoryTag({ category, subcategory, uncategorized, hint,
-  size = 'sm', onClick, title }) {
-  const meta = uncategorized ? UNCAT : catMeta(category)
-  const I = meta.Icon
+function TaxonomyChip({ label, meta, size, onClick, title }) {
+  const Icon = meta.Icon
   const px = size === 'xs' ? 'px-1.5 py-0.5 text-[11px]'
     : 'px-2 py-1 text-[12px]'
   const isz = size === 'xs' ? 'size-3' : 'size-3.5'
   const cls = `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap
     rounded-full border font-medium
     ${px} ${onClick ? 'cursor-pointer hover:brightness-125 transition' : ''}`
-  const style = uncategorized
-    ? { color: '#e0a93b', borderColor: '#e0a93b55', background: '#e0a93b18' }
-    : { color: meta.color, borderColor: meta.color + '55',
-        background: meta.color + '1a' }
   const Cmp = onClick ? 'button' : 'span'
   return (
+    <Cmp className={cls} style={taxonomyChipStyle(meta.color)} onClick={onClick}
+      title={title || label}>
+      {Icon && <Icon className={`${isz} shrink-0`} />}
+      {label}
+    </Cmp>
+  )
+}
+
+export function SubcategoryTag({ category, subcategory, size = 'sm', onClick,
+  title }) {
+  return <TaxonomyChip label={subcategory}
+    meta={subcategoryMeta(category, subcategory)} size={size}
+    onClick={onClick} title={title} />
+}
+
+export function CategoryTag({ category, subcategory, uncategorized, hint,
+  size = 'sm', onClick, onSubcategoryClick, title }) {
+  const label = uncategorized ? 'Sem categoria' : category
+  const meta = uncategorized ? UNCAT : catMeta(category)
+  return (
     <span className="inline-flex items-center gap-1.5">
-      <Cmp className={cls} style={style} onClick={onClick}
-        title={title || hint || category || 'Sem categoria'}>
-        <I className={`${isz} shrink-0`} />
-        {uncategorized ? 'Sem categoria' : category}
-      </Cmp>
+      <TaxonomyChip label={label} meta={meta} size={size} onClick={onClick}
+        title={title || hint || label} />
       {subcategory && !uncategorized && (
-        <span className="text-[12px] text-faint">{subcategory}</span>
+        <SubcategoryTag category={category} subcategory={subcategory} size={size}
+          onClick={onSubcategoryClick} title={title} />
       )}
     </span>
   )

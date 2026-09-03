@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Card, CardHead, Button } from './ui/primitives.jsx'
 import { CashflowChart, CategoryDonut, HBars, Sparkline } from './charts.jsx'
-import { catMeta } from '../lib/categories.jsx'
+import { catMeta, subcategoryMeta } from '../lib/categories.jsx'
 import { useDrill } from '../lib/useDrill.jsx'
 import { brl, signedBrl, fmtPct, pctDelta, monthLabel } from '../lib/format.js'
 import { SensitiveAmount } from './ui/SensitiveValue.jsx'
@@ -90,7 +90,8 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
     : dash.months
   const subItems = focus
     ? Object.entries(mdata.by_category?.[focus]?.subcategories || {})
-        .map(([label, s]) => ({ label, value: s.expense, count: s.count }))
+        .map(([label, s]) => ({ label, value: s.expense, count: s.count,
+          color: subcategoryMeta(focus, label).color }))
         .filter((s) => s.value > 0).sort((a, b) => b.value - a.value)
     : null
   const tag = focus ? ` · ${focus}` : ''
@@ -358,7 +359,8 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
           <CategoryDonut
             palette={!!focus}
             slices={focus
-              ? (subItems || []).map((s) => ({ label: s.label, value: s.value }))
+              ? (subItems || []).map((s) => ({ label: s.label, value: s.value,
+                  color: s.color }))
               : cats.map((c) => ({ label: c.label, value: c.value }))}
             onSelect={(label) => focus
               ? openCat(focus, label) : setFocus(label)}
