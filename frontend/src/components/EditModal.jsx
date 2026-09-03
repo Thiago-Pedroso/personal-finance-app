@@ -3,7 +3,6 @@ import { Modal } from './ui/Modal.jsx'
 import { Button, Spinner } from './ui/primitives.jsx'
 import { inputCls } from './ui/MultiSelect.jsx'
 import { useToast } from './ui/Toast.jsx'
-import { postEdit, postExclude } from '../lib/api.js'
 import { signedBrl, brl, dayMonth } from '../lib/format.js'
 import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 import {
@@ -35,7 +34,7 @@ const MATCHES = [
 ]
 
 export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTags,
-  onSaved }) {
+  onSaved, saveEdit }) {
   const t = useToast()
   const first = txns[0] || {}
   const [mode, setMode] = useState('value')
@@ -177,7 +176,7 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
           note: r.note || '',
         }))
       }
-      const r = await postEdit(payload)
+      await saveEdit(payload)
       if (mode === 'queue') {
         t(`${ids.length} lançamento(s) na Fila do Claude.\n` +
           'Veja/edite em "Fila do Claude" (topo) ou na aba Revisar.', 'success', 6000)
@@ -191,7 +190,9 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
             ? (ruleExcl ? ' + regra que já rasura o que casar.' : ' + regra aprendida.')
             : '.'), 'success')
       }
-      onSaved(mode !== 'queue')
+      // edição de linha já apareceu na tela e grava em segundo plano;
+      // só regra e fila precisam de releitura aqui
+      if (mode === 'rule' || mode === 'queue') onSaved(mode !== 'queue')
       onClose()
     } catch (e) {
       t('Erro ao salvar: ' + e.message, 'error', 7000)
@@ -203,12 +204,11 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
   async function toggleExclude() {
     setExcluding(true)
     try {
-      await postExclude(ids, !allExcluded)
+      await saveEdit({ mode: 'exclude', ids, excluded: !allExcluded })
       t(allExcluded
         ? `${ids.length} lançamento(s) restaurado(s).`
         : `${ids.length} lançamento(s) rasurado(s) — fora dos relatórios.`,
         'success')
-      onSaved(true)
       onClose()
     } catch (e) {
       t('Erro: ' + e.message, 'error', 7000)

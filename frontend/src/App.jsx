@@ -164,6 +164,13 @@ function Shell() {
               ? <EyeOff className="size-4" />
               : <Eye className="size-4" />}
           </Button>
+          {d.pendingSaves > 0 && (
+            <span className="flex items-center gap-1.5 text-[12px] text-muted"
+              title="As alterações já estão na tela e estão sendo gravadas.">
+              <RefreshCw className="size-3.5 animate-[spin_.8s_linear_infinite]" />
+              salvando {d.pendingSaves}
+            </span>
+          )}
           <Button variant="ghost" onClick={d.refresh} disabled={d.busy}>
             <RefreshCw className={`size-4 ${d.busy ? 'animate-[spin_.8s_linear_infinite]' : ''}`} />
             Atualizar
@@ -244,7 +251,7 @@ function Shell() {
         <EditModal open={edit.open} onClose={closeEdit} txns={edit.rows}
           taxonomy={dash.taxonomy} allTxns={mdata.transactions || []}
           availableTags={dash.tags || []}
-          onSaved={onSaved} />
+          onSaved={onSaved} saveEdit={d.saveEdit} />
       )}
     </div>
   )

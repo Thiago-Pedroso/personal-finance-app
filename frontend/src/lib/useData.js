@@ -1,7 +1,57 @@
-import { useCallback, useEffect, useState } from 'react'
-import { getDashboard, getMonth, getQueue } from './api.js'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { getDashboard, getMonth, getQueue, postEdit } from './api.js'
 import { aggregateYear, yearsOf } from './aggregate.js'
 import { setCategoryMeta } from './categories.jsx'
+import { configure, drain, enqueue, subscribe } from './outbox.js'
+
+const tagKey = (t) => String(t).trim().replace(/\s+/g, ' ').toLowerCase()
+
+function localTags(current, add, remove) {
+  const fora = new Set((remove || []).map(tagKey))
+  const out = (current || []).filter((t) => !fora.has(tagKey(t)))
+  const vistos = new Set(out.map(tagKey))
+  for (const t of add || []) {
+    const k = tagKey(t)
+    if (k && !vistos.has(k)) { out.push(String(t).trim()); vistos.add(k) }
+  }
+  return out.sort((a, b) => tagKey(a).localeCompare(tagKey(b)))
+}
+
+// Espelha na tela o que o backend vai gravar — só os campos visíveis do card.
+// Os totais NÃO são recalculados aqui de propósito: as regras de tratamento,
+// split e rasurado vivem no report.py, e duplicá-las em JS abriria espaço para
+// os dois lados divergirem em silêncio. Eles chegam no refresh seguinte.
+function patchOf(payload, tx) {
+  const p = {}
+  if (payload.mode === 'tags') {
+    p.tags = localTags(tx.tags, payload.tags_add, payload.tags_remove)
+  } else if (payload.mode === 'split' && payload.splits?.length) {
+    p.splits = payload.splits
+    if (payload.note != null) p.note = payload.note
+  } else {
+    if (payload.category) {
+      p.category = payload.category
+      p.subcategory = payload.subcategory || null
+      p.category_source = 'manual'
+      p.reviewed = true
+      p.needs_review = false
+    }
+    if (payload.note != null) p.note = payload.note
+  }
+  if (payload.excluded !== undefined) p.excluded = !!payload.excluded
+  return p
+}
+
+function patchList(list, ids, payload) {
+  const alvo = new Set(ids || [])
+  let mudou = false
+  const out = (list || []).map((tx) => {
+    if (!alvo.has(tx.id)) return tx
+    mudou = true
+    return { ...tx, ...patchOf(payload, tx) }
+  })
+  return mudou ? out : list
+}
 
 export function useData() {
   const [dash, setDash] = useState(null)
@@ -13,6 +63,7 @@ export function useData() {
   const [queue, setQueue] = useState([])
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [pendingSaves, setPendingSaves] = useState(0)
 
   const loadQueue = useCallback(async () => {
     try { setQueue((await getQueue()).items || []) } catch { /* noop */ }
@@ -80,12 +131,59 @@ export function useData() {
     }
   }, [loadDash, loadQueue, mode, month, year])
 
+  // a fila drena fora do render; o refresh corrente vive num ref para não
+  // reconfigurar o outbox a cada mudança de mês/ano
+  const refreshRef = useRef(refresh)
+  refreshRef.current = refresh
+
+  useEffect(() => subscribe(setPendingSaves), [])
+
+  // O relatório roda adiado no servidor. Recarregar antes dele terminar leria o
+  // dashboard velho e desfaria a mudança na tela, então esperamos o arquivo
+  // anunciar que foi regerado.
+  const aguardaRelatorio = useCallback(async (desde) => {
+    for (let tentativa = 0; tentativa < 12; tentativa++) {
+      await new Promise((pronto) => setTimeout(pronto, 700))
+      try {
+        const d = await getDashboard()
+        if (Date.parse(d.generated_at) > desde) {
+          await refreshRef.current?.()
+          return
+        }
+      } catch { /* relatório sendo reescrito; tenta de novo */ }
+    }
+  }, [])
+
+  useEffect(() => {
+    configure({
+      onError: (_payload, e) => setError('Erro ao salvar: ' + e.message),
+      onIdle: () => aguardaRelatorio(Date.now()),
+    })
+    drain()   // retoma o que ficou pendente de uma aba fechada no meio
+  }, [aguardaRelatorio])
+
+  const saveEdit = useCallback(async (payload) => {
+    // fila do Claude e criação de regra não são edição de linha: afetam mais do
+    // que o card editado, então esperam a resposta (quem chama recarrega)
+    if (payload.mode === 'queue' || payload.mode === 'rule') {
+      await postEdit(payload)
+      return
+    }
+    setMdataMonth((m) => (m
+      ? { ...m, transactions: patchList(m.transactions, payload.ids, payload) } : m))
+    setYearView((y) => (y
+      ? { ...y, transactions: patchList(y.transactions, payload.ids, payload) } : y))
+    setDash((d) => (d ? { ...d, recent: patchList(d.recent, payload.ids, payload) } : d))
+    enqueue(payload)
+  }, [])
+
   const view = mode === 'year' ? yearView : mdataMonth
   const periodKey = mode === 'year' ? year : month
   const years = dash ? yearsOf(dash.months) : []
 
   return {
     dash, view, periodKey, mode, month, year, years, queue, error, busy,
+    pendingSaves, saveEdit,
     setMode, setMonth, setYear, setError, refresh, loadQueue,
   }
 }
