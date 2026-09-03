@@ -66,10 +66,14 @@ RULES_SCHEMA = [
 TAXONOMY_SCHEMA = [("Category", "str"), ("Subcategories", "str"), ("Treatment", "str"),
                    ("Color", "opt"), ("Icon", "opt"), ("Essential", "bool")]
 
+PLUGGY_MAP_SCHEMA = [("PluggyCategory", "str"), ("Category", "str"),
+                     ("Subcategory", "opt")]
+
 SCHEMAS = {
     "Ledger": LEDGER_SCHEMA,
     "Rules": RULES_SCHEMA,
     "Taxonomy": TAXONOMY_SCHEMA,
+    "PluggyMap": PLUGGY_MAP_SCHEMA,
 }
 CONFIG_TAB = "Config"
 

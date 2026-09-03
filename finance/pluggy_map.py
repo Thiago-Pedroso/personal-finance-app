@@ -1,93 +1,52 @@
 """Mapa curado: categoria da Pluggy -> (nossa categoria, subcategoria).
 
-Usado só como **dica/semente** (a Pluggy pode parar de categorizar fora do Pro).
-subcategoria None = precisa ser refinada com o usuário/lojista.
-Direção de transferência (enviado/recebido) é resolvida pelo `type` da transação.
+Vive na aba **PluggyMap** do Sheets; `data/seed/pluggy_map.yaml` é só a semente
+para quem começa do zero. Usado como dica: o `categorize` descarta o que não
+existir na taxonomia. Direção de transferência é resolvida pelo `type`.
 """
 
-# Pluggy category (em inglês) -> (categoria, subcategoria | None)
-PLUGGY_TO_TAXONOMY: dict[str, tuple[str, str | None]] = {
-    # Alimentação
-    "Eating out": ("Alimentação", "Restaurante"),
-    "Food and drinks": ("Alimentação", "Restaurante"),
-    "Food delivery": ("Alimentação", "Delivery"),
-    "Groceries": ("Alimentação", "Supermercado"),
-    # Transporte
-    "Taxi and ride-hailing": ("Transporte", "App/Táxi"),
-    "Gas stations": ("Transporte", "Combustível"),
-    "Parking": ("Transporte", "Estacionamento"),
-    "Transportation": ("Transporte", "Transporte público"),
-    "Automotive": ("Transporte", "Manutenção"),
-    "Car rental": ("Transporte", None),
-    # Moradia
-    "Housing": ("Moradia", None),
-    "Telecommunications": ("Moradia", "Internet/TV"),
-    # Saúde
-    "Pharmacy": ("Saúde", "Farmácia"),
-    "Wellness and fitness": ("Saúde", "Academia"),
-    "Gyms and fitness centers": ("Saúde", "Academia"),
-    "Leisure": ("Lazer", "Cinema/Eventos"),
-    # Lazer
-    "Sports practice": ("Lazer", "Hobbies"),
-    "Sports goods": ("Lazer", "Hobbies"),
-    "Tickets": ("Lazer", "Cinema/Eventos"),
-    "Cinema, theater and concerts": ("Lazer", "Cinema/Eventos"),
-    "Video streaming": ("Lazer", "Streaming"),
-    "Travel": ("Lazer", "Viagem"),
-    "Accomodation": ("Lazer", "Viagem"),
-    "Airport and airlines": ("Lazer", "Viagem"),
-    "Lottery": ("Lazer", "Hobbies"),
-    "Gambling": ("Lazer", "Hobbies"),
-    # Compras
-    "Shopping": ("Compras", None),
-    "Online shopping": ("Compras", None),
-    "Office supplies": ("Compras", "Casa"),
-    "Houseware": ("Compras", "Casa"),
-    "Electronics": ("Compras", "Eletrônicos"),
-    "Clothing": ("Compras", "Vestuário"),
-    "Pet supplies and vet": ("Compras", None),
-    # Serviços
-    "Digital services": ("Serviços", "Assinaturas"),
-    "Services": ("Serviços", "Profissionais"),
-    "Insurance": ("Serviços", "Seguros"),
-    "Bank fees": ("Serviços", "Bancário/Tarifas"),
-    "Account fees": ("Serviços", "Bancário/Tarifas"),
-    # Educação
-    "School": ("Educação", "Cursos"),
-    "Bookstore": ("Educação", "Livros"),
-    # Saúde
-    "Health insurance": ("Saúde", "Plano de saúde"),
-    "Dentist": ("Saúde", "Consultas/Exames"),
-    "Healthcare": ("Saúde", "Consultas/Exames"),
-    # Moradia
-    "Electricity": ("Moradia", "Energia"),
-    "Water": ("Moradia", "Água"),
-    # Impostos / Taxas
-    "Tax on financial operations": ("Impostos/Taxas", "Impostos"),
-    "Taxes on investments": ("Impostos/Taxas", "Impostos"),
-    "Taxes": ("Impostos/Taxas", "Impostos"),
-    "Interests charged": ("Impostos/Taxas", "Multas/Juros"),
-    "Late payment and overdraft costs": ("Impostos/Taxas", "Multas/Juros"),
-    # Investimentos
-    "Investments": ("Investimentos", "Aporte"),
-    "Mutual funds": ("Investimentos", "Aporte"),
-    "Fixed income": ("Investimentos", "Aporte"),
-    "Pension": ("Investimentos", "Aporte"),
-    "Proceeds interests and dividends": ("Investimentos", "Rendimentos"),
-    # Doações
-    "Donations": ("Doações", "Pessoas"),
-    # Transporte
-    "Public transportation": ("Transporte", "Transporte público"),
-    "Vehicle maintenance": ("Transporte", "Manutenção"),
-    "Tolls and in vehicle payment": ("Transporte", "Pedágio"),
-    "Transfer - Foreign Exchange": ("Transporte", "Pedágio"),
-    # Transferências (direção resolvida por tipo; ver suggest())
-    "Credit card payment": ("Transferências", "Pagamento de cartão"),
-}
+import yaml
 
-# Categorias da Pluggy que são transferências genéricas (direção por tipo)
-_TRANSFER_GENERIC = {"Transfer - PIX", "Transfer - TED", "Transfers", "Same person transfer",
-                      "Third party transfer - PIX"}
+from . import sheets
+from .config import SEED_DIR
+
+# Categorias da Pluggy que são transferências genéricas (direção por tipo).
+# Ficam no código: são nomes da Pluggy, não da taxonomia do usuário.
+_TRANSFER_GENERIC = {"Transfer - PIX", "Transfer - TED", "Transfers",
+                     "Same person transfer", "Third party transfer - PIX"}
+
+_MAP: dict | None = None
+
+
+def _from_sheet() -> dict:
+    try:
+        recs = sheets.read_records("PluggyMap")
+    except sheets.SheetsError:
+        return {}
+    out = {}
+    for r in recs:
+        key = (r.get("PluggyCategory") or "").strip()
+        cat = (r.get("Category") or "").strip()
+        if key and cat:
+            out[key] = (cat, (r.get("Subcategory") or "").strip() or None)
+    return out
+
+
+def _from_fixture() -> dict:
+    path = SEED_DIR / "pluggy_map.yaml"
+    if not path.exists():
+        return {}
+    raw = yaml.safe_load(path.read_text()) or {}
+    return {k: (v[0], (v[1] or None) if len(v) > 1 else None)
+            for k, v in raw.items() if v}
+
+
+def load(refresh: bool = False) -> dict:
+    """Mapa completo, com cache de módulo: `suggest` roda por transação."""
+    global _MAP
+    if _MAP is None or refresh:
+        _MAP = _from_sheet() or _from_fixture()
+    return _MAP
 
 
 def suggest(pluggy_category: str | None, tx_type: str | None) -> tuple[str, str | None] | None:
@@ -102,4 +61,4 @@ def suggest(pluggy_category: str | None, tx_type: str | None) -> tuple[str, str 
         else:
             sub = "PIX recebido" if tx_type == "CREDIT" else "TED/DOC"
         return ("Transferências", sub)
-    return PLUGGY_TO_TAXONOMY.get(pluggy_category)
+    return load().get(pluggy_category)

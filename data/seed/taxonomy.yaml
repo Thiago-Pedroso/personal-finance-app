@@ -4,7 +4,7 @@
 # avise o Claude para reclassificar o que for preciso.
 
 Alimentação:        [Supermercado, Restaurante, Delivery, Café/Padaria, Ocasiões especiais]
-Transporte:         [Combustível, App/Táxi, Transporte público, Estacionamento, Manutenção, Aluguel de veículo, Lava-jato]
+Transporte:         [Combustível, App/Táxi, Transporte público, Estacionamento, Manutenção, Aluguel de veículo, Lava-jato, Pedágio]
 Moradia:            [Aluguel, Condomínio, Energia, Água, Internet/TV, Gás]
 Saúde:              [Plano de saúde, Farmácia, Consultas/Exames, Academia]
 Lazer:              [Streaming, Bares, Cinema/Eventos, Viagem, Hobbies]

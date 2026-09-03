@@ -30,13 +30,15 @@ def _read_fixtures(src: Path) -> dict:
     rules = json.loads((src / "rules.json").read_text())
     taxonomy = yaml.safe_load((src / "taxonomy.yaml").read_text()) or {}
     budgets = json.loads((src / "budgets.json").read_text())
+    pmap_file = src / "pluggy_map.yaml"
+    pmap = yaml.safe_load(pmap_file.read_text()) if pmap_file.exists() else {}
     return {"ledger": ledger, "rules": rules.get("rules", rules),
-            "taxonomy": taxonomy, "budgets": budgets}
+            "taxonomy": taxonomy, "budgets": budgets, "pluggy_map": pmap or {}}
 
 
 def _non_empty_tabs() -> list[str]:
     busy = []
-    for tab in ("Ledger", "Rules", "Taxonomy"):
+    for tab in ("Ledger", "Rules", "Taxonomy", "PluggyMap"):
         try:
             if sheets.read_records(tab):
                 busy.append(tab)
@@ -79,6 +81,11 @@ def main() -> None:
     # grava categorias + coluna Treatment (default via fallback legado por categoria)
     T.save(fx["taxonomy"])
     print(f"  Taxonomy: {len(fx['taxonomy'])} categorias (com Treatment)")
+    pmap = [{"PluggyCategory": k, "Category": v[0],
+             "Subcategory": (v[1] or None) if len(v) > 1 else None}
+            for k, v in fx["pluggy_map"].items() if v]
+    sheets.write_records("PluggyMap", pmap)
+    print(f"  PluggyMap:{len(pmap)} categorias da Pluggy mapeadas")
     sheets.write_config("budgets", fx["budgets"])
     sheets.write_config("sync_state", {})
     sheets.write_config("schema_version", sheets.SCHEMA_VERSION)
