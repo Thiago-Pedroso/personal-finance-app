@@ -90,7 +90,8 @@ function Shell() {
     + d.queue.length
 
   return (
-    <div className="relative z-[1] mx-auto max-w-[1240px] px-5 pb-24 pt-7">
+    <div className="relative z-[1] mx-auto w-full max-w-[1240px] px-4 pb-24 pt-7
+      sm:px-6 lg:px-8 xl:max-w-[1560px] 2xl:max-w-[1800px]">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-[22px] font-bold
