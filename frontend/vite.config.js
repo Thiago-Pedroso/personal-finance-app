@@ -12,6 +12,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DATA = path.join(ROOT, 'data')
 const REPORTS_DIR = path.join(DATA, 'reports')
 const DECISIONS = path.join(DATA, '.decisions.json')
+const EDITS = path.join(DATA, '.edits.json')
 const QUEUE = path.join(DATA, '.claude_queue.jsonl')
 const BUDGET_INPUT = path.join(DATA, '.budget_input.json')
 
@@ -57,6 +58,50 @@ async function applyBudget(b) {
 let lock = Promise.resolve()
 const serialize = (fn) => (lock = lock.then(fn, fn))
 
+// O relatório existe só para o disco estar certo no próximo F5 — ninguém espera por
+// ele. Roda fora do caminho da resposta e agrupado por uma janela de silêncio, para
+// 10 edições seguidas não dispararem 10 regerações.
+let reportTimer = null
+function scheduleReport() {
+  if (reportTimer) clearTimeout(reportTimer)
+  reportTimer = setTimeout(() => {
+    reportTimer = null
+    serialize(() => run('uv', ['run', 'python', '-m', 'finance.report']))
+  }, 1500)
+}
+
+// Edição de linha: grava só as células que mudaram. Não lê a aba inteira, não
+// carrega regras e não gera relatório. Criar regra continua no caminho pesado,
+// porque uma regra afeta lançamentos além do que está sendo editado.
+async function applyRowEdit(p) {
+  const fields = {}
+  if (p.mode === 'tags') {
+    if (p.tags_add?.length) fields.tags_add = p.tags_add
+    if (p.tags_remove?.length) fields.tags_remove = p.tags_remove
+  } else if (p.mode === 'split' && Array.isArray(p.splits) && p.splits.length) {
+    fields.splits = p.splits.map((s) => ({
+      amount: Number(s.amount), category: s.category,
+      subcategory: s.subcategory || null, note: s.note || '',
+    }))
+    if (p.note != null) fields.note = String(p.note)
+  } else {
+    if (p.category) {
+      fields.category = p.category
+      fields.subcategory = p.subcategory || null
+    }
+    if (p.note != null) fields.note = String(p.note)
+  }
+  if (p.excluded !== undefined) fields.excluded = !!p.excluded
+  if (!Object.keys(fields).length)
+    return { ok: false, step: 'edit', stderr: 'nada para gravar' }
+
+  fs.writeFileSync(EDITS,
+    JSON.stringify({ edits: [{ ids: p.ids, fields }] }, null, 2) + '\n')
+  const r = await run('uv', ['run', 'python', '-m', 'finance.edit', EDITS])
+  return { ok: r.ok, step: r.ok ? 'done' : 'edit',
+    log: r.stdout.trim(), stderr: r.stderr.trim() }
+}
+
 async function applyEdit(p) {
   // p = { mode, ids[], category, subcategory, tags_add[], tags_remove[] }
   if (p.mode === 'queue') {
@@ -69,6 +114,12 @@ async function applyEdit(p) {
     })
     fs.appendFileSync(QUEUE, line + '\n')
     return { ok: true, mode: 'queue', queued: p.ids.length }
+  }
+
+  if (p.mode !== 'rule') {
+    const r = await applyRowEdit(p)
+    if (r.ok) scheduleReport()
+    return r
   }
 
   const learn = p.mode === 'rule'

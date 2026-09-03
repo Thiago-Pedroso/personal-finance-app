@@ -257,6 +257,51 @@ def write_records(tab: str, records: list[dict]) -> None:
 
 
 @_retry
+def read_columns(tab: str, fields: list[str]) -> dict[str, list]:
+    """Lê colunas escolhidas num request só. Serve para localizar linhas e ler
+    poucos campos sem baixar a aba inteira (o custo é a latência, não o volume)."""
+    schema = dict(SCHEMAS[tab])
+    order = {name: i + 1 for i, (name, _) in enumerate(SCHEMAS[tab])}
+    letters = [rowcol_to_a1(1, order[name])[:-1] for name in fields]
+    blocks = _ws(tab).batch_get([f"{c}2:{c}" for c in letters],
+                                value_render_option=ValueRenderOption.unformatted)
+    out = {}
+    for name, block in zip(fields, blocks):
+        kind = schema[name]
+        out[name] = [_cell_to_val(kind, row[0] if row else "") for row in block]
+    return out
+
+
+def _cell_ranges(tab: str, row: int, fields: dict) -> list[dict]:
+    """Faixas de uma linha, agrupando colunas vizinhas para encurtar o request."""
+    schema = dict(SCHEMAS[tab])
+    order = {name: i + 1 for i, (name, _) in enumerate(SCHEMAS[tab])}
+    cols = sorted((order[name], name) for name in fields if name in order)
+    out, bloco = [], []
+    for col, name in cols:
+        if bloco and col != bloco[-1][0] + 1:
+            out.append(bloco)
+            bloco = []
+        bloco.append((col, name))
+    if bloco:
+        out.append(bloco)
+    return [{"range": f"{rowcol_to_a1(row, b[0][0])}:{rowcol_to_a1(row, b[-1][0])}",
+             "values": [[_val_to_cell(schema[name], fields[name]) for _, name in b]]}
+            for b in out]
+
+
+@_retry
+def update_fields(tab: str, changes: list[tuple[int, dict]]) -> int:
+    """Grava campos avulsos em linhas específicas, tudo num request só.
+    `changes` = [(número da linha na planilha, {campo: valor})]."""
+    reqs = [r for row, fields in changes for r in _cell_ranges(tab, row, fields)]
+    if not reqs:
+        return 0
+    _ws(tab).batch_update(reqs, value_input_option="RAW")
+    return len(reqs)
+
+
+@_retry
 def update_changed_rows(tab: str, records: list[dict], changed_ids: set,
                         id_field: str = "id") -> int:
     """Atualiza SÓ as linhas cujo id está em `changed_ids`, casando pela posição

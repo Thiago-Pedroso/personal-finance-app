@@ -3,7 +3,8 @@ import pytest
 from finance import sheets
 
 _PATCHABLE = ("read_records", "write_records", "read_config", "write_config",
-              "update_changed_rows", "ensure_tabs", "ensure_current_schema",
+              "update_changed_rows", "read_columns", "update_fields",
+              "ensure_tabs", "ensure_current_schema",
               "check", "open_sheet", "reset_cache")
 _REAL = {name: getattr(sheets, name) for name in _PATCHABLE}
 
