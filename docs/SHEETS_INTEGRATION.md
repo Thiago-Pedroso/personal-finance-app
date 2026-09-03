@@ -165,6 +165,7 @@ descarta o que não existir na sua taxonomia. Sem a aba, o mapa cai no fixture.
 | `budgets` | o objeto de orçamento inteiro (income_plan, spending, savings_goals) |
 | `sync_state` | cursores de sincronização por conta |
 | `timezone` | fuso IANA usado nas datas locais, por exemplo `America/Sao_Paulo` |
+| `min_transaction_date` | piso opcional (`YYYY-MM-DD`); o sync descarta lançamentos anteriores |
 | `schema_version` | versão do esquema (atualmente `4`) |
 
 ---

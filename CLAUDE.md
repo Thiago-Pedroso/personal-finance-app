@@ -49,7 +49,7 @@ uv run python -m finance.categorize stats
 | `Taxonomy` | categorias → subcategorias | `finance/taxonomy.py` |
 | `SubcategoryMeta` | cor e ícone opcionais por subcategoria | `finance/taxonomy.py` |
 | `PluggyMap` | categoria da Pluggy → taxonomia pessoal | `finance/pluggy_map.py` |
-| `Config` | blobs JSON: `budgets`, `sync_state`, `timezone`, `schema_version` | `finance/budgets.py`, `finance/sync.py` |
+| `Config` | blobs JSON: `budgets`, `sync_state`, `timezone`, `min_transaction_date`, `schema_version` | `finance/budgets.py`, `finance/sync.py` |
 
 `Config[timezone]` guarda o fuso IANA usado para transformar timestamps UTC da Pluggy em datas
 locais. O padrão é `America/Sao_Paulo`; nunca derive datas financeiras do fuso do computador.
