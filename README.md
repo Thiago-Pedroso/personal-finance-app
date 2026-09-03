@@ -44,7 +44,7 @@ robô" do Google Cloud (um e-mail + uma chave JSON) que o programa usa para ler/
 **sem abrir navegador nem pedir seu login**. Você faz esta configuração **uma vez só**. As
 instruções abaixo seguem os nomes do console em português.
 
-**1.1. Crie um projeto no Google Cloud.** Acesse <https://console.cloud.google.com>, clique no
+**1.1. Crie um projeto no Google Cloud.** Acesse [https://console.cloud.google.com](https://console.cloud.google.com), clique no
 seletor de projeto no topo → *Novo projeto* → dê um nome (ex.: `finance-control`) → *Criar*.
 
 **1.2. Habilite as duas APIs.** No menu ☰ → *APIs e serviços* → *Biblioteca*. Busque
@@ -66,7 +66,7 @@ lista de Credenciais), copie o **e-mail** dela — é algo como
 `finance-bot@finance-control.iam.gserviceaccount.com`. (Ele também está dentro do
 `credentials.json`, no campo `"client_email"`.)
 
-**1.6. Crie a planilha e compartilhe com a Service Account.** No <https://sheets.google.com> crie
+**1.6. Crie a planilha e compartilhe com a Service Account.** No [https://sheets.google.com](https://sheets.google.com) crie
 uma **planilha em branco** (você é o dono). Clique em *Compartilhar* e cole o **e-mail da Service
 Account** do passo anterior, dando permissão de **Editor**. ⚠️ **Este é o passo que mais gente
 esquece** — sem ele o app dá "permission denied".
@@ -75,6 +75,7 @@ esquece** — sem ele o app dá "permission denied".
 `https://docs.google.com/spreadsheets/d/`**`<SHEET_ID>`**`/edit`.
 
 **1.8. Configure o `.env` e popule a demo:**
+
 ```bash
 cp .env.example .env
 # no .env, preencha SHEET_ID=<o id do passo 1.7>
