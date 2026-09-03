@@ -6,6 +6,10 @@ import { useDrill } from '../lib/useDrill.jsx'
 import { catMeta } from '../lib/categories.jsx'
 import { postBudget } from '../lib/api.js'
 import { brl, brl0, signedBrl, monthLabel } from '../lib/format.js'
+import { usePrivacy } from '../lib/usePrivacy.jsx'
+import {
+  SensitiveAmount, SensitiveFinancialText, SensitiveMoneyInput,
+} from './ui/SensitiveValue.jsx'
 import {
   Save, RotateCcw, Wand2, Plus, Trash2, TrendingUp, AlertTriangle,
   Info, Repeat, PiggyBank,
@@ -23,6 +27,7 @@ const clone = (o) => JSON.parse(JSON.stringify(o || {}))
 export function Planejamento({ dash, mdata, month, onSaved }) {
   const t = useToast()
   const drill = useDrill()
+  const { valuesHidden } = usePrivacy()
   const plan = mdata.plan || { categories: [], total_planned: 0 }
   const sav = mdata.savings || { goals: [], pct: null }
 
@@ -153,13 +158,17 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={suggestFromAvg}><Wand2 className="size-4" />
+          <Button onClick={suggestFromAvg} disabled={valuesHidden}
+            title={valuesHidden ? 'Mostre os valores para sugerir tetos' : undefined}>
+            <Wand2 className="size-4" />
             Sugerir pela média</Button>
           {dirty && (
             <Button variant="ghost" onClick={() => setD(base)}>
               <RotateCcw className="size-4" /> Desfazer</Button>
           )}
-          <Button variant="primary" disabled={!dirty || saving} onClick={save}>
+          <Button variant="primary" disabled={!dirty || saving || valuesHidden}
+            title={valuesHidden ? 'Mostre os valores para salvar' : undefined}
+            onClick={save}>
             <Save className="size-4" /> {saving ? 'Salvando…' : 'Salvar'}
           </Button>
         </div>
@@ -181,8 +190,12 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
           <Card key={l} className="p-4">
             <div className="text-[11px] font-semibold uppercase tracking-wider
               text-muted">{l}</div>
-            <div className={`mt-1 text-[22px] font-bold tnum ${c}`}>{v}</div>
-            <div className="mt-0.5 text-[12px] text-faint">{s}</div>
+            <div className={`mt-1 text-[22px] font-bold tnum ${c}`}>
+              <SensitiveAmount>{v}</SensitiveAmount>
+            </div>
+            <div className="mt-0.5 text-[12px] text-faint">
+              <SensitiveFinancialText>{s}</SensitiveFinancialText>
+            </div>
           </Card>
         ))}
       </div>
@@ -193,13 +206,13 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
           text-muted">Renda esperada</h3>
         <div className="mt-3 flex flex-wrap gap-5">
           <label className="text-[12px] text-muted">Todo mês (recorrente)
-            <input type="number" value={d.income_plan.recurring || ''}
+            <SensitiveMoneyInput value={d.income_plan.recurring || ''}
               onChange={(e) => setIncome('rec', e.target.value)}
               className={inputCls('mt-1 block w-44')} placeholder="0" />
           </label>
           <label className="text-[12px] text-muted">
             Só em {monthLabel(month)} (override)
-            <input type="number" value={d.income_plan.months?.[month] ?? ''}
+            <SensitiveMoneyInput value={d.income_plan.months?.[month] ?? ''}
               onChange={(e) => setIncome('mon', e.target.value)}
               className={inputCls('mt-1 block w-44')} placeholder="usa recorrente" />
           </label>
@@ -245,13 +258,13 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
                       </span>
                     </td>
                     <td className="px-3 py-2">
-                      <input type="number" value={d.spending.recurring[c] ?? ''}
+                      <SensitiveMoneyInput value={d.spending.recurring[c] ?? ''}
                         onChange={(e) => setRec(c, e.target.value)}
                         placeholder="—"
                         className={inputCls('w-28 py-1')} />
                     </td>
                     <td className="px-3 py-2">
-                      <input type="number" value={ov[c] ?? ''}
+                      <SensitiveMoneyInput value={ov[c] ?? ''}
                         onChange={(e) => setOv(c, e.target.value)}
                         placeholder="herda"
                         className={inputCls('w-28 py-1')} />
@@ -260,11 +273,14 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
                       <button onClick={() => drill?.drill(
                         `${c} — ${monthLabel(month)}`, { cats: [c], flow: 'out' })}
                         className="tnum font-medium hover:text-green">
-                        {brl(realized)}</button>
+                        <SensitiveAmount>{brl(realized)}</SensitiveAmount>
+                      </button>
                     </td>
                     <td className={`px-3 py-2 text-right tnum ${
                       planned && realized > planned ? 'text-red' : 'text-muted'}`}>
-                      {planned ? signedBrl(planned - realized) : '—'}</td>
+                      {planned
+                        ? <SensitiveAmount>{signedBrl(planned - realized)}</SensitiveAmount>
+                        : '—'}</td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
                         <div className="relative h-2 flex-1 overflow-hidden
@@ -296,8 +312,12 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
             </span>}
             sub="meta de aporte por categoria — o realizado conta só os aportes (resgate e rendimento não entram)"
             right={<span className="text-[12px] text-muted">
-              meta <b className="tnum text-text">{brl0(savPlanned)}</b> · aportado{' '}
-              <b className="tnum text-violet">{brl0(savReal)}</b></span>} />
+              meta <b className="tnum text-text">
+                <SensitiveAmount>{brl0(savPlanned)}</SensitiveAmount>
+              </b> · aportado{' '}
+              <b className="tnum text-violet">
+                <SensitiveAmount>{brl0(savReal)}</SensitiveAmount>
+              </b></span>} />
           <div className="overflow-x-auto px-2 pb-3">
             <table className="w-full text-[13px]">
               <thead>
@@ -333,13 +353,13 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
                         </span>
                       </td>
                       <td className="px-3 py-2">
-                        <input type="number" value={d.savings_plan.recurring[c] ?? ''}
+                        <SensitiveMoneyInput value={d.savings_plan.recurring[c] ?? ''}
                           onChange={(e) => setSavRec(c, e.target.value)}
                           placeholder="—"
                           className={inputCls('w-28 py-1')} />
                       </td>
                       <td className="px-3 py-2">
-                        <input type="number" value={savOv[c] ?? ''}
+                        <SensitiveMoneyInput value={savOv[c] ?? ''}
                           onChange={(e) => setSavOv(c, e.target.value)}
                           placeholder="herda"
                           className={inputCls('w-28 py-1')} />
@@ -348,13 +368,17 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
                         <button onClick={() => drill?.drill(
                           `${c} — ${monthLabel(month)}`, { cats: [c] })}
                           className="tnum font-medium hover:text-violet">
-                          {brl(realized)}</button>
+                          <SensitiveAmount>{brl(realized)}</SensitiveAmount>
+                        </button>
                       </td>
                       <td className={`px-3 py-2 text-right tnum ${
                         met ? 'text-green' : 'text-muted'}`}>
-                        {!planned ? '—'
-                          : met ? `+${brl0(realized - planned)}`
-                            : brl(planned - realized)}</td>
+                        {!planned ? '—' : (
+                          <SensitiveAmount>
+                            {met ? `+${brl0(realized - planned)}`
+                              : brl(planned - realized)}
+                          </SensitiveAmount>
+                        )}</td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
                           <div className="relative h-2 flex-1 overflow-hidden
@@ -380,8 +404,8 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
         {/* metas de poupança */}
         <Card>
           <CardHead title="Metas de poupança"
-            sub={`Reserva — líquido no período ${signedBrl(
-              sav.reserva_net_period || 0)}`}
+            sub={<SensitiveFinancialText>{`Reserva: líquido no período ${signedBrl(
+              sav.reserva_net_period || 0)}`}</SensitiveFinancialText>}
             right={<Button variant="ghost" onClick={() => setD((s) => {
               const n = clone(s)
               n.savings_goals = [...(n.savings_goals || []),
@@ -411,14 +435,14 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
                   </div>
                   <div className="mt-2 flex gap-3">
                     <label className="text-[11px] text-muted">Tenho hoje
-                      <input type="number" value={g.current || ''}
+                      <SensitiveMoneyInput value={g.current || ''}
                         onChange={(e) => setD((s) => { const n = clone(s)
                           n.savings_goals[idx].current = +e.target.value || 0
                           return n })}
                         className={inputCls('mt-0.5 block w-32 py-1')} />
                     </label>
                     <label className="text-[11px] text-muted">Meta
-                      <input type="number" value={g.target || ''}
+                      <SensitiveMoneyInput value={g.target || ''}
                         onChange={(e) => setD((s) => { const n = clone(s)
                           n.savings_goals[idx].target = +e.target.value || 0
                           return n })}
@@ -457,7 +481,9 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
                 <div key={k} className={`flex items-start gap-2.5 rounded-xl
                   border px-3 py-2.5 text-[13px] ${col}`}>
                   <I className="mt-0.5 size-4 shrink-0" />
-                  <span className="text-text">{ins.text}</span>
+                  <span className="text-text">
+                    <SensitiveFinancialText>{ins.text}</SensitiveFinancialText>
+                  </span>
                 </div>
               )
             })}
@@ -493,7 +519,9 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
                   <td className="px-3 py-2">
                     <span className="flex items-center gap-1.5 text-muted">
                       <Repeat className="size-3.5" />{r.cadence}</span></td>
-                  <td className="px-3 py-2 text-right tnum">{brl(r.amount)}</td>
+                  <td className="px-3 py-2 text-right tnum">
+                    <SensitiveAmount>{brl(r.amount)}</SensitiveAmount>
+                  </td>
                   <td className="px-3 py-2 text-right tnum text-muted">
                     {r.count}x · {r.months}m</td>
                   <td className="px-3 py-2 text-muted">{r.last_date}</td>

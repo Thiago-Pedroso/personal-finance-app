@@ -5,6 +5,7 @@ import { inputCls } from './ui/MultiSelect.jsx'
 import { useToast } from './ui/Toast.jsx'
 import { postEdit, postExclude } from '../lib/api.js'
 import { signedBrl, brl, dayMonth } from '../lib/format.js'
+import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 import {
   Pencil, Tags, Sparkles, MessageSquare, SplitSquareHorizontal, Plus, Trash2,
   Users, EyeOff, Eye, X,
@@ -223,7 +224,9 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
         ? `Editar ${txns.length} lançamentos` : 'Editar lançamento'}
       sub={txns.length === 1
         ? `${first.description} · ${signedBrl(first.signed_amount)}`
-        : `${signedBrl(txns.reduce((a, x) => a + x.signed_amount, 0))} no total`}
+        : <><SensitiveAmount>{signedBrl(
+          txns.reduce((a, x) => a + x.signed_amount, 0))}</SensitiveAmount>{' '}
+          no total</>}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>

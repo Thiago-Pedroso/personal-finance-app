@@ -5,6 +5,7 @@ import { TrendBars, HBars } from './charts.jsx'
 import { useDrill } from '../lib/useDrill.jsx'
 import { catMeta } from '../lib/categories.jsx'
 import { brl, signedBrl, fmtPct, monthShortY, monthLabel } from '../lib/format.js'
+import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 import { ArrowRight } from 'lucide-react'
 
 export function Categories({ dash, mdata, month, selectedCat, setSelectedCat,
@@ -58,7 +59,8 @@ export function Categories({ dash, mdata, month, selectedCat, setSelectedCat,
           <div>
             <h3 className="text-[15px] font-semibold">Análise por categoria</h3>
             <p className="mt-0.5 text-[12px] text-faint">
-              {sel} · {monthLabel(month)} · {brl(totSel)}{' '}
+              {sel} · {monthLabel(month)} ·{' '}
+              <SensitiveAmount>{brl(totSel)}</SensitiveAmount>{' '}
               ({incomeDom ? 'receita' : 'gasto'})
             </p>
           </div>
@@ -120,13 +122,17 @@ export function Categories({ dash, mdata, month, selectedCat, setSelectedCat,
                     <button onClick={(e) => { e.stopPropagation()
                       drill?.drill(`${x.c} — ${monthLabel(month)}`,
                         { cats: [x.c] }) }}
-                      className="hover:text-green">{brl(x.a)}</button></td>
+                      className="hover:text-green">
+                      <SensitiveAmount>{brl(x.a)}</SensitiveAmount>
+                    </button></td>
                   <td className="px-4 py-2 text-right tnum text-faint">
-                    {brl(x.b)}</td>
+                    <SensitiveAmount>{brl(x.b)}</SensitiveAmount></td>
                   <td className={`px-4 py-2 text-right tnum ${
                     x.d > 0 ? 'text-red' : x.d < 0 ? 'text-green' : 'text-faint'}`}>
-                    {x.d === 0 ? '—'
-                      : `${signedBrl(x.d)} (${fmtPct(x.p)})`}
+                    {x.d === 0 ? '—' : <>
+                      <SensitiveAmount>{signedBrl(x.d)}</SensitiveAmount>{' '}
+                      ({fmtPct(x.p)})
+                    </>}
                   </td>
                 </tr>
               ))}

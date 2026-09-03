@@ -8,6 +8,7 @@ import { MultiSelect, inputCls } from './ui/MultiSelect.jsx'
 import { Badge, Button } from './ui/primitives.jsx'
 import { effectiveCategory, CategoryTag } from '../lib/categories.jsx'
 import { signedBrl, brl, fullDate, longDate } from '../lib/format.js'
+import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 
 // rótulos de categoria para FILTRO (split → partes; palpite Pluggy → "Sem categoria")
 function effLabels(t) {
@@ -404,10 +405,13 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
       <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border-y
         border-border bg-surface2/40 px-5 py-2.5 text-[12.5px]">
         <span className="text-muted">{rows.length} de {txns.length} lançamentos</span>
-        <span className="text-green">entradas {brl(totIn)}</span>
-        <span className="text-red">saídas {brl(totOut)}</span>
+        <span className="text-green">entradas{' '}
+          <SensitiveAmount>{brl(totIn)}</SensitiveAmount></span>
+        <span className="text-red">saídas{' '}
+          <SensitiveAmount>{brl(totOut)}</SensitiveAmount></span>
         <span className={totIn + totOut >= 0 ? 'text-green' : 'text-red'}>
-          líquido {signedBrl(totIn + totOut)}</span>
+          líquido{' '}
+          <SensitiveAmount>{signedBrl(totIn + totOut)}</SensitiveAmount></span>
       </div>
 
       {selected.length > 0 && (
@@ -473,7 +477,8 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
                             {ag.count} lanç. · líquido{' '}
                             <span className={ag.net >= 0
                               ? 'text-green' : 'text-red'}>
-                              {signedBrl(ag.net)}</span>
+                              <SensitiveAmount>{signedBrl(ag.net)}</SensitiveAmount>
+                            </span>
                           </span>
                         </div>
                       </td>

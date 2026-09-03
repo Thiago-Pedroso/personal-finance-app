@@ -4,6 +4,7 @@ import { removeQueue, updateQueue } from './lib/api.js'
 import { monthLabel } from './lib/format.js'
 import { ToastProvider, useToast } from './components/ui/Toast.jsx'
 import { DrillProvider } from './lib/useDrill.jsx'
+import { PrivacyProvider, usePrivacy } from './lib/usePrivacy.jsx'
 import { Spinner, Button } from './components/ui/primitives.jsx'
 import { Overview } from './components/Overview.jsx'
 import { Categories } from './components/Categories.jsx'
@@ -16,7 +17,7 @@ import { Review } from './components/Review.jsx'
 import { TransactionsTable } from './components/TransactionsTable.jsx'
 import { EditModal } from './components/EditModal.jsx'
 import { DrillDrawer } from './components/DrillDrawer.jsx'
-import { RefreshCw, Wallet, MessageSquare } from 'lucide-react'
+import { Eye, EyeOff, RefreshCw, Wallet, MessageSquare } from 'lucide-react'
 
 const TABS = [
   ['overview', 'Visão Geral'],
@@ -33,6 +34,7 @@ const TABS = [
 function Shell() {
   const d = useData()
   const toast = useToast()
+  const { valuesHidden, toggleValues } = usePrivacy()
   const [tab, setTab] = useState('overview')
   const [selCat, setSelCat] = useState(null)
   const [txnPreset, setTxnPreset] = useState(null)
@@ -153,6 +155,15 @@ function Shell() {
               ))}
             </select>
           )}
+          <Button variant="ghost" onClick={toggleValues}
+            className={valuesHidden ? 'bg-surface2 text-brand' : ''}
+            aria-label="Modo de privacidade financeira"
+            aria-pressed={valuesHidden}
+            title={valuesHidden ? 'Mostrar valores' : 'Ocultar valores'}>
+            {valuesHidden
+              ? <EyeOff className="size-4" />
+              : <Eye className="size-4" />}
+          </Button>
           <Button variant="ghost" onClick={d.refresh} disabled={d.busy}>
             <RefreshCw className={`size-4 ${d.busy ? 'animate-[spin_.8s_linear_infinite]' : ''}`} />
             Atualizar
@@ -242,9 +253,11 @@ function Shell() {
 export default function App() {
   return (
     <ToastProvider>
-      <DrillProvider>
-        <Shell />
-      </DrillProvider>
+      <PrivacyProvider>
+        <DrillProvider>
+          <Shell />
+        </DrillProvider>
+      </PrivacyProvider>
     </ToastProvider>
   )
 }

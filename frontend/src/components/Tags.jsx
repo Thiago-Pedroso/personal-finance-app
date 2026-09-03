@@ -5,6 +5,7 @@ import { HBars, TrendBars } from './charts.jsx'
 import { inputCls } from './ui/MultiSelect.jsx'
 import { useDrill } from '../lib/useDrill.jsx'
 import { brl, monthLabel, monthShortY } from '../lib/format.js'
+import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 
 function createSummary(name) {
   return {
@@ -121,13 +122,13 @@ export function Tags({ dash, mdata, period }) {
           <div className="rounded-xl border border-border bg-surface2/50 p-3">
             <div className="text-[11px] uppercase tracking-wide text-faint">Gastos</div>
             <div className="mt-1 text-[20px] font-bold text-red tnum">
-              {brl(selected.expense)}
+              <SensitiveAmount>{brl(selected.expense)}</SensitiveAmount>
             </div>
           </div>
           <div className="rounded-xl border border-border bg-surface2/50 p-3">
             <div className="text-[11px] uppercase tracking-wide text-faint">Receitas</div>
             <div className="mt-1 text-[20px] font-bold text-green tnum">
-              {brl(selected.income)}
+              <SensitiveAmount>{brl(selected.income)}</SensitiveAmount>
             </div>
           </div>
           <div className="rounded-xl border border-border bg-surface2/50 p-3">
@@ -139,7 +140,7 @@ export function Tags({ dash, mdata, period }) {
               Fora do fluxo
             </div>
             <div className="mt-1 text-[20px] font-bold text-muted tnum">
-              {brl(outsideTotal)}
+              <SensitiveAmount>{brl(outsideTotal)}</SensitiveAmount>
             </div>
           </div>
         </div>
@@ -178,7 +179,9 @@ export function Tags({ dash, mdata, period }) {
               <div className="font-semibold">{summary.name}</div>
               <div className="mt-2 flex justify-between text-[12px] text-muted">
                 <span>{summary.count} lançamento(s)</span>
-                <span className="text-red tnum">{brl(summary.expense)}</span>
+                <span className="text-red tnum">
+                  <SensitiveAmount>{brl(summary.expense)}</SensitiveAmount>
+                </span>
               </div>
             </button>
           ))}
