@@ -1,6 +1,6 @@
 """Inicializa o banco de dados no Google Sheets com dados de demonstração.
 
-Cria as abas (`Ledger`, `Rules`, `Taxonomy`, `PluggyMap`, `Config`) a partir dos *fixtures
+Cria as abas (`Ledger`, `Rules`, `Taxonomy`, `SubcategoryMeta`, `PluggyMap`, `Config`) a partir dos *fixtures
 sintéticos* em `data/seed/`. Assim todo novo usuário começa com um banco funcional para entender
 o app antes de conectar as próprias contas via Open Finance (Pluggy).
 
@@ -101,6 +101,8 @@ def main() -> None:
     T.save(fx["taxonomy"], fx["taxonomy_treatments"], fx["taxonomy_meta"])
     print(f"  Taxonomy: {len(fx['taxonomy'])} categorias "
           f"(Treatment, Color, Icon, Essential)")
+    T.save_subcategory_meta()
+    print("  SubcategoryMeta: metadados opcionais de subcategorias")
     pmap = [{"PluggyCategory": k, "Category": v[0],
              "Subcategory": (v[1] or None) if len(v) > 1 else None}
             for k, v in fx["pluggy_map"].items() if v]

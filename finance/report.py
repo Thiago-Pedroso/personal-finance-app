@@ -370,7 +370,7 @@ def _recurring(recs: list) -> list:
 
 
 def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
-             month=None, category_meta=None) -> None:
+             month=None, category_meta=None, subcategory_meta=None) -> None:
     """Gera os relatórios (arquivos em REPORTS_DIR).
 
     Aceita ledger/taxonomia/tratamentos/budgets já carregados para evitar reler
@@ -384,6 +384,8 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
         taxonomy = taxonomy if taxonomy is not None else tax_l
         treatments = treatments if treatments is not None else treat_l
         category_meta = category_meta if category_meta is not None else meta_l
+    if subcategory_meta is None:
+        subcategory_meta = T.load_subcategory_meta(taxonomy)
     _TREAT = treatments
     if recs is None:
         recs = list(L.load_ledger().values())
@@ -462,6 +464,7 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
         "taxonomy": taxonomy,
         # cor/ícone por categoria: vêm da planilha, o front cai num neutro se faltar
         "category_meta": category_meta or {},
+        "subcategory_meta": subcategory_meta or {},
         # categorias "de sobrevivência": base do cálculo de reserva de emergência
         "essential_cats": sorted(c for c, m in (category_meta or {}).items()
                                  if m.get("essential")),

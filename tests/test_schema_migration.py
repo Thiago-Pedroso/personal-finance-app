@@ -38,6 +38,7 @@ def test_schema_migration_adds_missing_fields():
                       if tab != "Ledger"
                       else [name for name, _ in schema][:-1])
         for tab, schema in sheets.SCHEMAS.items()
+        if tab != "SubcategoryMeta"
     ]
     worksheets.append(FakeWorksheet("Config", ["key", "value"]))
     fake_sheet = FakeSheet(worksheets)
@@ -51,10 +52,13 @@ def test_schema_migration_adds_missing_fields():
 
     ledger = next(worksheet for worksheet in worksheets
                   if worksheet.title == "Ledger")
+    subcategory_meta = next(worksheet for worksheet in worksheets
+                            if worksheet.title == "SubcategoryMeta")
     assert ledger.header == [name for name, _ in sheets.LEDGER_SCHEMA]
-    assert changes == ["coluna Ledger.tags", "Config.timezone"]
+    assert subcategory_meta.header == [name for name, _ in sheets.SUBCATEGORY_META_SCHEMA]
+    assert changes == ["coluna Ledger.tags", "aba SubcategoryMeta", "Config.timezone"]
     assert config["timezone"] == "America/Sao_Paulo"
-    assert config["schema_version"] == 3
+    assert config["schema_version"] == 4
     assert sheets.ensure_current_schema() == []
 
 

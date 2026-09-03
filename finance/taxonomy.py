@@ -63,6 +63,44 @@ def load_meta() -> dict:
     return load_full()[2]
 
 
+def load_subcategory_meta(taxonomy: dict | None = None) -> dict:
+    """Carrega cor e ícone opcionais por categoria e subcategoria."""
+    meta: dict = {}
+    try:
+        records = sheets.read_records("SubcategoryMeta")
+    except sheets.SheetsError:
+        return meta
+    for rec in records:
+        category = (rec.get("Category") or "").strip()
+        subcategory = (rec.get("Subcategory") or "").strip()
+        if not category or not subcategory:
+            continue
+        if taxonomy is not None and subcategory not in (taxonomy.get(category) or []):
+            continue
+        color = (rec.get("Color") or "").strip()
+        icon = (rec.get("Icon") or "").strip()
+        if color or icon:
+            meta.setdefault(category, {})[subcategory] = {
+                "color": color or None,
+                "icon": icon or None,
+            }
+    return meta
+
+
+def save_subcategory_meta(meta: dict | None = None) -> None:
+    """Grava metadados opcionais de subcategorias."""
+    records = []
+    for category, subcategories in (meta or {}).items():
+        for subcategory, values in (subcategories or {}).items():
+            records.append({
+                "Category": category,
+                "Subcategory": subcategory,
+                "Color": (values or {}).get("color"),
+                "Icon": (values or {}).get("icon"),
+            })
+    sheets.write_records("SubcategoryMeta", records)
+
+
 def load_full() -> tuple[dict, dict, dict]:
     """(taxonomia, tratamentos, meta) numa leitura só."""
     tax: dict = {}

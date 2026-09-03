@@ -12,7 +12,7 @@ Design (ver docs/SHEETS_INTEGRATION.md):
   ao que `ledger.normalize()` produz (bools, floats, None e `splits` JSON preservados).
 - **Backoff exponencial** em 429/5xx (`@_retry`).
 
-Abas tabulares: `Ledger`, `Rules`, `Taxonomy` e `PluggyMap`. A aba `Config` guarda blobs JSON.
+Abas tabulares: `Ledger`, `Rules`, `Taxonomy`, `SubcategoryMeta` e `PluggyMap`.
 """
 
 import functools
@@ -26,7 +26,7 @@ from gspread.utils import ValueRenderOption, rowcol_to_a1
 
 from .config import DEFAULT_TIMEZONE, GOOGLE_SA_CREDENTIALS, ROOT, SHEET_ID
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 # Escopos: Sheets (ler/gravar) + Drive (abrir a planilha por ID / criar abas).
 _SCOPES = [
@@ -65,6 +65,9 @@ RULES_SCHEMA = [
 TAXONOMY_SCHEMA = [("Category", "str"), ("Subcategories", "str"), ("Treatment", "str"),
                    ("Color", "opt"), ("Icon", "opt"), ("Essential", "bool")]
 
+SUBCATEGORY_META_SCHEMA = [("Category", "str"), ("Subcategory", "str"),
+                           ("Color", "opt"), ("Icon", "opt")]
+
 PLUGGY_MAP_SCHEMA = [("PluggyCategory", "str"), ("Category", "str"),
                      ("Subcategory", "opt")]
 
@@ -73,6 +76,7 @@ SCHEMAS = {
     "Rules": RULES_SCHEMA,
     "Taxonomy": TAXONOMY_SCHEMA,
     "PluggyMap": PLUGGY_MAP_SCHEMA,
+    "SubcategoryMeta": SUBCATEGORY_META_SCHEMA,
 }
 CONFIG_TAB = "Config"
 
