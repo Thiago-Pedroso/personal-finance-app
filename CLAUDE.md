@@ -40,13 +40,14 @@ uv run python -m finance.categorize stats
 
 ---
 
-## Banco no Google Sheets (5 abas)
+## Banco no Google Sheets (6 abas)
 
 | Aba | Conteúdo | Módulo |
 |---|---|---|
 | `Ledger` | 1 transação por linha | `finance/ledger.py` |
 | `Rules` | regras de categorização | `finance/rules.py` |
 | `Taxonomy` | categorias → subcategorias | `finance/taxonomy.py` |
+| `SubcategoryMeta` | cor e ícone opcionais por subcategoria | `finance/taxonomy.py` |
 | `PluggyMap` | categoria da Pluggy → taxonomia pessoal | `finance/pluggy_map.py` |
 | `Config` | blobs JSON: `budgets`, `sync_state`, `timezone`, `schema_version` | `finance/budgets.py`, `finance/sync.py` |
 
@@ -140,8 +141,8 @@ usuário e nunca devem entrar no repositório.
 
 ## Taxonomia
 
-**Não está no código.** Categorias, subcategorias, tratamento, cor e ícone vivem na aba
-`Taxonomy` da planilha, e cada pessoa tem as suas. Para ver as atuais:
+**Não está no código.** Categorias, subcategorias, tratamento, cor e ícone vivem nas abas
+`Taxonomy` e `SubcategoryMeta` da planilha, e cada pessoa tem as suas. Para ver as atuais:
 
 ```bash
 uv run python -m finance.show stats          # contadores por categoria

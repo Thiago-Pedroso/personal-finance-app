@@ -61,7 +61,7 @@ Ambos `credentials.json` e `.env` estão no `.gitignore` — **nunca commite**.
 
 ---
 
-## 3. Esquema do banco (5 abas)
+## 3. Esquema do banco (6 abas)
 
 A linha 1 de cada aba é o cabeçalho. Tipos entre parênteses referem-se à coerção em
 `finance/sheets.py` (`str` texto; `opt` texto opcional/vazio=None; `float` número; `fnum`
@@ -135,6 +135,19 @@ próxima gravação da aba.
 Cor e ícone vivem aqui, e não no código, para que o dashboard não precise
 conhecer os nomes das suas categorias — cada pessoa tem as suas.
 
+### Aba `SubcategoryMeta`: apresentação opcional por subcategoria
+
+| coluna | tipo | para que serve |
+|---|---|---|
+| `Category` | str | categoria existente na aba `Taxonomy` |
+| `Subcategory` | str | subcategoria existente dentro da categoria |
+| `Color` | opt | cor hexadecimal própria, por exemplo `#d7a21e` |
+| `Icon` | opt | nome opcional de um ícone `lucide-react` |
+
+Quando não há uma linha configurada, o dashboard deriva uma cor estável sem persistir dados.
+As preferências pessoais continuam somente na planilha. Cores escuras são ajustadas apenas
+na renderização para manter contraste adequado; o valor salvo não é alterado.
+
 ### Aba `PluggyMap` — categoria da Pluggy → categoria sua
 
 | `PluggyCategory` (str) | `Category` (str) | `Subcategory` (opt) |
@@ -152,7 +165,7 @@ descarta o que não existir na sua taxonomia. Sem a aba, o mapa cai no fixture.
 | `budgets` | o objeto de orçamento inteiro (income_plan, spending, savings_goals) |
 | `sync_state` | cursores de sincronização por conta |
 | `timezone` | fuso IANA usado nas datas locais, por exemplo `America/Sao_Paulo` |
-| `schema_version` | versão do esquema (atualmente `3`) |
+| `schema_version` | versão do esquema (atualmente `4`) |
 
 ---
 
@@ -189,7 +202,8 @@ regeneráveis e ficam no `.gitignore`.
 
 Atualizações de schema são aplicadas por `uv run python -m finance.migrate`. O `start.sh`, o
 sync e a categorização também conferem a versão antes de gravar. A migração da versão 3 adiciona
-`Config[timezone]` e recalcula datas importadas da Pluggy a partir do timestamp UTC. Use
+`Config[timezone]` e recalcula datas importadas da Pluggy a partir do timestamp UTC. A versão 4
+acrescenta a aba opcional `SubcategoryMeta` sem alterar a taxonomia existente. Use
 `uv run python -m finance.migrate --dry-run` para conferir a quantidade de registros antes de
 gravar. Datas de lançamentos manuais são preservadas.
 
