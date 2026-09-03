@@ -53,6 +53,15 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
     () => [...new Set(txns.flatMap(effLabels))].sort(), [txns])
   const accOpts = useMemo(
     () => [...new Set(txns.map((t) => t.account_name))].sort(), [txns])
+  // opções de subcategoria: restringe às categorias selecionadas (todas, se nenhuma)
+  const subOpts = useMemo(() => {
+    const inScope = f.cats.length
+      ? txns.filter((t) => effLabels(t).some((c) => f.cats.includes(c)))
+      : txns
+    const subs = inScope.flatMap((t) =>
+      t.splits?.length ? t.splits.map((s) => s.subcategory) : [t.subcategory])
+    return [...new Set(subs.filter(Boolean))].sort()
+  }, [txns, f.cats])
 
   const rows = useMemo(() => {
     const q = f.q.trim().toLowerCase()
@@ -303,6 +312,11 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
         <div className="flex flex-wrap items-center gap-2 px-5 pb-3 pt-3">
           <MultiSelect label="Categoria" options={catOpts} value={f.cats}
             onChange={(v) => set('cats', v)} />
+          <select value={f.sub} onChange={(e) => set('sub', e.target.value)}
+            className={inputCls()}>
+            <option value="">Subcategoria (todas)</option>
+            {subOpts.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
           <MultiSelect label="Conta" options={accOpts} value={f.accs}
             onChange={(v) => set('accs', v)} />
           <select value={f.flow} onChange={(e) => set('flow', e.target.value)}
