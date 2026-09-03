@@ -40,13 +40,14 @@ uv run python -m finance.categorize stats
 
 ---
 
-## Banco no Google Sheets (4 abas)
+## Banco no Google Sheets (5 abas)
 
 | Aba | Conteúdo | Módulo |
 |---|---|---|
 | `Ledger` | 1 transação por linha | `finance/ledger.py` |
 | `Rules` | regras de categorização | `finance/rules.py` |
 | `Taxonomy` | categorias → subcategorias | `finance/taxonomy.py` |
+| `PluggyMap` | categoria da Pluggy → taxonomia pessoal | `finance/pluggy_map.py` |
 | `Config` | blobs JSON: `budgets`, `sync_state`, `schema_version` | `finance/budgets.py`, `finance/sync.py` |
 
 A camada de acesso é `finance/sheets.py` (auth via Service Account, 1 request por operação,
@@ -81,6 +82,7 @@ Campos relevantes:
 - `category_source` — `"rule"` | `"pluggy-map"` | `"manual"` | `"split"`
 - `splits` — array `[{amount, category, subcategory, note}]` onde a soma = valor efetivo
 - `note` — observação livre (aparece no hover do dashboard)
+- `tags` — lista JSON de etiquetas pessoais, independente da categoria
 - `needs_review` / `reviewed` — controle de qualidade interno
 
 **Valor efetivo** = `amount_override` se definido, senão `signed_amount`.
@@ -114,6 +116,11 @@ aba `Ledger` do Sheets.
         {"amount": -150.00, "category": "Lazer", "subcategory": "Viagem", "note": "Minha parte"},
         {"amount": -150.00, "category": "Compartilhado", "subcategory": "Outro", "note": "Parte de terceiro"}
       ]
+    },
+    {
+      "ids": ["uuid-1", "uuid-2"],
+      "tags_add": ["Viagem Recife"],
+      "tags_remove": ["Trabalho"]
     }
   ],
   "confirm_provisional": false
@@ -121,6 +128,10 @@ aba `Ledger` do Sheets.
 ```
 
 Depois: `uv run python -m finance.categorize apply && uv run python -m finance.report`
+
+Tags são manuais e podem ser aplicadas em massa pelo dashboard ou pelo arquivo de decisões.
+Não crie regras automáticas para tags. Valores reais de tags pertencem à planilha privada do
+usuário e nunca devem entrar no repositório.
 
 ---
 

@@ -96,6 +96,7 @@ Espelha o que `finance/ledger.py::normalize()` produz. Colunas:
 | `note` | opt | observação livre |
 | `amount_override` | fnum | sobrepõe `signed_amount` nos relatórios |
 | `synced_at` | opt | timestamp do sync |
+| `tags` | json | lista de etiquetas pessoais, por exemplo `["Viagem"]` |
 
 ### Aba `Rules` — uma regra por linha
 
@@ -150,7 +151,7 @@ descarta o que não existir na sua taxonomia. Sem a aba, o mapa cai no fixture.
 |---|---|
 | `budgets` | o objeto de orçamento inteiro (income_plan, spending, savings_goals) |
 | `sync_state` | cursores de sincronização por conta |
-| `schema_version` | versão do esquema (atualmente `1`) |
+| `schema_version` | versão do esquema (atualmente `2`) |
 
 ---
 
@@ -165,6 +166,7 @@ Contrato público (todas as funções fazem **1 request** por chamada e têm ret
 | `read_config(key, default)` | lê um blob JSON da aba Config |
 | `write_config(key, value)` | grava/atualiza uma chave na aba Config |
 | `ensure_tabs()` | cria as abas + cabeçalhos que faltam (idempotente) |
+| `ensure_current_schema()` | acrescenta abas e colunas novas sem remover dados |
 | `check()` | valida auth/acesso → `{title, url, tabs}` |
 | `reset_cache()` | descarta handles cacheados (após seed/em testes) |
 
@@ -183,6 +185,10 @@ intacto. Trocamos apenas o backend de arquivo para Sheets:
 Os **relatórios** (`data/reports/*.json`) continuam gerados **localmente** por `finance.report`
 (lendo do Sheets) — o frontend os consome direto, sem custo de quota e com carga rápida. São
 regeneráveis e ficam no `.gitignore`.
+
+Atualizações de schema são aplicadas por `uv run python -m finance.migrate`. O `start.sh`, o
+sync e a categorização também conferem a versão antes de gravar. A migração da versão 2 apenas
+acrescenta a coluna `tags` ao final do `Ledger`; os valores antigos permanecem intactos.
 
 ### Coerção de tipos (o ponto crítico)
 

@@ -24,9 +24,11 @@ novas regras. Um dashboard React (leitura + edição leve) visualiza tudo.
 - **Categorização** por regras determinísticas + loop assistido pelo Claude, com
   **aprendizado de regras** retroativo (`finance.categorize`).
 - **Relatórios** mensais (JSON + Markdown) e um `dashboard.json` agregado (`finance.report`).
+- **Tags pessoais** em múltiplos lançamentos, com edição em massa, filtros e análise por
+  período. As tags ficam somente na planilha de cada usuário.
 - **Dashboard React/Vite**: visão geral, transações com filtros, análise por categoria,
-  planejamento/orçamento, fila de revisão, edição via o mesmo pipeline de regras, splits e
-  drill-down global.
+  análise por tags, planejamento/orçamento, fila de revisão, edição via o mesmo pipeline,
+  splits e drill-down global.
 - **Seed de demonstração** — um comando popula sua planilha com um banco mocado funcional.
 
 ## Stack
@@ -120,6 +122,7 @@ Ou os passos individuais, em linguagem natural com o Claude Code ou direto pelo 
 uv run python -m finance.sync --days 30     # puxa transações novas da Pluggy → Sheets
 uv run python -m finance.categorize         # categoriza (+ apply --learn)
 uv run python -m finance.report             # gera relatórios locais a partir do Sheets
+uv run python -m finance.migrate            # acrescenta campos novos sem apagar dados
 ```
 
 Comandos de inspeção (somente leitura):
@@ -157,4 +160,5 @@ CLAUDE.md       # contrato de operação (lido pelo Claude Code a cada sessão)
 ```bash
 PYTHONPATH=. uv run python tests/test_sheets_roundtrip.py   # coerção de tipos (sem rede)
 PYTHONPATH=. uv run python tests/test_pipeline_inmemory.py  # pipeline end-to-end (em memória)
+PYTHONPATH=. uv run python tests/test_schema_migration.py    # migração aditiva (sem rede)
 ```

@@ -40,7 +40,10 @@ chave (`credentials*.json`, `service_account*.json`, `.env.*`, `*.pem`). Ainda a
    ```bash
    PYTHONPATH=. uv run python tests/test_sheets_roundtrip.py
    PYTHONPATH=. uv run python tests/test_pipeline_inmemory.py
+   PYTHONPATH=. uv run python tests/test_schema_migration.py
    ```
+   Esses testes usam armazenamento e diretório de relatórios temporários. Eles não acessam a
+   planilha configurada no `.env`.
 3. Abra um **Pull Request** contra a `main`. A CI roda uma varredura de segredos (gitleaks); o PR
    é revisado antes do merge.
 4. PRs devem conter **apenas código/docs** — nunca `data/` (fora de `seed/`) nem segredos.
