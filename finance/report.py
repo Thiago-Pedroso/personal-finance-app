@@ -442,6 +442,14 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
                        ensure_ascii=False, indent=2) + "\n")
         (REPORTS_DIR / f"{m}.md").write_text(_md(mj, prev))
 
+    # Numa varredura completa, apaga meses que saíram do ledger — senão o disco
+    # guarda dados já removidos e o front pode servi-los num F5.
+    if not month:
+        vivos = {f"{m}.{ext}" for m in ordered for ext in ("json", "md")}
+        for antigo in REPORTS_DIR.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9].*"):
+            if antigo.name not in vivos:
+                antigo.unlink()
+
     # ---- dashboard.json (consumido pelo frontend)
     by_cat12: dict = defaultdict(lambda: {"expense": 0.0, "income": 0.0, "count": 0})
     for r in recs:
