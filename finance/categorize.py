@@ -67,7 +67,7 @@ def prepare() -> None:
                        reviewed=not _anomaly(rec, m["id"], ledger))
             by_rule += 1
             continue
-        s = pluggy_map.suggest(rec["pluggy_category"], rec["type"])
+        s = pluggy_map.suggest(rec["pluggy_category"], rec["type"], rec.get("description"))
         if s and s[0] in tax:
             cat, sub = s
             if sub is not None and not T.valid(tax, cat, sub):

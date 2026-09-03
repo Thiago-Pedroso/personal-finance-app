@@ -49,16 +49,22 @@ def load(refresh: bool = False) -> dict:
     return _MAP
 
 
-def suggest(pluggy_category: str | None, tx_type: str | None) -> tuple[str, str | None] | None:
+def _transfer_subcategory(pluggy_category: str, tx_type: str | None,
+                          description: str | None) -> str:
+    """Meio da transferência. As categorias genéricas da Pluggy não o informam;
+    a descrição do lançamento sim ("PIX ENVIADO ...")."""
+    hint = f"{pluggy_category} {description or ''}".upper()
+    if "PIX" not in hint and ("TED" in hint or "DOC" in hint):
+        return "TED/DOC"
+    return "PIX recebido" if tx_type == "CREDIT" else "PIX enviado"
+
+
+def suggest(pluggy_category: str | None, tx_type: str | None,
+            description: str | None = None) -> tuple[str, str | None] | None:
     """Retorna (categoria, subcategoria) sugerida, ou None se não houver dica."""
     if not pluggy_category:
         return None
     if pluggy_category in _TRANSFER_GENERIC:
-        if "PIX" in pluggy_category:
-            sub = "PIX recebido" if tx_type == "CREDIT" else "PIX enviado"
-        elif "TED" in pluggy_category:
-            sub = "TED/DOC"
-        else:
-            sub = "PIX recebido" if tx_type == "CREDIT" else "TED/DOC"
-        return ("Transferências", sub)
+        return ("Transferências",
+                _transfer_subcategory(pluggy_category, tx_type, description))
     return load().get(pluggy_category)

@@ -36,6 +36,17 @@ assert P.suggest("Transfer - PIX", "DEBIT") == ("Transferências", "PIX enviado"
 assert P.suggest(None, "DEBIT") is None
 assert P.suggest("categoria que não existe", "DEBIT") is None
 
+# categoria genérica não diz o meio: a descrição desempata, e as duas pontas
+# do mesmo PIX têm que cair em subcategorias correspondentes
+assert P.suggest("Same person transfer", "DEBIT",
+                 "PIX ENVIADO FULANO COM SALDO") == ("Transferências", "PIX enviado")
+assert P.suggest("Same person transfer", "CREDIT",
+                 "Pix recebido de Fulano") == ("Transferências", "PIX recebido")
+assert P.suggest("Transfers", "DEBIT", "TED ENVIADA") == ("Transferências", "TED/DOC")
+# "DOC" dentro de um nome próprio não pode virar TED/DOC
+assert P.suggest("Transfers", "DEBIT",
+                 "PIX ENVIADO DOCERIA DA ESQUINA") == ("Transferências", "PIX enviado")
+
 # sem a aba, cai no fixture em vez de ficar sem mapa
 STORE["PluggyMap"] = []
 assert P.load(refresh=True), "fallback para o fixture falhou"
