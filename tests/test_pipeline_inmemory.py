@@ -33,21 +33,24 @@ def ensure_dirs():
 # ---- store em memória que imita as abas do Sheets --------------------------------------
 STORE = {"Ledger": [], "Rules": [], "Taxonomy": [], "Config": {}}
 
-sheets.read_records = lambda tab: copy.deepcopy(STORE.get(tab, []))
-sheets.write_records = lambda tab, recs: STORE.__setitem__(tab, copy.deepcopy(list(recs)))
-sheets.read_config = lambda key, default=None: copy.deepcopy(STORE["Config"].get(key, default))
-sheets.write_config = lambda key, val: STORE["Config"].__setitem__(key, copy.deepcopy(val))
-sheets.ensure_tabs = lambda: None
-sheets.ensure_current_schema = lambda: []
-sheets.check = lambda: {"title": "TEST", "url": "mem://", "tabs": list(STORE)}
-
 
 def update_changed_rows(tab, records, changed_ids, id_field="id"):
     STORE[tab] = copy.deepcopy(list(records))
     return len(changed_ids)
 
 
-sheets.update_changed_rows = update_changed_rows
+def install_fake_sheets():
+    """Aponta o backend do Sheets para o STORE. Roda dentro do teste porque o
+    conftest devolve as funções reais antes de cada um."""
+    sheets.read_records = lambda tab: copy.deepcopy(STORE.get(tab, []))
+    sheets.write_records = lambda tab, recs: STORE.__setitem__(tab, copy.deepcopy(list(recs)))
+    sheets.read_config = lambda key, default=None: copy.deepcopy(
+        STORE["Config"].get(key, default))
+    sheets.write_config = lambda key, val: STORE["Config"].__setitem__(key, copy.deepcopy(val))
+    sheets.ensure_tabs = lambda: None
+    sheets.ensure_current_schema = lambda: []
+    sheets.check = lambda: {"title": "TEST", "url": "mem://", "tabs": list(STORE)}
+    sheets.update_changed_rows = update_changed_rows
 
 
 def _seed():
@@ -62,6 +65,7 @@ def _seed():
 def test_end_to_end():
     from finance import ledger as L, rules as R, taxonomy as T, budgets as B
 
+    install_fake_sheets()
     _seed()
     # leitura pelas abas via os módulos migrados
     led = L.load_ledger()
