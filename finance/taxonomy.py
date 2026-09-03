@@ -9,11 +9,11 @@ from . import sheets
 # Tratamento de cada categoria: como o dinheiro é tratado nos relatórios.
 #   fluxo     → conta em Receitas/Gastos (padrão)
 #   poupança  → não é gasto; alimenta "Poupado" e a taxa de poupança (Reserva, Investimentos)
-#   movimento → fora do fluxo, só auditoria (Transferências, Formatura, Compartilhado)
+#   movimento → fora do fluxo, só auditoria (transferências, rateios reembolsáveis)
 TREATMENTS = ("fluxo", "poupança", "movimento")
 
-# Fallback legado — usado quando a coluna Treatment ainda não existe/está vazia na planilha.
-# Mantém o comportamento do antigo `NON_CASHFLOW` até a taxonomia trazer o tratamento explícito.
+# Fallback para planilha antiga, sem a coluna Treatment. Os nomes aqui são os das primeiras
+# versões do projeto: ficam por compatibilidade, a fonte da verdade é a coluna.
 _LEGACY_TREATMENT = {
     "Reserva": "poupança", "Investimentos": "poupança",
     "Transferências": "movimento", "Formatura": "movimento",

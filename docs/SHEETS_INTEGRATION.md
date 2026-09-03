@@ -61,7 +61,7 @@ Ambos `credentials.json` e `.env` estão no `.gitignore` — **nunca commite**.
 
 ---
 
-## 3. Esquema do banco (4 abas)
+## 3. Esquema do banco (5 abas)
 
 A linha 1 de cada aba é o cabeçalho. Tipos entre parênteses referem-se à coerção em
 `finance/sheets.py` (`str` texto; `opt` texto opcional/vazio=None; `float` número; `fnum`
@@ -114,11 +114,35 @@ Espelha o que `finance/ledger.py::normalize()` produz. Colunas:
 
 ### Aba `Taxonomy` — uma categoria por linha
 
-| `Category` (str) | `Subcategories` (str, separadas por vírgula) |
-|---|---|
-| Alimentação | Supermercado, Restaurante, Delivery, ... |
+| coluna | tipo | para que serve |
+|---|---|---|
+| `Category` | str | nome da categoria |
+| `Subcategories` | str | separadas por vírgula |
+| `Treatment` | str | `fluxo` (conta em Receitas/Gastos), `poupança` (vira "Poupado") ou `movimento` (fora da conta, só auditoria) |
+| `Color` | opt | hex do chip e do gráfico, ex.: `#2a78d6` |
+| `Icon` | opt | nome de um ícone `lucide-react`, ex.: `Utensils` |
+| `Essential` | bool | entra na base de cálculo da reserva de emergência |
 
-`taxonomy.load()` reconstrói o dict `{categoria: [subs]}`.
+`taxonomy.load()` devolve `{categoria: [subs]}`; `load_full()` devolve
+`(taxonomia, tratamentos, meta)` numa leitura só.
+
+As quatro últimas colunas são **opcionais**: uma planilha antiga, com só
+`Category` e `Subcategories`, continua sendo lida (o `Treatment` cai num
+fallback por categoria e cor/ícone caem num neutro). Elas aparecem sozinhas na
+próxima gravação da aba.
+
+Cor e ícone vivem aqui, e não no código, para que o dashboard não precise
+conhecer os nomes das suas categorias — cada pessoa tem as suas.
+
+### Aba `PluggyMap` — categoria da Pluggy → categoria sua
+
+| `PluggyCategory` (str) | `Category` (str) | `Subcategory` (opt) |
+|---|---|---|
+| Eating out | Alimentação | Restaurante |
+| Groceries | Alimentação | Supermercado |
+
+Semente do `data/seed/pluggy_map.yaml`, usada como **dica**: o `categorize`
+descarta o que não existir na sua taxonomia. Sem a aba, o mapa cai no fixture.
 
 ### Aba `Config` — blobs JSON (chave/valor)
 

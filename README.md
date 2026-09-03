@@ -17,7 +17,8 @@ novas regras. Um dashboard React (leitura + edição leve) visualiza tudo.
 
 ## Funcionalidades
 
-- **Banco de dados no Google Sheets** — ledger, regras, taxonomia e orçamento vivem numa
+- **Banco de dados no Google Sheets** — ledger, regras, taxonomia (com cor e ícone de
+  cada categoria), mapa da Pluggy e orçamento vivem numa
   planilha sua; nada de dados financeiros no git.
 - **Sync incremental** das transações da Pluggy (`finance.sync`).
 - **Categorização** por regras determinísticas + loop assistido pelo Claude, com

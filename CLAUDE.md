@@ -124,35 +124,35 @@ Depois: `uv run python -m finance.categorize apply && uv run python -m finance.r
 
 ---
 
-## Taxonomia resumida
+## Taxonomia
 
-```
-Alimentação:    Supermercado, Restaurante, Delivery, Café/Padaria, Ocasiões especiais
-Transporte:     Combustível, App/Táxi, Transporte público, Estacionamento, Manutenção,
-                Aluguel de veículo, Lava-jato
-Moradia:        Aluguel, Condomínio, Energia, Água, Internet/TV, Gás
-Saúde:          Plano de saúde, Farmácia, Consultas/Exames, Academia
-Lazer:          Streaming, Bares, Cinema/Eventos, Viagem, Hobbies
-Compras:        Vestuário, Eletrônicos, Casa, Presentes, Online
-Serviços:       Assinaturas, Profissionais, Seguros, Bancário/Tarifas, Barbearia
-Trabalho:       Impostos MEI, Assinaturas, Serviços
-Educação:       Cursos, Livros
-Impostos/Taxas: Impostos, Multas/Juros
-Renda:          Salário, Bolsa de pesquisa, Projetos PJ, Aluguel recebido,
-                Ajuda de custo, Reembolso, Outras receitas
-Doações:        Pessoas, Instituições
-Outros:         A revisar
+**Não está no código.** Categorias, subcategorias, tratamento, cor e ícone vivem na aba
+`Taxonomy` da planilha, e cada pessoa tem as suas. Para ver as atuais:
+
+```bash
+uv run python -m finance.show stats          # contadores por categoria
 ```
 
-**Fora do fluxo de gastos** (excluídas dos relatórios de consumo):
-`Transferências`, `Investimentos`, `Reserva`, `Compartilhado`, `Formatura`
+O **tratamento** de cada categoria decide como ela entra na conta:
 
-A taxonomia vive na aba `Taxonomy`. Ao adicionar/renomear categorias, avise o Claude para
-reclassificar o que for preciso.
+| tratamento | efeito |
+|---|---|
+| `fluxo` | conta em Receitas/Gastos (padrão) |
+| `poupança` | não é gasto; alimenta "Poupado" e a taxa de poupança |
+| `movimento` | fora da conta, só auditoria (transferências, rateios) |
+
+`data/seed/taxonomy.yaml` é só a **semente de demonstração**, para quem começa do zero.
+
+Ao adicionar ou renomear categorias, avise o Claude para reclassificar o que for preciso
+e para conferir se as regras da aba `Rules` e o mapa da `PluggyMap` continuam apontando
+para nomes que existem.
 
 ---
 
 ## Padrões recorrentes (aplique sem perguntar)
+
+> Os nomes de categoria abaixo são **exemplos** da taxonomia de demonstração. Confira os
+> equivalentes na aba `Taxonomy` antes de gravar.
 
 ### Compromissadas / aplicações automáticas
 Entradas com "APLICAÇÃO COMPROMISSADA"/"RECOMPRA COMPROMISSADA" → `Investimentos/Aporte` ou
