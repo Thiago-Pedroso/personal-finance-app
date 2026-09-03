@@ -64,7 +64,7 @@ RULES_SCHEMA = [
 ]
 
 TAXONOMY_SCHEMA = [("Category", "str"), ("Subcategories", "str"), ("Treatment", "str"),
-                   ("Color", "opt"), ("Icon", "opt")]
+                   ("Color", "opt"), ("Icon", "opt"), ("Essential", "bool")]
 
 SCHEMAS = {
     "Ledger": LEDGER_SCHEMA,

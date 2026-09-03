@@ -204,8 +204,8 @@ function ReservaCard({ inp }) {
           ))}
         </div>
         <p className="text-[11px] text-faint">
-          pré-preenchido com seus essenciais (Moradia, Alimentação, Saúde,
-          Transporte, Serviços): {brl(inp.gastosEssenciais)}/mês — ajuste se quiser</p>
+          pré-preenchido com as categorias marcadas como essenciais na aba
+          Taxonomy: {brl(inp.gastosEssenciais)}/mês — ajuste se quiser</p>
       </div>
     </Card>
   )

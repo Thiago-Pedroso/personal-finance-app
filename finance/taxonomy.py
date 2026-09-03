@@ -76,8 +76,10 @@ def load_full() -> tuple[dict, dict, dict]:
         treats[cat] = _norm_treatment(rec.get("Treatment"), cat)
         color = (rec.get("Color") or "").strip()
         icon = (rec.get("Icon") or "").strip()
-        if color or icon:
-            meta[cat] = {"color": color or None, "icon": icon or None}
+        essential = bool(rec.get("Essential"))
+        if color or icon or essential:
+            meta[cat] = {"color": color or None, "icon": icon or None,
+                         "essential": essential}
     return tax, treats, meta
 
 
@@ -96,7 +98,8 @@ def save(tax: dict, treatments: dict | None = None, meta: dict | None = None) ->
     records = [{"Category": cat, "Subcategories": ", ".join(subs or []),
                 "Treatment": _norm_treatment(treatments.get(cat), cat),
                 "Color": (meta.get(cat) or {}).get("color"),
-                "Icon": (meta.get(cat) or {}).get("icon")}
+                "Icon": (meta.get(cat) or {}).get("icon"),
+                "Essential": bool((meta.get(cat) or {}).get("essential"))}
                for cat, subs in tax.items()]
     sheets.write_records("Taxonomy", records)
 

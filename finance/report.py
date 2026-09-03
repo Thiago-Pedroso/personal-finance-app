@@ -462,6 +462,9 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
         "taxonomy": taxonomy,
         # cor/ícone por categoria: vêm da planilha, o front cai num neutro se faltar
         "category_meta": category_meta or {},
+        # categorias "de sobrevivência": base do cálculo de reserva de emergência
+        "essential_cats": sorted(c for c, m in (category_meta or {}).items()
+                                 if m.get("essential")),
         "budgets": bud,
         "recurring": _recurring(recs),
         # tratamento por categoria (fonte da verdade da taxonomia) + listas derivadas

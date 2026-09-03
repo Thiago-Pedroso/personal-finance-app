@@ -2,32 +2,37 @@ import {
   Utensils, Car, Home, HeartPulse, Gamepad2, ShoppingBag, Wrench,
   Briefcase, GraduationCap, Landmark, ArrowLeftRight, TrendingUp,
   PiggyBank, Award, Users, Banknote, Shapes, HelpCircle,
+  ShoppingCart, Plane, HeartHandshake, Receipt, Shirt, Gift, Dog,
+  CarTaxiFront, Undo2,
 } from 'lucide-react'
 
-// ícone + cor por categoria (nomes EXATOS do taxonomy.yaml)
-export const CAT = {
-  'Alimentação':    { Icon: Utensils,      color: '#f4685f' },
-  'Transporte':     { Icon: Car,           color: '#5aa2ff' },
-  'Moradia':        { Icon: Home,          color: '#b08cff' },
-  'Saúde':          { Icon: HeartPulse,    color: '#36c98b' },
-  'Lazer':          { Icon: Gamepad2,      color: '#ec6cb9' },
-  'Compras':        { Icon: ShoppingBag,   color: '#ffb35c' },
-  'Serviços':       { Icon: Wrench,        color: '#4dd0c4' },
-  'Trabalho':       { Icon: Briefcase,     color: '#79b8ff' },
-  'Educação':       { Icon: GraduationCap, color: '#c98bff' },
-  'Impostos/Taxas': { Icon: Landmark,      color: '#e0a93b' },
-  'Transferências': { Icon: ArrowLeftRight, color: '#8a97a6' },
-  'Investimentos':  { Icon: TrendingUp,    color: '#7ee7a8' },
-  'Reserva':        { Icon: PiggyBank,     color: '#ffd166' },
-  'Formatura':      { Icon: Award,         color: '#ff8fab' },
-  'Compartilhado':  { Icon: Users,         color: '#9bd1ff' },
-  'Renda':          { Icon: Banknote,      color: '#3fc97f' },
-  'Outros':         { Icon: Shapes,        color: '#8a97a6' },
+// Registry de ícones: nome (vindo da planilha) -> componente.
+const ICONS = {
+  Utensils, Car, Home, HeartPulse, Gamepad2, ShoppingBag, Wrench,
+  Briefcase, GraduationCap, Landmark, ArrowLeftRight, TrendingUp,
+  PiggyBank, Award, Users, Banknote, Shapes, ShoppingCart, Plane,
+  HeartHandshake, Receipt, Shirt, Gift, Dog, CarTaxiFront, Undo2,
 }
+
+const FALLBACK = { Icon: Shapes, color: '#8a97a6' }
+
+// Cor/ícone por categoria vêm da aba Taxonomy (dashboard.category_meta).
+// Variável de módulo em vez de contexto: o dado é global, carrega uma vez, e
+// assim os 12 componentes que chamam catMeta() não precisam mudar.
+let META = {}
+
+export function setCategoryMeta(meta) {
+  META = meta || {}
+}
+
 export const UNCAT = { Icon: HelpCircle, color: '#e0a93b' }
 
-export const catMeta = (name) => CAT[name] || CAT['Outros']
-export const catColor = (name) => (CAT[name] || CAT['Outros']).color
+export const catMeta = (name) => {
+  const m = META[name]
+  if (!m) return FALLBACK
+  return { Icon: ICONS[m.icon] || FALLBACK.Icon, color: m.color || FALLBACK.color }
+}
+export const catColor = (name) => catMeta(name).color
 
 // Tipos de transferência que a Pluggy "chuta" — não são categoria de verdade.
 const TYPE_SUBS = new Set(['PIX recebido', 'PIX enviado', 'TED/DOC'])
