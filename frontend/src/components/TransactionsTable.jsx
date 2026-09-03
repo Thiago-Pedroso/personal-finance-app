@@ -132,7 +132,7 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
             <div className="text-[12px] text-faint">{row.original.counterparty}</div>
           )}
           {row.original.note && (
-            <div className="mt-0.5 line-clamp-1 max-w-[280px] text-[11.5px]
+            <div className="mt-0.5 line-clamp-1 text-[11.5px]
               italic text-faint" title={row.original.note}>
               “{row.original.note}”
             </div>
@@ -203,11 +203,29 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
         }
         return (
           <span className="flex flex-wrap items-center gap-2">
-            <CategoryTag category={e.label} subcategory={e.subcategory}
-              onClick={() => pick(e.label)} />
+            <CategoryTag category={e.label} onClick={() => pick(e.label)} />
             {t.needs_review && <Badge tone="amber">revisar</Badge>}
             {tb}{qb}{xb}
           </span>
+        )
+      },
+    },
+    {
+      accessorKey: 'subcategory', header: 'Subcategoria', enableSorting: false,
+      cell: ({ row }) => {
+        const t = row.original
+        if (t.splits?.length) return <span className="text-faint">—</span>
+        const e = effectiveCategory(t)
+        if (e.kind !== 'cat' || !e.subcategory) {
+          return <span className="text-faint">—</span>
+        }
+        return (
+          <button onClick={() => set('sub', e.subcategory)}
+            className="whitespace-nowrap rounded-md px-1.5 py-0.5 text-[12.5px]
+              text-muted hover:bg-surface2 hover:text-text"
+            title="Filtrar por esta subcategoria">
+            {e.subcategory}
+          </button>
         )
       },
     },
@@ -411,7 +429,7 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
                   return (
                     <th key={h.id}
                       onClick={sortable ? h.column.getToggleSortingHandler() : undefined}
-                      className={`whitespace-nowrap px-4 py-2.5 text-[11px]
+                      className={`whitespace-nowrap px-5 py-3 text-[11px]
                         font-semibold uppercase tracking-wide text-faint
                         ${sortable ? 'cursor-pointer select-none hover:text-muted' : ''}`}>
                       <span className="inline-flex items-center gap-1">
@@ -439,7 +457,7 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
                     <tr key={`h-${day}`}>
                       <td colSpan={colCount}
                         className="border-y border-border bg-surface2/40
-                          px-4 py-2">
+                          px-5 py-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[12.5px] font-semibold
                             text-muted">{longDate(day)}</span>
@@ -463,7 +481,7 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
                           : isQueued(r.original.id)
                             ? 'bg-blue/[0.05] border-l-2 border-l-blue/50' : ''}`}>
                     {r.getVisibleCells().map((c) => (
-                      <td key={c.id} className="px-4 py-2.5 align-top">
+                      <td key={c.id} className="px-5 py-3 align-top">
                         {flexRender(c.column.columnDef.cell, c.getContext())}
                       </td>
                     ))}
