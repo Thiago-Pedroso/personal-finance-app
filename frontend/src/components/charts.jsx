@@ -98,10 +98,23 @@ export function CashflowChart({ months, selected, onSelect, showSaved }) {
   )
 }
 
+// Além de ~8 fatias ninguém casa cor com legenda, então o excedente vira uma
+// fatia "Outras". Clicar nela não filtra (não é categoria de verdade).
+const MAX_SLICES = 7
+const REST_LABEL = 'Outras categorias'
+
 export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
   const colorOf = (label, i) =>
-    palette ? PALETTE[i % PALETTE.length] : catColor(label)
-  const data = slices.filter((s) => s.value > 0)
+    label === REST_LABEL ? '#8a97a6'
+      : palette ? PALETTE[i % PALETTE.length] : catColor(label)
+  const visible = slices.filter((s) => s.value > 0)
+    .sort((a, b) => b.value - a.value)
+  const rest = visible.slice(MAX_SLICES)
+  const data = rest.length > 1
+    ? [...visible.slice(0, MAX_SLICES),
+       { label: REST_LABEL, value: rest.reduce((a, s) => a + s.value, 0),
+         rest: rest.length }]
+    : visible
   const total = data.reduce((a, s) => a + s.value, 0)
   if (!total) return <p className="py-10 text-center text-[13px] text-faint">
     Sem gastos neste mês.</p>
@@ -111,7 +124,7 @@ export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
         <PieChart>
           <Pie data={data} dataKey="value" nameKey="label" innerRadius={58}
             outerRadius={90} paddingAngle={1.5} stroke="none"
-            onClick={(d) => onSelect?.(d.label)}>
+            onClick={(d) => d.label !== REST_LABEL && onSelect?.(d.label)}>
             {data.map((d, i) => <Cell key={d.label} className="cursor-pointer"
               fill={colorOf(d.label, i)} />)}
           </Pie>
@@ -125,19 +138,20 @@ export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
       </ResponsiveContainer>
       <div className="flex min-w-[210px] flex-1 flex-col gap-1.5">
         {data.map((s, i) => {
-          const M = palette ? null : catMeta(s.label)
+          const isRest = s.label === REST_LABEL
+          const M = palette || isRest ? null : catMeta(s.label)
           return (
           <div key={s.label}
             className="group flex items-center gap-2 rounded-lg px-2 py-1
               text-[13px] hover:bg-white/5">
-            <button onClick={() => onSelect?.(s.label)}
+            <button onClick={() => !isRest && onSelect?.(s.label)}
               className="flex flex-1 items-center justify-between gap-3
                 text-left">
               <span className="flex items-center gap-2">
                 {M ? <M.Icon className="size-3.5" style={{ color: M.color }} />
                   : <i className="size-2.5 rounded-[3px]"
                       style={{ background: colorOf(s.label, i) }} />}
-                {s.label}
+                {isRest ? `${s.label} (${s.rest})` : s.label}
               </span>
               <span className="tnum text-muted">{brl(s.value)} ·{' '}
                 {((s.value / total) * 100).toFixed(0)}%</span>
