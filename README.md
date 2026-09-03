@@ -29,6 +29,8 @@ novas regras. Um dashboard React (leitura + edição leve) visualiza tudo.
 - **Dashboard React/Vite**: visão geral, transações com filtros, análise por categoria,
   análise por tags, planejamento/orçamento, fila de revisão, edição via o mesmo pipeline,
   splits e drill-down global.
+- **Modo de privacidade** no dashboard: oculta valores agregados sem esconder percentuais,
+  gráficos ou lançamentos individuais. A preferência fica somente no navegador.
 - **Seed de demonstração** — um comando popula sua planilha com um banco mocado funcional.
 
 ## Stack
