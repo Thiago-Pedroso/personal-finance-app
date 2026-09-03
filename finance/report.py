@@ -40,7 +40,7 @@ def _is_rendimento(sub: str | None) -> bool:
 _TXN_FIELDS = ("id", "date", "description", "counterparty", "signed_amount",
                "type", "account_name", "category", "subcategory",
                "category_source", "reviewed", "needs_review", "note",
-               "amount_override", "excluded")
+               "amount_override", "excluded", "tags")
 
 # Subcategorias que são tipo de transação (palpite da Pluggy), não categoria real.
 _TYPE_SUBS = {"PIX recebido", "PIX enviado", "TED/DOC"}
@@ -476,9 +476,12 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
         "by_category_12m": sorted(
             ({"category": k, **{kk: round(vv, 2) for kk, vv in v.items()}}
              for k, v in by_cat12.items()), key=lambda x: -x["expense"]),
-        "recent": [{k: r[k] for k in ("id", "date", "description", "signed_amount",
-                                      "category", "subcategory", "account_name",
-                                      "needs_review")} for r in recent],
+        "recent": [{k: r.get(k) for k in (
+            "id", "date", "description", "signed_amount", "category",
+            "subcategory", "account_name", "needs_review", "tags")}
+            for r in recent],
+        "tags": sorted({tag for r in recs for tag in (r.get("tags") or [])},
+                       key=L.tag_key),
         "needs_review": sum(1 for r in recs
                             if r["needs_review"] and not r.get("excluded")),
         "uncategorized": sum(1 for r in recs

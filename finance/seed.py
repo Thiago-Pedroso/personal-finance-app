@@ -1,6 +1,6 @@
 """Inicializa o banco de dados no Google Sheets com dados de demonstração.
 
-Cria as abas (`Ledger`, `Rules`, `Taxonomy`, `Config`) e as popula a partir dos *fixtures
+Cria as abas (`Ledger`, `Rules`, `Taxonomy`, `PluggyMap`, `Config`) a partir dos *fixtures
 sintéticos* em `data/seed/`. Assim todo novo usuário começa com um banco funcional para entender
 o app antes de conectar as próprias contas via Open Finance (Pluggy).
 

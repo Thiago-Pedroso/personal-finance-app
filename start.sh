@@ -8,6 +8,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+uv run python -m finance.migrate
+
 if [ "${1:-}" = "--sync" ]; then
   echo "==> Sincronizando com a Pluggy..."
   uv run python -m finance.sync --days 30

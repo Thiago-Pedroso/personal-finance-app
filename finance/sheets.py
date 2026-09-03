@@ -12,8 +12,7 @@ Design (ver docs/SHEETS_INTEGRATION.md):
   ao que `ledger.normalize()` produz (bools, floats, None e `splits` JSON preservados).
 - **Backoff exponencial** em 429/5xx (`@_retry`).
 
-Abas: `Ledger`, `Rules`, `Taxonomy` (tabulares) e `Config` (blobs JSON: budgets, sync_state,
-schema_version).
+Abas tabulares: `Ledger`, `Rules`, `Taxonomy` e `PluggyMap`. A aba `Config` guarda blobs JSON.
 """
 
 import functools
@@ -27,7 +26,7 @@ from gspread.utils import ValueRenderOption, rowcol_to_a1
 
 from .config import GOOGLE_SA_CREDENTIALS, ROOT, SHEET_ID
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 # Escopos: Sheets (ler/gravar) + Drive (abrir a planilha por ID / criar abas).
 _SCOPES = [
@@ -53,7 +52,7 @@ LEDGER_SCHEMA = [
     ("category", "opt"), ("subcategory", "opt"), ("category_source", "opt"),
     ("rule_id", "opt"), ("needs_review", "bool"), ("reviewed", "bool"),
     ("splits", "json"), ("note", "opt"), ("amount_override", "fnum"),
-    ("excluded", "bool"), ("synced_at", "opt"),
+    ("excluded", "bool"), ("synced_at", "opt"), ("tags", "json"),
 ]
 
 RULES_SCHEMA = [
@@ -348,6 +347,52 @@ def ensure_tabs() -> None:
             except gspread.exceptions.APIError:
                 pass
     reset_cache()
+
+
+@_retry
+def ensure_current_schema() -> list[str]:
+    """Acrescenta abas e colunas ausentes sem alterar dados existentes."""
+    sheet = open_sheet()
+    worksheets = {worksheet.title: worksheet for worksheet in sheet.worksheets()}
+    if CONFIG_TAB not in worksheets:
+        config_worksheet = sheet.add_worksheet(title=CONFIG_TAB, rows=20, cols=2)
+        config_worksheet.update(values=[["key", "value"]], range_name="A1",
+                                value_input_option="RAW")
+        worksheets[CONFIG_TAB] = config_worksheet
+    elif read_config("schema_version", 0) == SCHEMA_VERSION:
+        return []
+    changes = []
+    for tab, schema in SCHEMAS.items():
+        expected_header = [name for name, _ in schema]
+        worksheet = worksheets.get(tab)
+        if worksheet is None:
+            worksheet = sheet.add_worksheet(
+                title=tab, rows=100, cols=max(len(expected_header), 1))
+            worksheet.update(values=[expected_header], range_name="A1",
+                             value_input_option="RAW")
+            changes.append(f"aba {tab}")
+            continue
+        current_header = worksheet.row_values(1)
+        if current_header == expected_header:
+            continue
+        if current_header != expected_header[:len(current_header)]:
+            raise SheetsError(
+                f"Cabeçalho inesperado na aba '{tab}'. Faça uma cópia da planilha "
+                "e alinhe as colunas antes de migrar.")
+        missing_header = expected_header[len(current_header):]
+        if not missing_header:
+            continue
+        if worksheet.col_count < len(expected_header):
+            worksheet.resize(cols=len(expected_header))
+        start_column = len(current_header) + 1
+        header_range = (f"{rowcol_to_a1(1, start_column)}:"
+                        f"{rowcol_to_a1(1, len(expected_header))}")
+        worksheet.update(values=[missing_header], range_name=header_range,
+                         value_input_option="RAW")
+        changes.extend(f"coluna {tab}.{name}" for name in missing_header)
+    reset_cache()
+    write_config("schema_version", SCHEMA_VERSION)
+    return changes
 
 
 def check() -> dict:

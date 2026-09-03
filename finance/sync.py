@@ -33,6 +33,7 @@ def main() -> None:
     items = pc.item_ids()
     if not items:
         raise SystemExit("ITEM_IDS vazio no .env. Adicione o(s) ID(s) do(s) item(ns).")
+    sheets.ensure_current_schema()
 
     print("Autenticando na Pluggy...")
     api_key = pc.get_api_key()

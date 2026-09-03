@@ -21,12 +21,13 @@ from statistics import median
 from . import ledger as L
 from . import pluggy_map
 from . import rules as R
+from . import sheets
 from . import taxonomy as T
 from .config import DECISIONS_FILE, TO_CATEGORIZE_FILE, ensure_dirs
 
 _COMPACT = ("id", "date", "description", "signed_amount", "type", "account_name",
             "pluggy_category", "merchant_name", "counterparty", "mcc",
-            "payment_method", "installment")
+            "payment_method", "installment", "tags")
 
 
 def _compact(rec: dict) -> dict:
@@ -46,6 +47,7 @@ def _anomaly(rec: dict, rule_id: str, ledger: dict) -> bool:
 # --------------------------------------------------------------------------- prepare
 def prepare() -> None:
     ensure_dirs()
+    sheets.ensure_current_schema()
     tax = T.load()
     rules_data = R.load_rules()
     rules = rules_data["rules"]
@@ -148,11 +150,12 @@ def prepare() -> None:
 
 # ----------------------------------------------------------------------------- apply
 def apply(learn: bool, do_report: bool = False) -> None:
+    if not DECISIONS_FILE.exists():
+        sys.exit(f"Não encontrei {DECISIONS_FILE}. O agente deve gravá-lo antes.")
+    sheets.ensure_current_schema()
     tax, treats = T.load_all()   # 1 leitura da Taxonomy p/ taxonomia + tratamentos
     rules_data = R.load_rules()
     ledger = L.load_ledger()
-    if not DECISIONS_FILE.exists():
-        sys.exit(f"Não encontrei {DECISIONS_FILE}. O agente deve gravá-lo antes.")
     dec = json.loads(DECISIONS_FILE.read_text())
     # foto do estado antes das mudanças p/ gravar só as linhas que de fato mudarem
     before = {tid: L.snapshot(rec) for tid, rec in ledger.items()}
@@ -190,17 +193,17 @@ def apply(learn: bool, do_report: bool = False) -> None:
     for a in dec.get("assignments", []):
         cat, sub = a.get("category"), a.get("subcategory")
         splits = a.get("splits")
-        # exclusão ("rasurar"): tira o lançamento de todos os agregados,
-        # reversível. Pode vir sozinha ou junto de uma recategorização.
-        only_flag = ("excluded" in a) and not cat and not splits \
-            and "amount_override" not in a
+        changes_classification = bool(cat or splits or "amount_override" in a)
         for tid in a["ids"]:
             rec = ledger.get(tid)
             if not rec:
                 continue
             if "excluded" in a:
                 rec["excluded"] = bool(a["excluded"])
-            if only_flag:
+            if "tags_add" in a or "tags_remove" in a:
+                rec["tags"] = L.update_tags(
+                    rec.get("tags"), a.get("tags_add"), a.get("tags_remove"))
+            if not changes_classification:
                 if "note" in a:
                     rec["note"] = (a["note"] or None)
                 assigned += 1

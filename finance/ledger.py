@@ -6,13 +6,45 @@ operação). Todo o resto do pipeline continua igual.
 """
 
 import json
+import unicodedata
 from datetime import datetime, timezone
 
 from . import sheets
 
 # Campos da NOSSA categorização — preservados ao re-sincronizar.
 _OURS = ("category", "subcategory", "category_source", "rule_id", "needs_review",
-         "reviewed", "splits", "note", "amount_override", "excluded")
+         "reviewed", "splits", "note", "amount_override", "excluded", "tags")
+MAX_TAG_LENGTH = 80
+
+
+def tag_key(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", " ".join(str(value).split()))
+    return "".join(char for char in normalized
+                   if not unicodedata.combining(char)).casefold()
+
+
+def normalize_tags(values) -> list[str]:
+    if not isinstance(values, list):
+        return []
+    tags = []
+    seen = set()
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        tag = " ".join(value.split())
+        key = tag_key(tag)
+        if tag and len(tag) <= MAX_TAG_LENGTH and key not in seen:
+            tags.append(tag)
+            seen.add(key)
+    return sorted(tags, key=tag_key)
+
+
+def update_tags(existing, additions=None, removals=None) -> list[str]:
+    normalized_removals = normalize_tags(removals)
+    removal_keys = {tag_key(value) for value in normalized_removals}
+    retained = [tag for tag in normalize_tags(existing)
+                if tag_key(tag) not in removal_keys]
+    return normalize_tags(retained + normalize_tags(additions))
 
 
 def snapshot(rec: dict) -> str:
@@ -98,11 +130,15 @@ def normalize(tx, account, item_id) -> dict:
         # (visível riscado na lista). Reversível. Preservado no re-sync (_OURS).
         "excluded": False,
         "synced_at": _now_iso(),
+        "tags": [],
     }
 
 
 def load_ledger() -> dict:
-    return {rec["id"]: rec for rec in sheets.read_records("Ledger")}
+    records = sheets.read_records("Ledger")
+    for record in records:
+        record["tags"] = normalize_tags(record.get("tags"))
+    return {record["id"]: record for record in records}
 
 
 def save_ledger(records: dict, changed_ids: set | None = None) -> None:
