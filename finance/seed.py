@@ -24,16 +24,36 @@ from . import taxonomy as T
 from .config import SEED_DIR
 
 
+def _parse_taxonomy(raw: dict) -> tuple[dict, dict, dict]:
+    """Aceita `Cat: [subs]` (formato antigo) e `Cat: {subs, color, icon,
+    treatment, essential}`. Devolve (taxonomia, tratamentos, meta)."""
+    tax, treats, meta = {}, {}, {}
+    for cat, val in (raw or {}).items():
+        if isinstance(val, dict):
+            tax[cat] = list(val.get("subs") or [])
+            if val.get("treatment"):
+                treats[cat] = val["treatment"]
+            if val.get("color") or val.get("icon") or val.get("essential"):
+                meta[cat] = {"color": val.get("color"), "icon": val.get("icon"),
+                             "essential": bool(val.get("essential"))}
+        else:
+            tax[cat] = list(val or [])
+    return tax, treats, meta
+
+
 def _read_fixtures(src: Path) -> dict:
     ledger = [json.loads(ln) for ln in
               (src / "ledger.jsonl").read_text().splitlines() if ln.strip()]
     rules = json.loads((src / "rules.json").read_text())
-    taxonomy = yaml.safe_load((src / "taxonomy.yaml").read_text()) or {}
+    tax_raw = yaml.safe_load((src / "taxonomy.yaml").read_text()) or {}
+    taxonomy, tax_treats, tax_meta = _parse_taxonomy(tax_raw)
     budgets = json.loads((src / "budgets.json").read_text())
     pmap_file = src / "pluggy_map.yaml"
     pmap = yaml.safe_load(pmap_file.read_text()) if pmap_file.exists() else {}
     return {"ledger": ledger, "rules": rules.get("rules", rules),
-            "taxonomy": taxonomy, "budgets": budgets, "pluggy_map": pmap or {}}
+            "taxonomy": taxonomy, "taxonomy_treatments": tax_treats,
+            "taxonomy_meta": tax_meta, "budgets": budgets,
+            "pluggy_map": pmap or {}}
 
 
 def _non_empty_tabs() -> list[str]:
@@ -78,9 +98,9 @@ def main() -> None:
     print(f"  Ledger:   {len(fx['ledger'])} transações")
     sheets.write_records("Rules", fx["rules"])
     print(f"  Rules:    {len(fx['rules'])} regras")
-    # grava categorias + coluna Treatment (default via fallback legado por categoria)
-    T.save(fx["taxonomy"])
-    print(f"  Taxonomy: {len(fx['taxonomy'])} categorias (com Treatment)")
+    T.save(fx["taxonomy"], fx["taxonomy_treatments"], fx["taxonomy_meta"])
+    print(f"  Taxonomy: {len(fx['taxonomy'])} categorias "
+          f"(Treatment, Color, Icon, Essential)")
     pmap = [{"PluggyCategory": k, "Category": v[0],
              "Subcategory": (v[1] or None) if len(v) > 1 else None}
             for k, v in fx["pluggy_map"].items() if v]
