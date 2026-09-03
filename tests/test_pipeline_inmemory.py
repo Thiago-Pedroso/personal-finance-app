@@ -7,11 +7,28 @@ Rode: PYTHONPATH=. uv run python tests/test_pipeline_inmemory.py
 
 import copy
 import json
+import tempfile
+from pathlib import Path
 
+from finance import categorize as _cat
+from finance import report as _rep
 from finance import sheets
-from finance.config import REPORTS_DIR, DECISIONS_FILE, ensure_dirs
-from finance.seed import _read_fixtures
 from finance.config import SEED_DIR
+from finance.seed import _read_fixtures
+
+# O pipeline grava relatórios e arquivos de trabalho. Sem redirecionar, a suíte
+# sobrescreve os relatórios reais do usuário com os dados sintéticos do seed.
+_TMP = Path(tempfile.mkdtemp(prefix="finance-test-"))
+REPORTS_DIR = _TMP / "reports"
+REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+DECISIONS_FILE = _TMP / ".decisions.json"
+_rep.REPORTS_DIR = REPORTS_DIR
+_cat.DECISIONS_FILE = DECISIONS_FILE
+_cat.TO_CATEGORIZE_FILE = _TMP / ".to_categorize.json"
+
+
+def ensure_dirs():
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---- store em memória que imita as abas do Sheets --------------------------------------
 STORE = {"Ledger": [], "Rules": [], "Taxonomy": [], "Config": {}}
