@@ -108,7 +108,7 @@ INVEST_POLICY_SCHEMA = [
 # Única aba com fórmula: `price` guarda o GOOGLEFINANCE e é lida já calculada.
 QUOTES_SCHEMA = [
     ("ticker", "str"), ("quote_symbol", "opt"), ("price", "qnum"),
-    ("currency", "opt"), ("kind", "opt"), ("updated_at", "opt"),
+    ("currency", "opt"), ("kind", "opt"), ("updated_at", "qnum"),
 ]
 
 # Histórico: uma linha por nó por dia.
@@ -130,6 +130,10 @@ SCHEMAS = {
     "InvestSnapshots": INVEST_SNAPSHOTS_SCHEMA,
 }
 CONFIG_TAB = "Config"
+
+# Abas cujas células guardam fórmula: reescrever a aba inteira com RAW transformaria a
+# fórmula em texto, então elas só aceitam acréscimo e edição pontual (USER_ENTERED).
+FORMULA_TABS = {"Quotes"}
 
 # Abas padrão que o Google cria numa planilha em branco (várias localidades).
 _DEFAULT_TITLES = {"Sheet1", "Sheet", "Página1", "Planilha1", "Hoja 1", "Feuille 1"}
@@ -303,6 +307,10 @@ def read_records(tab: str) -> list[dict]:
 @_retry
 def write_records(tab: str, records: list[dict]) -> None:
     """Grava a aba tabular inteira a partir de uma lista de dicts (resize + update)."""
+    if tab in FORMULA_TABS:
+        raise SheetsError(
+            f"A aba '{tab}' guarda fórmulas; reescrevê-la com RAW viraria texto. "
+            "Use append_rows()/update_fields() com value_input_option='USER_ENTERED'.")
     schema = SCHEMAS[tab]
     header = [name for name, _ in schema]
     matrix = [header]
@@ -311,6 +319,29 @@ def write_records(tab: str, records: list[dict]) -> None:
     ws = _ws(tab)
     ws.resize(rows=max(len(matrix), 1), cols=len(header))
     ws.update(values=matrix, range_name="A1", value_input_option="RAW")
+
+
+@_retry
+def append_rows(tab: str, records: list[dict],
+                value_input_option: str = "USER_ENTERED") -> int:
+    """Acrescenta linhas ao fim da aba, sem tocar no que já está lá.
+
+    Caminho de escrita das abas com fórmula: um campo cujo valor comece com "=" é
+    enviado como fórmula e o Sheets passa a calculá-lo."""
+    if not records:
+        return 0
+    schema = SCHEMAS[tab]
+    rows = [[_val_to_cell(kind, rec.get(name)) for name, kind in schema]
+            for rec in records]
+    _ws(tab).append_rows(rows, value_input_option=value_input_option,
+                         insert_data_option="INSERT_ROWS", table_range="A1")
+    return len(rows)
+
+
+@_retry
+def delete_row(tab: str, row: int) -> None:
+    """Remove uma linha da aba (1-based, contando o cabeçalho)."""
+    _ws(tab).delete_rows(row)
 
 
 @_retry
@@ -348,13 +379,15 @@ def _cell_ranges(tab: str, row: int, fields: dict) -> list[dict]:
 
 
 @_retry
-def update_fields(tab: str, changes: list[tuple[int, dict]]) -> int:
+def update_fields(tab: str, changes: list[tuple[int, dict]],
+                  value_input_option: str = "RAW") -> int:
     """Grava campos avulsos em linhas específicas, tudo num request só.
-    `changes` = [(número da linha na planilha, {campo: valor})]."""
+    `changes` = [(número da linha na planilha, {campo: valor})]. Abas com fórmula
+    pedem `value_input_option="USER_ENTERED"`."""
     reqs = [r for row, fields in changes for r in _cell_ranges(tab, row, fields)]
     if not reqs:
         return 0
-    _ws(tab).batch_update(reqs, value_input_option="RAW")
+    _ws(tab).batch_update(reqs, value_input_option=value_input_option)
     return len(reqs)
 
 

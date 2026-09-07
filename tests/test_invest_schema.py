@@ -70,3 +70,56 @@ def test_migration_creates_missing_invest_tabs():
     for tab in INVEST_TABS:
         assert created[tab] == [name for name, _ in sheets.SCHEMAS[tab]]
     assert config["schema_version"] == sheets.SCHEMA_VERSION
+
+
+class RecordingWorksheet:
+    def __init__(self):
+        self.appended = []
+        self.batches = []
+        self.deleted = []
+
+    def append_rows(self, rows, value_input_option, insert_data_option, table_range):
+        self.appended.append((rows, value_input_option))
+
+    def batch_update(self, reqs, value_input_option):
+        self.batches.append((reqs, value_input_option))
+
+    def delete_rows(self, row):
+        self.deleted.append(row)
+
+
+def test_quotes_tab_refuses_full_rewrite():
+    import pytest
+    with pytest.raises(sheets.SheetsError) as err:
+        sheets.write_records("Quotes", [{"ticker": "VOO"}])
+    assert "fórmulas" in str(err.value)
+
+
+def test_append_rows_sends_formula_untouched(monkeypatch):
+    worksheet = RecordingWorksheet()
+    monkeypatch.setattr(sheets, "_ws", lambda tab: worksheet)
+    formula = '=GOOGLEFINANCE("NYSEARCA:VOO")*GOOGLEFINANCE("CURRENCY:USDBRL")'
+    written = sheets.append_rows("Quotes", [{
+        "ticker": "VOO", "quote_symbol": "NYSEARCA:VOO", "price": formula,
+        "currency": "BRL", "kind": "stock_us", "updated_at": "=NOW()"}])
+
+    assert written == 1
+    rows, option = worksheet.appended[0]
+    assert option == "USER_ENTERED"
+    assert rows[0] == ["VOO", "NYSEARCA:VOO", formula, "BRL", "stock_us", "=NOW()"]
+
+
+def test_update_fields_can_write_formulas(monkeypatch):
+    worksheet = RecordingWorksheet()
+    monkeypatch.setattr(sheets, "_ws", lambda tab: worksheet)
+    sheets.update_fields("Quotes", [(3, {"price": '=GOOGLEFINANCE("BVMF:WEGE3")'})],
+                         value_input_option="USER_ENTERED")
+    reqs, option = worksheet.batches[0]
+    assert option == "USER_ENTERED"
+    assert reqs[0]["values"] == [['=GOOGLEFINANCE("BVMF:WEGE3")']]
+
+
+def test_quote_row_roundtrip():
+    quote = {"ticker": "BBAS3", "quote_symbol": "BVMF:BBAS3", "price": 22.52,
+             "currency": "BRL", "kind": "stock_br", "updated_at": 46270.7314}
+    assert _roundtrip(sheets.QUOTES_SCHEMA, quote) == quote
