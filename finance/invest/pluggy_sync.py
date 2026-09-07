@@ -81,11 +81,17 @@ def _unknown_message(name: str, count: int, total: float) -> str:
 
 
 def reconcile(investments: list[dict], positions: dict, assets: dict,
-              today: str) -> list[dict]:
-    """Pendências entre o que a corretora informa e o que a carteira calculou."""
+              today: str, bucket_items=()) -> list[dict]:
+    """Pendências entre o que a corretora informa e o que a carteira calculou.
+
+    Itens de conta de caixinhas ficam de fora da conferência ativo a ativo: lá a
+    instituição não sabe a divisão, e quem confere é o total (`bucket_report`)."""
     pending = []
     unknown: dict = {}
+    buckets = {str(item) for item in bucket_items}
     for investment in investments:
+        if investment["item_id"] in buckets:
+            continue
         ticker = _match(investment, assets)
         if not ticker:
             # uma caixinha vira dezenas de papéis idênticos na corretora; agrupamos por

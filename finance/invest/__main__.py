@@ -79,7 +79,9 @@ def cmd_sync(args) -> int:
 
     print("Lendo investimentos na Pluggy...")
     investments = PS.fetch()
-    pending = PS.reconcile(investments, positions, assets, today)
+    bucket_items = {account["pluggy_item_id"] for account in accounts.values()
+                    if account["kind"] == "bucket" and account["pluggy_item_id"]}
+    pending = PS.reconcile(investments, positions, assets, today, bucket_items)
 
     buckets_report = {}
     for account in accounts.values():

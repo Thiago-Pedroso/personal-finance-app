@@ -111,3 +111,11 @@ def test_repeated_unknown_assets_become_one_line():
     assert pending[0]["count"] == 40
     assert pending[0]["value"] == 20000.0
     assert "40 aplicações" in pending[0]["message"]
+
+
+def test_bucket_account_skips_the_asset_by_asset_check():
+    """Numa conta de caixinhas quem confere é o total: a instituição não sabe a divisão."""
+    investments = [_investment(item_id="bucket-1", name="CDB - BANCO X", balance=500.0),
+                   _investment(item_id="outra", code="SAPR11", quantity=10, balance=50.0)]
+    pending = PS.reconcile(investments, {}, ASSETS, TODAY, bucket_items={"bucket-1"})
+    assert [item["ticker"] for item in pending] == ["SAPR11"]
