@@ -246,13 +246,42 @@ def _plan_for_month(b: dict, mj: dict, month: str, today: date) -> dict:
     }
 
 
+def _bucket_balances() -> dict:
+    """Saldo das caixinhas, quando o espaço Investimentos já existe.
+
+    O estoque passa a vir de lá: a meta continua no planejamento com o seu alvo, e o
+    quanto já se tem deixa de ser digitado à mão."""
+    path = REPORTS_DIR / "invest.json"
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return {}
+    out = {}
+    for position in data.get("positions", []):
+        if position.get("valuation") == "balance":
+            for key in (position.get("name"), position.get("ticker")):
+                if key:
+                    out[_norm(key)] = float(position.get("value") or 0.0)
+    return out
+
+
 def _savings(b: dict, cum_in: float, cum_out: float, mon_in: float,
              mon_out: float) -> dict:
     goals = b.get("savings_goals", []) or []
-    g_out = [{"name": g.get("name", "Meta"),
-              "target": round(float(g.get("target", 0) or 0), 2),
-              "current": round(float(g.get("current", 0) or 0), 2)}
-             for g in goals]
+    buckets = _bucket_balances()
+    g_out = []
+    for g in goals:
+        name = g.get("name", "Meta")
+        held = buckets.get(_norm(name))
+        g_out.append({
+            "name": name,
+            "target": round(float(g.get("target", 0) or 0), 2),
+            "current": round(held if held is not None
+                             else float(g.get("current", 0) or 0), 2),
+            "source": "carteira" if held is not None else "informado",
+        })
     target = round(sum(g["target"] for g in g_out), 2)
     current = round(sum(g["current"] for g in g_out), 2)
     return {

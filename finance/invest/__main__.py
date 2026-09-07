@@ -13,11 +13,14 @@ import sys
 from datetime import date
 from pathlib import Path
 
+from .. import ledger as L
 from .. import sheets
+from .. import taxonomy as TAX
 from ..config import INVEST_DECISIONS_FILE, INVEST_PENDING_FILE
 from . import accounts as ACC
 from . import assets as A
 from . import decisions as D
+from . import ledger_link as LL
 from . import plan as PL
 from . import pluggy_sync as PS
 from . import policy as P
@@ -91,25 +94,46 @@ def cmd_sync(args) -> int:
               f"registrado {_money(report['registered'])} · "
               f"a alocar {_money(report['unallocated'])}")
 
+    print("\nLendo o extrato para proventos e aportes...")
+    records = list(L.load_ledger().values())
+    treatments = TAX.load_treatments()
+    income, income_pending = LL.income_from_ledger(records, assets, positions, trades)
+    rules = sheets.read_config("invest_allocation_rules", []) or []
+    waiting = LL.apply_rules(LL.unallocated(records, trades, treatments), rules)
+    pending.extend(income_pending)
+    pending.extend(waiting)
+    print(f"  {len(income)} provento(s) reconhecido(s), "
+          f"{len(waiting)} aporte(s) sem destino")
+
     updates = PS.suggested_trades(pending)
     for report in buckets_report.values():
         updates.extend(T.normalize(row) for row in PS.bucket_updates(report, today))
 
     INVEST_PENDING_FILE.write_text(json.dumps(
         {"generated_at": today, "pending": pending, "buckets": buckets_report,
-         "suggested_trades": updates}, ensure_ascii=False, indent=2) + "\n")
+         "suggested_trades": updates, "income": income},
+        ensure_ascii=False, indent=2) + "\n")
     print(f"\n{len(pending)} pendência(s):")
     for item in pending:
         print(f"  ! {item['message']}")
     print(f"\nGravado em {INVEST_PENDING_FILE}")
-    if updates and args.apply_balances:
-        only_balances = [t for t in updates if t["side"] == "BALANCE"]
-        T.append(only_balances)
-        print(f"Saldos aplicados: {len(only_balances)}")
+    to_write = []
+    if args.apply_balances:
+        to_write += [t for t in updates if t["side"] == "BALANCE"]
+    if args.apply_income:
+        to_write += income
+    if to_write:
+        T.append(to_write)
+        print(f"Gravado: {len(to_write)} lançamento(s)")
         R.generate()
-    elif updates:
-        print(f"{len(updates)} atualização(ões) de saldo sugerida(s). "
-              "Use --apply-balances para gravar.")
+    else:
+        hints = []
+        if updates:
+            hints.append(f"{len(updates)} saldo(s) com --apply-balances")
+        if income:
+            hints.append(f"{len(income)} provento(s) com --apply-income")
+        if hints:
+            print("Sugestões prontas: " + ", ".join(hints) + ".")
     return 0
 
 
@@ -169,6 +193,8 @@ def main() -> int:
     sync_cmd = sub.add_parser("sync", help="confere com as corretoras via Pluggy")
     sync_cmd.add_argument("--apply-balances", action="store_true",
                           help="grava os saldos informados pelas corretoras")
+    sync_cmd.add_argument("--apply-income", action="store_true",
+                          help="grava os proventos reconhecidos no extrato")
     sync_cmd.set_defaults(func=cmd_sync)
 
     show_cmd = sub.add_parser("show", help="resumo da carteira")
