@@ -192,3 +192,27 @@ def test_excluded_class_stays_out_of_the_eligible_base():
     total = PF.totals(positions, P.load(TEMPLATE))
     assert round(total["value"], 2) == 600.0
     assert round(total["eligible_value"], 2) == 100.0
+
+
+def test_synced_asset_uses_the_balance_entries_the_sync_wrote():
+    """Ativo da Pluggy é ativo por saldo: quem escreve o lançamento é o sync."""
+    assets = _assets({"ticker": "TESOURO", "node": "rf", "valuation": "pluggy",
+                      "target_pct": 1.0})
+    trades = [
+        {"date": "2026-04-16", "ticker": "TESOURO", "side": "BUY", "price": 7564.95},
+        {"date": "2026-09-07", "ticker": "TESOURO", "side": "BALANCE", "price": 7865.82},
+    ]
+    position = PF.build(assets, trades)["TESOURO"]
+    assert round(position["value"], 2) == 7865.82
+    assert round(position["cost"], 2) == 7564.95
+    assert position["stale"] is False
+
+
+def test_synced_asset_without_any_balance_is_stale():
+    assets = _assets({"ticker": "TESOURO", "node": "rf", "valuation": "pluggy",
+                      "target_pct": 1.0})
+    trades = [{"date": "2026-04-16", "ticker": "TESOURO", "side": "BUY",
+               "price": 7564.95}]
+    position = PF.build(assets, trades)["TESOURO"]
+    assert position["stale"] is True
+    assert round(position["value"], 2) == 7564.95

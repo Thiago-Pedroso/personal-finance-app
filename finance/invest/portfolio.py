@@ -75,7 +75,8 @@ def _by_balance(position: dict, trades: list[dict]) -> dict:
         total = T.total_brl(trade)
         if side == "BALANCE":
             if not opened:
-                # primeiro saldo é a abertura: dinheiro que já era seu, não rendimento
+                # saldo antes de qualquer movimento é abertura: dinheiro que já era seu.
+                # Depois de um aporte, a diferença passa a ser rendimento.
                 contributed = total
                 opened = True
             else:
@@ -86,9 +87,11 @@ def _by_balance(position: dict, trades: list[dict]) -> dict:
         elif side in ("BUY", "ADJUST"):
             balance += total
             contributed += total
+            opened = True
         elif side == "SELL":
             balance -= total
             contributed -= total
+            opened = True
         elif side in T.INCOME_SIDES:
             balance += total
             position["income"] += total
@@ -127,13 +130,13 @@ def build(assets: dict, trades: list[dict], quotes: dict | None = None,
             position["value"] = position["quantity"] * price if price is not None \
                 else position["cost"]
         elif asset["valuation"] == "pluggy":
-            _by_quote(position, rows)
+            # sincronizado é o mesmo ativo por saldo: o que muda é quem escreve o
+            # lançamento. `balances` só entra quando o valor chega ao vivo, sem gravar.
+            _by_balance(position, rows)
             informed = balances.get(ticker)
-            if informed is None:
-                position["stale"] = True
-                position["value"] = position["cost"]
-            else:
+            if informed is not None:
                 position["value"] = float(informed)
+            position["stale"] = informed is None and not position["last_balance_date"]
             position["price_source"] = "pluggy"
         else:
             _by_balance(position, rows)
