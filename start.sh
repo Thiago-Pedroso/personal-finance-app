@@ -20,6 +20,13 @@ fi
 echo "==> Atualizando relatorios a partir do Google Sheets..."
 uv run python -m finance.report
 
+# A carteira e opcional: quem ainda nao tem as abas de investimento segue sem ela.
+if uv run python -m finance.invest report >/dev/null 2>&1; then
+  echo "==> Carteira de investimentos atualizada."
+else
+  echo "==> Sem carteira de investimentos (rode: uv run python -m finance.seed --invest)."
+fi
+
 if [ ! -d frontend/node_modules ]; then
   echo "==> Instalando dependencias do frontend (primeira vez)..."
   npm --prefix frontend install

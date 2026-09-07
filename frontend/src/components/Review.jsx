@@ -5,6 +5,7 @@ import { TransactionsTable } from './TransactionsTable.jsx'
 import { CategoryTag } from '../lib/categories.jsx'
 import { signedBrl } from '../lib/format.js'
 import { Trash2, MessageSquare, Pencil, Check, X } from 'lucide-react'
+import { InvestPendingCards } from './invest/PendingCards.jsx'
 
 function Stat({ label, value, tone }) {
   return (
@@ -121,6 +122,8 @@ export function Review({ dash, queue, queuedIds, onRemoveQueue,
         <Stat label="Na fila do Claude" value={queue.length}
           tone={queue.length ? 'text-blue' : 'text-green'} />
       </div>
+
+      <InvestPendingCards />
 
       <Card className="border-blue/25 bg-blue/[0.05] px-5 py-4 text-[13px]
         text-muted">
