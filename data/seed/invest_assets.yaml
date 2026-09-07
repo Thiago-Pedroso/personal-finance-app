@@ -1,0 +1,88 @@
+# Carteira de demonstração (dados SINTÉTICOS: tickers reais, posições inventadas).
+#
+# valuation diz de onde vem o valor:
+#   quote    cotação do Google Finance (a fórmula é criada sozinha)
+#   balance  saldo que você informa, com a data à vista
+#   pluggy   saldo sincronizado pela corretora
+# target_pct é o alvo do ativo DENTRO da classe; a soma por classe deveria fechar 100%.
+
+- ticker: BBAS3
+  name: Banco do Brasil
+  node: acoes
+  account: corretora
+  sector: Banco
+  target_pct: 0.25
+- ticker: WEGE3
+  name: WEG
+  node: acoes
+  account: corretora
+  sector: Máquinas e equipamentos
+  target_pct: 0.25
+- ticker: TOTS3
+  name: Totvs
+  node: acoes
+  account: corretora
+  sector: Programas e serviços
+  target_pct: 0.25
+- ticker: B3SA3
+  name: B3
+  node: acoes
+  account: corretora
+  sector: Serviços financeiros
+  target_pct: 0.25
+- ticker: HGLG11
+  name: CSHG Logística
+  node: fiis
+  account: corretora
+  sector: Logística
+  target_pct: 0.5
+- ticker: VISC11
+  name: Vinci Shopping Centers
+  node: fiis
+  account: corretora
+  sector: Shopping
+  target_pct: 0.5
+- ticker: VOO
+  name: Vanguard S&P 500
+  node: stocks
+  account: global
+  sector: ETF de índice
+  currency: USD
+  lot_size: 0.0001
+  target_pct: 1.0
+- ticker: VNQ
+  name: Vanguard Real Estate
+  node: reits
+  account: global
+  sector: ETF imobiliário
+  currency: USD
+  lot_size: 0.0001
+  target_pct: 1.0
+- ticker: TESOURO-IPCA-2045
+  name: Tesouro IPCA+ 2045
+  node: renda_fixa
+  account: corretora
+  sector: Tesouro IPCA+
+  valuation: balance
+  target_pct: 1.0
+- ticker: BTC
+  name: Bitcoin
+  node: cripto
+  account: global
+  sector: Cripto
+  lot_size: 0.00000001
+  target_pct: 1.0
+- ticker: RESERVA-EMERGENCIA
+  name: Reserva de emergência
+  node: reservas
+  account: caixinhas
+  sector: CDB
+  valuation: balance
+  target_pct: 0.0
+- ticker: RESERVA-VIAGEM
+  name: Viagem
+  node: reservas
+  account: caixinhas
+  sector: CDB
+  valuation: balance
+  target_pct: 0.0

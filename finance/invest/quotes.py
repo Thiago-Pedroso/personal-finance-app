@@ -37,9 +37,11 @@ def guess_kind(ticker: str) -> str:
         return "fx"
     if code in _CRYPTO_HINTS:
         return "crypto"
-    if code.endswith("11") and code[:-2].isalpha():
+    # radical da B3 aceita dígito no meio (B3SA3), o que muda é o sufixo
+    radical, suffix = code[:4], code[4:]
+    if code.endswith("11") and code[:-2].isalnum() and code[0].isalpha():
         return "fii_br"
-    if len(code) == 5 and code[:4].isalpha() and code[4] in "34568":
+    if radical.isalnum() and radical[:1].isalpha() and suffix in ("3", "4", "5", "6", "8"):
         return "stock_br"
     if code.isalpha() and len(code) <= 5:
         return "stock_us"

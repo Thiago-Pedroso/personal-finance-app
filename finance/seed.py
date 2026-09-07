@@ -1,7 +1,7 @@
 """Inicializa o banco de dados no Google Sheets com dados de demonstração.
 
-Cria as abas (`Ledger`, `Rules`, `Taxonomy`, `SubcategoryMeta`, `PluggyMap`, `Config`) a partir dos *fixtures
-sintéticos* em `data/seed/`. Assim todo novo usuário começa com um banco funcional para entender
+Cria as abas (`Ledger`, `Rules`, `Taxonomy`, `SubcategoryMeta`, `PluggyMap`, `Config` e as de
+investimento) a partir dos *fixtures sintéticos* em `data/seed/`. Assim todo novo usuário começa com um banco funcional para entender
 o app antes de conectar as próprias contas via Open Finance (Pluggy).
 
 Uso:
@@ -10,6 +10,8 @@ Uso:
   uv run python -m finance.seed --source <DIR>  # usa fixtures de outro diretório (migração:
                                                 #   DIR com ledger.jsonl/rules.json/
                                                 #   taxonomy.yaml/budgets.json)
+  uv run python -m finance.seed --invest        # só a carteira de demonstração
+  uv run python -m finance.seed --no-invest     # só o controle de gastos
 """
 
 import argparse
@@ -22,6 +24,11 @@ import yaml
 from . import sheets
 from . import taxonomy as T
 from .config import DEFAULT_TIMEZONE, SEED_DIR
+from .invest import accounts as ACC
+from .invest import assets as A
+from .invest import policy as P
+from .invest import quotes as Q
+from .invest import trades as T_INVEST
 
 
 def _parse_taxonomy(raw: dict) -> tuple[dict, dict, dict]:
@@ -56,9 +63,52 @@ def _read_fixtures(src: Path) -> dict:
             "pluggy_map": pmap or {}}
 
 
+INVEST_TABS = ("InvestAccounts", "InvestPolicy", "InvestAssets", "InvestTrades")
+
+
+def _read_invest_fixtures(src: Path) -> dict | None:
+    """Carteira de demonstração. Ausente nos fixtures, o seed simplesmente pula."""
+    policy_file = src / "invest_policy.yaml"
+    if not policy_file.exists():
+        return None
+    trades_file = src / "invest_trades.jsonl"
+    trades = [json.loads(line) for line in
+              trades_file.read_text().splitlines() if line.strip()] \
+        if trades_file.exists() else []
+    return {
+        "policy": yaml.safe_load(policy_file.read_text()) or [],
+        "assets": yaml.safe_load((src / "invest_assets.yaml").read_text()) or [],
+        "accounts": yaml.safe_load((src / "invest_accounts.yaml").read_text()) or [],
+        "trades": trades,
+    }
+
+
+def _seed_invest(fixtures: dict) -> None:
+    """Grava a carteira e deixa as cotações prontas: quem abre o app pela primeira vez
+    encontra uma carteira funcionando, não uma tela vazia."""
+    accounts = ACC.load(fixtures["accounts"])
+    tree = P.load(fixtures["policy"])
+    assets = A.load(fixtures["assets"])
+    ACC.save(accounts)
+    P.save(tree)
+    A.save(assets)
+    sheets.write_records("InvestTrades",
+                         [T_INVEST.normalize(t) for t in fixtures["trades"]])
+    print(f"  InvestAccounts: {len(accounts)} contas")
+    print(f"  InvestPolicy:   {len(tree)} nós da política")
+    print(f"  InvestAssets:   {len(assets)} ativos")
+    print(f"  InvestTrades:   {len(fixtures['trades'])} movimentações")
+    pending = Q.missing({}, assets)
+    if pending:
+        Q.ensure(pending)
+        print(f"  Quotes:         {len(pending)} fórmulas do Google Finance criadas")
+    for problem in P.validate(tree):
+        print(f"  ! {problem}")
+
+
 def _non_empty_tabs() -> list[str]:
     busy = []
-    for tab in ("Ledger", "Rules", "Taxonomy", "PluggyMap"):
+    for tab in ("Ledger", "Rules", "Taxonomy", "PluggyMap") + INVEST_TABS:
         try:
             if sheets.read_records(tab):
                 busy.append(tab)
@@ -75,9 +125,28 @@ def main() -> None:
                     help="sobrescreve abas que já contêm dados")
     ap.add_argument("--source", default=str(SEED_DIR),
                     help="diretório com os fixtures (default: data/seed)")
+    ap.add_argument("--invest", action="store_true",
+                    help="popula só a carteira de investimentos")
+    ap.add_argument("--no-invest", action="store_true",
+                    help="popula só o controle de gastos")
     args = ap.parse_args()
 
     src = Path(args.source)
+    if args.invest:
+        fixtures = _read_invest_fixtures(src)
+        if not fixtures:
+            sys.exit(f"Fixtures de investimento não encontrados em {src}.")
+        sheets.ensure_tabs()
+        if not args.force:
+            busy = [tab for tab in _non_empty_tabs() if tab in INVEST_TABS]
+            if busy:
+                sys.exit(f"Estas abas já têm dados: {', '.join(busy)}.\n"
+                         "Use --force para sobrescrever.")
+        print(f"Populando a carteira a partir de {src}...")
+        _seed_invest(fixtures)
+        print("\nPronto! Rode: uv run python -m finance.invest report")
+        return
+
     if not (src / "ledger.jsonl").exists():
         sys.exit(f"Fixtures não encontrados em {src} (esperado ledger.jsonl, rules.json, "
                  "taxonomy.yaml, budgets.json).")
@@ -113,6 +182,11 @@ def main() -> None:
     sheets.write_config("timezone", DEFAULT_TIMEZONE)
     sheets.write_config("schema_version", sheets.SCHEMA_VERSION)
     print("  Config:   budgets, sync_state, timezone, schema_version")
+
+    invest = None if args.no_invest else _read_invest_fixtures(src)
+    if invest:
+        _seed_invest(invest)
+        sheets.write_config("invest_monthly_contribution", 1000)
 
     info = sheets.check()
     print(f"\nPronto! Banco de demonstração criado em '{info['title']}'.")

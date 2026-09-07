@@ -11,6 +11,7 @@ SERIAL_NOW = (NOW - datetime(1899, 12, 30)).total_seconds() / 86400
 
 def test_kind_guess_covers_the_real_portfolio():
     assert Q.guess_kind("BBAS3") == "stock_br"
+    assert Q.guess_kind("B3SA3") == "stock_br"   # radical com dígito no meio
     assert Q.guess_kind("snag11") == "fii_br"
     assert Q.guess_kind("VOO") == "stock_us"
     assert Q.guess_kind("BTC") == "crypto"
