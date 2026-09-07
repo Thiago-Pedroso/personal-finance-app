@@ -270,9 +270,12 @@ def _ws(tab: str):
         try:
             _ws_cache[tab] = open_sheet().worksheet(tab)
         except gspread.exceptions.WorksheetNotFound:
+            seed = ("uv run python -m finance.seed --invest"
+                    if tab.startswith("Invest") or tab == "Quotes"
+                    else "uv run python -m finance.seed")
             raise SheetsError(
                 f"Aba '{tab}' não existe na planilha. Rode o seed para criar/popular: "
-                "uv run python -m finance.seed")
+                f"{seed}")
     return _ws_cache[tab]
 
 
