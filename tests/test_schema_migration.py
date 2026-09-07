@@ -58,7 +58,7 @@ def test_schema_migration_adds_missing_fields():
     assert subcategory_meta.header == [name for name, _ in sheets.SUBCATEGORY_META_SCHEMA]
     assert changes == ["coluna Ledger.tags", "aba SubcategoryMeta", "Config.timezone"]
     assert config["timezone"] == "America/Sao_Paulo"
-    assert config["schema_version"] == 4
+    assert config["schema_version"] == sheets.SCHEMA_VERSION
     assert sheets.ensure_current_schema() == []
 
 

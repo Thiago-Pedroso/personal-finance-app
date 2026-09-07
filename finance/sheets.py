@@ -12,7 +12,9 @@ Design (ver docs/SHEETS_INTEGRATION.md):
   ao que `ledger.normalize()` produz (bools, floats, None e `splits` JSON preservados).
 - **Backoff exponencial** em 429/5xx (`@_retry`).
 
-Abas tabulares: `Ledger`, `Rules`, `Taxonomy`, `SubcategoryMeta` e `PluggyMap`.
+Abas tabulares do controle de gastos: `Ledger`, `Rules`, `Taxonomy`, `SubcategoryMeta` e
+`PluggyMap`. Do controle de investimentos: `InvestTrades`, `InvestAssets`, `InvestAccounts`,
+`InvestPolicy`, `Quotes` e `InvestSnapshots`.
 """
 
 import functools
@@ -26,7 +28,7 @@ from gspread.utils import ValueRenderOption, rowcol_to_a1
 
 from .config import DEFAULT_TIMEZONE, GOOGLE_SA_CREDENTIALS, ROOT, SHEET_ID
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 # Escopos: Sheets (ler/gravar) + Drive (abrir a planilha por ID / criar abas).
 _SCOPES = [
@@ -41,6 +43,7 @@ _SCOPES = [
 #        "fnum" (número opcional; ""→None)
 #        "bool" (TRUE/FALSE)
 #        "json" (serializado como JSON; ""→None)
+#        "qnum" (número vindo de fórmula; "#N/A"/"Loading..."→None em vez de erro)
 LEDGER_SCHEMA = [
     ("id", "str"), ("item_id", "str"), ("account_id", "str"),
     ("account_name", "str"), ("account_type", "opt"), ("date", "str"),
@@ -71,12 +74,60 @@ SUBCATEGORY_META_SCHEMA = [("Category", "str"), ("Subcategory", "str"),
 PLUGGY_MAP_SCHEMA = [("PluggyCategory", "str"), ("Category", "str"),
                      ("Subcategory", "opt")]
 
+# ---- Investimentos --------------------------------------------------------------------
+# Fatos: uma linha por operação. `side` cobre BUY, SELL, DIVIDEND, JCP, SPLIT, ADJUST e
+# BALANCE (saldo informado de ativo sem cotação).
+INVEST_TRADES_SCHEMA = [
+    ("id", "str"), ("date", "str"), ("ticker", "str"), ("side", "str"),
+    ("quantity", "fnum"), ("price", "fnum"), ("fees", "fnum"), ("currency", "opt"),
+    ("fx_rate", "fnum"), ("account", "opt"), ("note", "opt"), ("source", "opt"),
+    ("ledger_id", "opt"), ("created_at", "opt"),
+]
+
+# Catálogo. `node` aponta para uma folha da InvestPolicy; `valuation` diz de onde vem o
+# valor: "quote" (cotação), "balance" (saldo informado) ou "pluggy".
+INVEST_ASSETS_SCHEMA = [
+    ("ticker", "str"), ("name", "opt"), ("node", "str"), ("account", "opt"),
+    ("sector", "opt"), ("currency", "opt"), ("quote_symbol", "opt"),
+    ("valuation", "str"), ("pluggy_code", "opt"), ("target_pct", "fnum"),
+    ("lot_size", "fnum"), ("active", "bool"), ("note", "opt"),
+]
+
+# Onde o dinheiro está custodiado. `kind`: "broker" | "wallet" | "bucket".
+INVEST_ACCOUNTS_SCHEMA = [
+    ("id", "str"), ("name", "str"), ("institution", "opt"), ("kind", "str"),
+    ("pluggy_item_id", "opt"), ("currency", "opt"),
+]
+
+# Política de alocação como árvore. `node` é id estável, `name` é o rótulo editável.
+INVEST_POLICY_SCHEMA = [
+    ("node", "str"), ("name", "str"), ("parent", "opt"), ("target_pct", "fnum"),
+    ("in_totals", "bool"), ("color", "opt"), ("icon", "opt"),
+]
+
+# Única aba com fórmula: `price` guarda o GOOGLEFINANCE e é lida já calculada.
+QUOTES_SCHEMA = [
+    ("ticker", "str"), ("quote_symbol", "opt"), ("price", "qnum"),
+    ("currency", "opt"), ("kind", "opt"), ("updated_at", "opt"),
+]
+
+# Histórico: uma linha por nó por dia.
+INVEST_SNAPSHOTS_SCHEMA = [
+    ("date", "str"), ("node", "str"), ("value", "float"), ("cost", "float"),
+]
+
 SCHEMAS = {
     "Ledger": LEDGER_SCHEMA,
     "Rules": RULES_SCHEMA,
     "Taxonomy": TAXONOMY_SCHEMA,
     "PluggyMap": PLUGGY_MAP_SCHEMA,
     "SubcategoryMeta": SUBCATEGORY_META_SCHEMA,
+    "InvestTrades": INVEST_TRADES_SCHEMA,
+    "InvestAssets": INVEST_ASSETS_SCHEMA,
+    "InvestAccounts": INVEST_ACCOUNTS_SCHEMA,
+    "InvestPolicy": INVEST_POLICY_SCHEMA,
+    "Quotes": QUOTES_SCHEMA,
+    "InvestSnapshots": INVEST_SNAPSHOTS_SCHEMA,
 }
 CONFIG_TAB = "Config"
 
@@ -116,6 +167,12 @@ def _cell_to_val(kind: str, cell):
         return v if v is not None else 0.0
     if kind == "fnum":
         return _parse_float(s)
+    if kind == "qnum":
+        # célula de fórmula: erro do Sheets ("#N/A", "#ERROR!") e "Loading..." viram None
+        try:
+            return _parse_float(s)
+        except ValueError:
+            return None
     if kind == "json":
         if s.strip() == "":
             return None
@@ -131,7 +188,7 @@ def _val_to_cell(kind: str, val):
         return ""
     if kind == "bool":
         return "TRUE" if val else "FALSE"
-    if kind in ("float", "fnum"):
+    if kind in ("float", "fnum", "qnum"):
         return val  # número puro (value_input_option=RAW mantém como número)
     if kind == "json":
         return json.dumps(val, ensure_ascii=False)
