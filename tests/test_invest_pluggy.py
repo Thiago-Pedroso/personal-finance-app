@@ -24,9 +24,8 @@ def _investment(**kwargs):
     return {**base, **kwargs}
 
 
-def test_closed_position_and_subscription_right_are_noise():
+def test_closed_position_is_noise_and_a_real_one_is_not():
     assert PS.is_noise(_investment(code="KNCR11")) is True
-    assert PS.is_noise(_investment(code="HGRE12", quantity=5.0)) is False
     assert PS.is_noise(_investment(code="PSSA3", quantity=27, balance=1383.48)) is False
 
 
@@ -97,3 +96,18 @@ def test_account_total_sums_only_that_item():
     investments = [_investment(item_id="a", balance=100.0),
                    _investment(item_id="b", balance=50.0)]
     assert PS.account_total(investments, "a") == 100.0
+
+
+def test_position_without_value_is_noise():
+    """HGRE12 é direito de subscrição: vem com cotas e saldo zero."""
+    assert PS.is_noise(_investment(code="HGRE12", quantity=5.0, balance=0.0)) is True
+
+
+def test_repeated_unknown_assets_become_one_line():
+    """Uma caixinha vira dezenas de CDBs idênticos: a tela precisa de uma linha só."""
+    investments = [_investment(name="CDB - BANCO X", balance=500.0) for _ in range(40)]
+    pending = PS.reconcile(investments, {}, ASSETS, TODAY)
+    assert len(pending) == 1
+    assert pending[0]["count"] == 40
+    assert pending[0]["value"] == 20000.0
+    assert "40 aplicações" in pending[0]["message"]

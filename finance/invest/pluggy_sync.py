@@ -38,9 +38,9 @@ def normalize_investment(raw, item_id: str) -> dict:
 
 
 def is_noise(investment: dict) -> bool:
-    """Posição encerrada ou direito de subscrição: saldo zero e nada a acompanhar."""
-    return (abs(investment["balance"]) <= NOISE_TOLERANCE
-            and abs(investment["quantity"]) <= NOISE_TOLERANCE)
+    """Sem valor não é carteira. Cobre a posição encerrada que a corretora continua
+    listando e o direito de subscrição, que aparece com cotas e saldo zero."""
+    return abs(investment["balance"]) <= NOISE_TOLERANCE
 
 
 def fetch(item_ids=None) -> list[dict]:
@@ -73,19 +73,30 @@ def _match(investment: dict, assets: dict) -> str | None:
     return None
 
 
+def _unknown_message(name: str, count: int, total: float) -> str:
+    if count > 1:
+        return (f"{name}: {count} aplicações somando R$ {total:,.2f} aparecem na "
+                "corretora e não estão na carteira.")
+    return f"{name} aparece na corretora e não está na carteira, com R$ {total:,.2f}."
+
+
 def reconcile(investments: list[dict], positions: dict, assets: dict,
               today: str) -> list[dict]:
     """Pendências entre o que a corretora informa e o que a carteira calculou."""
     pending = []
+    unknown: dict = {}
     for investment in investments:
         ticker = _match(investment, assets)
         if not ticker:
-            pending.append({
+            # uma caixinha vira dezenas de papéis idênticos na corretora; agrupamos por
+            # nome para a tela mostrar uma linha, não cinquenta
+            key = investment["code"] or investment["name"]
+            group = unknown.setdefault(key, {
                 "kind": "unknown_asset", "ticker": investment["code"],
-                "name": investment["name"], "value": investment["balance"],
-                "quantity": investment["quantity"],
-                "message": f"{investment['code'] or investment['name']} aparece na "
-                           "corretora e não está na carteira."})
+                "name": investment["name"], "value": 0.0, "quantity": 0.0, "count": 0})
+            group["value"] += investment["balance"]
+            group["quantity"] += investment["quantity"]
+            group["count"] += 1
             continue
         asset = assets[ticker]
         position = positions.get(ticker, {})
@@ -113,6 +124,10 @@ def reconcile(investments: list[dict], positions: dict, assets: dict,
                 "trade": {"date": today, "ticker": ticker, "side": "BALANCE",
                           "price": investment["balance"], "source": "pluggy",
                           "note": "saldo informado pela corretora"}})
+    for group in unknown.values():
+        group["message"] = _unknown_message(
+            group["ticker"] or group["name"], group["count"], group["value"])
+        pending.append(group)
     return pending
 
 
