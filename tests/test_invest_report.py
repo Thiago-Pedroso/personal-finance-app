@@ -65,3 +65,20 @@ def test_history_sums_the_nodes_of_each_day():
     history = R.history_from(snapshots)
     assert history[0] == {"date": "2026-09-06", "value": 150.0, "cost": 140.0}
     assert history[1]["value"] == 110.0
+
+
+def test_report_exposes_the_trade_log():
+    report = _report()
+    assert len(report["trades"]) == len(TRADES)
+    assert report["trades"][0]["date"] <= report["trades"][-1]["date"]
+    assert all("id" in trade for trade in report["trades"])
+
+
+def test_class_out_of_the_targets_does_not_need_to_add_up():
+    """Caixinha é saldo com nome: cobrar 100% de alvo ali seria ruído."""
+    assets = A.load(ROWS + [{"ticker": "RESERVA", "node": "cripto", "target_pct": 0.0,
+                             "valuation": "balance"}])
+    quotes = {t: {"price": q["price"], "stale": False, "fell_back": False}
+              for t, q in QUOTES.items()}
+    report = R.build(assets, TRADES, quotes, P.load(TEMPLATE), {}, 0.0)
+    assert report["problems"] == []

@@ -17,7 +17,17 @@ import { Review } from './components/Review.jsx'
 import { TransactionsTable } from './components/TransactionsTable.jsx'
 import { EditModal } from './components/EditModal.jsx'
 import { DrillDrawer } from './components/DrillDrawer.jsx'
-import { Eye, EyeOff, RefreshCw, Wallet, MessageSquare } from 'lucide-react'
+import { Eye, EyeOff, RefreshCw, Wallet, MessageSquare, TrendingUp }
+  from 'lucide-react'
+import { InvestSpace, INVEST_TABS } from './components/invest/InvestSpace.jsx'
+import { useSpace } from './lib/useSpace.js'
+
+// Dois espaços lado a lado, em vez de um menu escondido atrás do título: o contador de
+// pendências de cada lado é o que traz a pessoa de volta, e some num dropdown.
+const SPACE_TABS = [
+  ['financas', 'Finanças', Wallet],
+  ['investimentos', 'Investimentos', TrendingUp],
+]
 
 const TABS = [
   ['overview', 'Visão Geral'],
@@ -35,7 +45,9 @@ function Shell() {
   const d = useData()
   const toast = useToast()
   const { valuesHidden, toggleValues } = usePrivacy()
-  const [tab, setTab] = useState('overview')
+  const space = useSpace()
+  const tab = space.tab
+  const setTab = space.setTab
   const [selCat, setSelCat] = useState(null)
   const [txnPreset, setTxnPreset] = useState(null)
   const [edit, setEdit] = useState({ open: false, rows: [] })
@@ -63,7 +75,8 @@ function Shell() {
     catch (e) { toast(e.message, 'error') }
   }
 
-  if (d.error && !d.dash) {
+  const investOnly = space.space === 'investimentos'
+  if (d.error && !d.dash && !investOnly) {
     return (
       <div className="mx-auto max-w-md px-6 py-32 text-center">
         <p className="text-red">⚠ {d.error}</p>
@@ -75,7 +88,7 @@ function Shell() {
       </div>
     )
   }
-  if (!d.dash || !d.view) {
+  if ((!d.dash || !d.view) && !investOnly) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-3
         text-muted">
@@ -85,13 +98,14 @@ function Shell() {
   }
 
   const { dash } = d
-  const mdata = d.view
+  const mdata = d.view || { transactions: [] }
   const month = d.periodKey
   const pickMonth = (m) => { if (m) { d.setMode('month'); d.setMonth(m) } }
   // ids que estão na Fila do Claude — pra marcar as linhas nas tabelas
   const queuedIds = new Set(d.queue.flatMap((q) => q.ids || []))
-  const pend = (dash.pending ?? dash.needs_review + dash.uncategorized)
-    + d.queue.length
+  const pend = dash
+    ? (dash.pending ?? dash.needs_review + dash.uncategorized) + d.queue.length
+    : 0
 
   return (
     <div className="relative z-[1] mx-auto w-full max-w-[1240px] px-4 pb-24 pt-7
@@ -107,12 +121,14 @@ function Shell() {
             Finance Control
           </h1>
           <p className="mt-1 text-[12px] text-faint">
-            {dash.total_transactions} transações · atualizado{' '}
-            {new Date(dash.generated_at).toLocaleString('pt-BR')}
+            {dash
+              ? `${dash.total_transactions} transações · atualizado ${
+                new Date(dash.generated_at).toLocaleString('pt-BR')}`
+              : 'controle de investimentos'}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {d.queue.length > 0 && (
+          {dash && d.queue.length > 0 && (
             <button onClick={() => setTab('review')}
               className="flex items-center gap-2 rounded-xl border border-blue/40
                 bg-blue/10 px-3 py-2 text-[13px] text-blue hover:bg-blue/20"
@@ -123,7 +139,7 @@ function Shell() {
                 font-bold">{d.queue.length}</span>
             </button>
           )}
-          <div className="flex gap-1 rounded-xl border border-border
+          {dash && <div className="flex gap-1 rounded-xl border border-border
             bg-surface2/70 p-1 text-[12.5px]">
             {['month', 'year'].map((mo) => (
               <button key={mo} onClick={() => d.setMode(mo)}
@@ -134,8 +150,8 @@ function Shell() {
                 {mo === 'month' ? 'Mês' : 'Ano'}
               </button>
             ))}
-          </div>
-          {d.mode === 'month' ? (
+          </div>}
+          {dash && (d.mode === 'month' ? (
             <select value={d.month || ''}
               onChange={(e) => d.setMonth(e.target.value)}
               className="rounded-xl border border-border bg-surface2 px-3 py-2
@@ -154,7 +170,7 @@ function Shell() {
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
-          )}
+          ))}
           <Button variant="ghost" onClick={toggleValues}
             className={valuesHidden ? 'bg-surface2 text-brand' : ''}
             aria-label="Modo de privacidade financeira"
@@ -178,9 +194,26 @@ function Shell() {
         </div>
       </header>
 
-      <nav className="sticky top-0 z-20 -mx-5 mt-6 flex flex-wrap gap-1 border-b
+      <nav className="mt-6 flex flex-wrap gap-1.5">
+        {SPACE_TABS.map(([key, label, Icon]) => (
+          <button key={key} onClick={() => space.go(key)}
+            className={`flex items-center gap-2 rounded-xl border px-4 py-2
+              text-[13.5px] font-semibold transition ${space.space === key
+                ? 'border-brand/40 bg-brand/15 text-brand-soft'
+                : 'border-border bg-surface2/60 text-muted hover:text-text'}`}>
+            <Icon className="size-4" />
+            {label}
+            {key === 'financas' && pend > 0 && (
+              <span className="rounded-full bg-amber/20 px-1.5 text-[11px] font-bold
+                text-amber">{pend}</span>
+            )}
+          </button>
+        ))}
+      </nav>
+
+      <nav className="sticky top-0 z-20 -mx-5 mt-3 flex flex-wrap gap-1 border-b
         border-border px-5 pt-2 backdrop-blur-md">
-        {TABS.map(([k, label]) => (
+        {(space.space === 'investimentos' ? INVEST_TABS : TABS).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`relative px-4 py-2.5 text-[14px] font-semibold
               transition ${tab === k
@@ -202,25 +235,28 @@ function Shell() {
       )}
 
       <main className="mt-6">
-        {tab === 'overview' && (
+        {space.space === 'investimentos' && (
+          <InvestSpace tab={tab} setTab={setTab} onError={d.setError} />
+        )}
+        {space.space === 'financas' && tab === 'overview' && (
           <Overview dash={dash} month={month} mdata={mdata}
             setMonth={pickMonth} goCategory={goCategory}
             goReview={() => setTab('review')} queue={d.queue} />
         )}
-        {tab === 'txns' && (
+        {space.space === 'financas' && tab === 'txns' && (
           <TransactionsTable txns={mdata.transactions || []} openEdit={openEdit}
             presetCat={txnPreset} queuedIds={queuedIds}
             treatments={dash.treatments} excludedCount={dash.excluded_count}
             title={`Transações — ${monthLabel(month)}`} />
         )}
-        {tab === 'cats' && (
+        {space.space === 'financas' && tab === 'cats' && (
           <Categories dash={dash} mdata={mdata} month={month}
             selectedCat={selCat} setSelectedCat={setSelCat} goTxns={goTxns} />
         )}
-        {tab === 'tags' && (
+        {space.space === 'financas' && tab === 'tags' && (
           <Tags dash={dash} mdata={mdata} period={month} />
         )}
-        {tab === 'plan' && (d.mode === 'year' ? (
+        {space.space === 'financas' && tab === 'plan' && (d.mode === 'year' ? (
           <div className="rounded-2xl border border-border bg-surface/80 px-6
             py-12 text-center text-[14px] text-muted">
             O planejamento é mensal. Selecione <b className="text-text">Mês</b>{' '}
@@ -230,24 +266,26 @@ function Shell() {
           <Planejamento dash={dash} mdata={mdata} month={month}
             onSaved={d.refresh} />
         ))}
-        {tab === 'tools' && <Tools dash={dash} />}
-        {tab === 'poup' && (
+        {space.space === 'financas' && tab === 'tools' && <Tools dash={dash} />}
+        {space.space === 'financas' && tab === 'poup' && (
           <Poupanca dash={dash} mdata={mdata} month={month} />
         )}
-        {tab === 'movs' && (
+        {space.space === 'financas' && tab === 'movs' && (
           <Movements dash={dash} mdata={mdata} month={month} />
         )}
-        {tab === 'review' && (
+        {space.space === 'financas' && tab === 'review' && (
           <Review dash={dash} queue={d.queue} queuedIds={queuedIds}
             onRemoveQueue={onRemoveQueue} onUpdateQueue={onUpdateQueue}
             openEdit={openEdit} />
         )}
       </main>
 
-      <DrillDrawer txns={mdata.transactions || []} openEdit={openEdit}
-        queuedIds={queuedIds} treatments={dash.treatments} />
+      {dash && (
+        <DrillDrawer txns={mdata.transactions || []} openEdit={openEdit}
+          queuedIds={queuedIds} treatments={dash.treatments} />
+      )}
 
-      {edit.open && (
+      {dash && edit.open && (
         <EditModal open={edit.open} onClose={closeEdit} txns={edit.rows}
           taxonomy={dash.taxonomy} allTxns={mdata.transactions || []}
           availableTags={dash.tags || []}

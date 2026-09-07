@@ -29,6 +29,9 @@ def problems(tree: dict, assets: dict, positions: dict, quote_map: dict) -> list
     """Tudo que a tela precisa avisar, em uma lista só."""
     out = list(P.validate(tree))
     for node, total in sorted(A.unbalanced_nodes(assets).items()):
+        # nó fora dos alvos não precisa fechar 100%: caixinha é saldo, não estratégia
+        if node in tree and not P.counts(tree, node):
+            continue
         name = tree[node]["name"] if node in tree else node
         out.append(f"Os alvos dos ativos de '{name}' somam {total * 100:.1f}%.")
     for ticker in sorted(assets):
@@ -67,6 +70,7 @@ def build(assets: dict, trades: list, quote_map: dict, tree: dict, accounts: dic
                        sorted(spread, key=lambda n: -spread[n]["value"])],
         "positions": [positions[t] for t in
                       sorted(positions, key=lambda t: -positions[t]["value"])],
+        "trades": T.sort([T.normalize(trade) for trade in trades]),
         "nodes": PF.by_node(positions),
         "accounts": [accounts[key] for key in sorted(accounts)],
         "sectors": A.sectors(assets),
