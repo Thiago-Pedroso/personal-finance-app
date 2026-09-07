@@ -59,7 +59,7 @@ def plan_changes(data: dict, assets: dict, accounts: dict, tree: dict,
             continue
         current = tree.get(node, {"node": node, "name": node, "parent": None,
                                   "target_pct": 0.0, "in_totals": True,
-                                  "color": None, "icon": None})
+                                  "role": P.STRATEGY, "color": None, "icon": None})
         tree[node] = {**current, **{k: v for k, v in row.items() if k in current}}
         tree[node]["parent"] = (tree[node]["parent"] or None) or None
 

@@ -98,3 +98,11 @@ def test_nothing_changes_when_the_file_is_empty():
     assert result["trades"] == []
     assert result["assets"] == ASSETS
     assert result["problems"] == []
+
+
+def test_new_node_keeps_the_role_it_was_given():
+    result = _apply({"policy": [{"node": "a_aportar", "name": "Esperando aporte",
+                                 "parent": "", "target_pct": 0.0, "in_totals": False,
+                                 "role": "to_invest"}]})
+    assert result["policy"]["a_aportar"]["role"] == "to_invest"
+    assert result["policy"]["a_aportar"]["in_totals"] is False
