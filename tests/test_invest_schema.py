@@ -106,7 +106,8 @@ def test_append_rows_sends_formula_untouched(monkeypatch):
     assert written == 1
     rows, option = worksheet.appended[0]
     assert option == "USER_ENTERED"
-    assert rows[0] == ["VOO", "NYSEARCA:VOO", formula, "BRL", "stock_us", "=NOW()"]
+    assert rows[0] == ["VOO", "NYSEARCA:VOO", formula, "BRL", "stock_us", "=NOW()",
+                       "", ""]
 
 
 def test_update_fields_can_write_formulas(monkeypatch):
@@ -121,5 +122,6 @@ def test_update_fields_can_write_formulas(monkeypatch):
 
 def test_quote_row_roundtrip():
     quote = {"ticker": "BBAS3", "quote_symbol": "BVMF:BBAS3", "price": 22.52,
-             "currency": "BRL", "kind": "stock_br", "updated_at": 46270.7314}
+             "currency": "BRL", "kind": "stock_br", "updated_at": 46270.7314,
+             "last_price": 22.52, "last_price_at": "2026-09-07"}
     assert _roundtrip(sheets.QUOTES_SCHEMA, quote) == quote

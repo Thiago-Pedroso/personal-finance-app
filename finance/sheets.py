@@ -109,6 +109,7 @@ INVEST_POLICY_SCHEMA = [
 QUOTES_SCHEMA = [
     ("ticker", "str"), ("quote_symbol", "opt"), ("price", "qnum"),
     ("currency", "opt"), ("kind", "opt"), ("updated_at", "qnum"),
+    ("last_price", "fnum"), ("last_price_at", "opt"),
 ]
 
 # Histórico: uma linha por nó por dia.
