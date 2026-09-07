@@ -34,3 +34,11 @@ export const postEdit = (payload) => postJSON('/api/edit', payload)
 
 // budgets = { income_plan, spending:{recurring,months}, savings_goals }
 export const postBudget = (budgets) => postJSON('/api/budget', budgets)
+
+// ---- espaço Investimentos ----------------------------------------------------
+export const getInvest = () => getJSON('/data/invest.json')
+export const getInvestPending = () => getJSON('/api/invest/pending')
+// payload = { trades?, assets?, accounts?, policy?, targets?, locked?, balances? }
+export const postInvest = (payload) => postJSON('/api/invest/apply', payload)
+export const refreshInvest = () => postJSON('/api/invest/refresh', {})
+export const syncInvest = (opts = {}) => postJSON('/api/invest/sync', opts)

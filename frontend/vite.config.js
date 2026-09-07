@@ -15,6 +15,8 @@ const DECISIONS = path.join(DATA, '.decisions.json')
 const EDITS = path.join(DATA, '.edits.json')
 const QUEUE = path.join(DATA, '.claude_queue.jsonl')
 const BUDGET_INPUT = path.join(DATA, '.budget_input.json')
+const INVEST_DECISIONS = path.join(DATA, '.invest_decisions.json')
+const INVEST_PENDING = path.join(DATA, '.invest_pending.json')
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -51,6 +53,15 @@ async function applyBudget(b) {
   fs.writeFileSync(BUDGET_INPUT, JSON.stringify(b, null, 2) + '\n')
   const r = await run('uv', ['run', 'python', '-m', 'finance.budgets', 'set', BUDGET_INPUT])
   return { ok: r.ok, step: r.ok ? 'done' : 'budget',
+    log: r.stdout.trim(), stderr: r.stderr.trim() }
+}
+
+// Investimentos: tudo passa pelo mesmo arquivo de decisões do caminho por conversa,
+// então a tela não tem validação própria nem um segundo jeito de gravar.
+async function applyInvest(payload) {
+  fs.writeFileSync(INVEST_DECISIONS, JSON.stringify(payload, null, 2) + '\n')
+  const r = await run('uv', ['run', 'python', '-m', 'finance.invest', 'apply'])
+  return { ok: r.ok, step: r.ok ? 'done' : 'invest',
     log: r.stdout.trim(), stderr: r.stderr.trim() }
 }
 
@@ -256,6 +267,40 @@ function financeServer() {
           } catch (e) {
             return json(res, 500, { ok: false, error: String(e) })
           }
+        }
+
+        // ---- investimentos
+        if (url === '/api/invest/apply' && req.method === 'POST') {
+          let payload
+          try { payload = await readBody(req) }
+          catch { return json(res, 400, { ok: false, error: 'JSON inválido' }) }
+          try {
+            const result = await serialize(() => applyInvest(payload))
+            return json(res, result.ok ? 200 : 500, result)
+          } catch (e) {
+            return json(res, 500, { ok: false, error: String(e) })
+          }
+        }
+        if (url === '/api/invest/refresh' && req.method === 'POST') {
+          const result = await serialize(() =>
+            run('uv', ['run', 'python', '-m', 'finance.invest', 'report']))
+          return json(res, result.ok ? 200 : 500,
+            { ok: result.ok, log: result.stdout.trim(), stderr: result.stderr.trim() })
+        }
+        if (url === '/api/invest/sync' && req.method === 'POST') {
+          const body = await readBody(req).catch(() => ({}))
+          const args = ['run', 'python', '-m', 'finance.invest', 'sync']
+          if (body.applyBalances) args.push('--apply-balances')
+          if (body.applyIncome) args.push('--apply-income')
+          const result = await serialize(() => run('uv', args))
+          return json(res, result.ok ? 200 : 500,
+            { ok: result.ok, log: result.stdout.trim(), stderr: result.stderr.trim() })
+        }
+        if (url === '/api/invest/pending' && req.method === 'GET') {
+          if (!fs.existsSync(INVEST_PENDING)) return json(res, 200, { pending: [] })
+          try {
+            return json(res, 200, JSON.parse(fs.readFileSync(INVEST_PENDING, 'utf8')))
+          } catch { return json(res, 200, { pending: [] }) }
         }
 
         // ---- planejamento: grava budgets.json + recalcula (serializado)
