@@ -66,11 +66,24 @@ def _by_quote(position: dict, trades: list[dict]) -> dict:
     return position
 
 
+def _last_balance_per_day(trades: list[dict]) -> list[dict]:
+    """Só o último saldo informado de cada dia conta.
+
+    Conferir com a corretora duas vezes no mesmo dia gravaria dois saldos, e o segundo
+    viraria rendimento em cima do primeiro. O que vale é a leitura mais recente."""
+    latest = {}
+    for index, trade in enumerate(trades):
+        if trade["side"] == "BALANCE":
+            latest[trade["date"]] = index
+    return [trade for index, trade in enumerate(trades)
+            if trade["side"] != "BALANCE" or latest[trade["date"]] == index]
+
+
 def _by_balance(position: dict, trades: list[dict]) -> dict:
     balance = 0.0
     contributed = 0.0
     opened = False
-    for trade in trades:
+    for trade in _last_balance_per_day(trades):
         side = trade["side"]
         total = T.total_brl(trade)
         if side == "BALANCE":

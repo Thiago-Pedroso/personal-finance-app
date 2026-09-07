@@ -216,3 +216,17 @@ def test_synced_asset_without_any_balance_is_stale():
     position = PF.build(assets, trades)["TESOURO"]
     assert position["stale"] is True
     assert round(position["value"], 2) == 7564.95
+
+
+def test_two_balances_on_the_same_day_keep_only_the_last():
+    """Conferir duas vezes no mesmo dia não pode virar rendimento em cima de si mesmo."""
+    assets = _assets({"ticker": "TESOURO", "node": "rf", "valuation": "balance",
+                      "target_pct": 1.0})
+    trades = [
+        {"date": "2026-04-16", "ticker": "TESOURO", "side": "BALANCE", "price": 7000.0},
+        {"date": "2026-09-07", "ticker": "TESOURO", "side": "BALANCE", "price": 7865.82},
+        {"date": "2026-09-07", "ticker": "TESOURO", "side": "BALANCE", "price": 7900.00},
+    ]
+    position = PF.build(assets, trades)["TESOURO"]
+    assert round(position["value"], 2) == 7900.00
+    assert round(position["income"], 2) == 900.00      # e não 900 + 34,18
