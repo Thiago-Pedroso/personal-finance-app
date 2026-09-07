@@ -30,6 +30,7 @@ REPORTS_DIR = DATA / "reports"
 TO_CATEGORIZE_FILE = DATA / ".to_categorize.json"
 DECISIONS_FILE = DATA / ".decisions.json"
 CLAUDE_QUEUE_FILE = DATA / ".claude_queue.jsonl"
+INVEST_DECISIONS_FILE = DATA / ".invest_decisions.json"
 
 # ---- Google Sheets (banco de dados na nuvem) ------------------------------------------
 # ID da planilha (da URL: .../spreadsheets/d/<SHEET_ID>/edit). Cada usuário tem a sua.
