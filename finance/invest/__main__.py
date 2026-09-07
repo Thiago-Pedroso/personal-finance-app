@@ -82,6 +82,7 @@ def cmd_sync(args) -> int:
     bucket_items = {account["pluggy_item_id"] for account in accounts.values()
                     if account["kind"] == "bucket" and account["pluggy_item_id"]}
     pending = PS.reconcile(investments, positions, assets, today, bucket_items)
+    pending.extend(PS.reconcile_accounts(PS.fetch_accounts(), positions, assets, today))
 
     buckets_report = {}
     for account in accounts.values():
@@ -149,10 +150,15 @@ def cmd_show(args) -> int:
     quotes = Q.load()
     positions = PF.build(assets, trades, quotes)
     totals = PF.totals(positions, tree)
-    print(f"Carteira {_money(totals['value'])} | custo {_money(totals['cost'])} | "
+    money = PF.wealth(positions, tree)
+    print(f"Investido  {_money(money['invested']):>16}   "
           f"lucro {_money(totals['profit'])} "
           f"({(totals['profit_pct'] or 0) * 100:+.2f}%)")
-    print(f"Elegível para rebalanceamento: {_money(totals['eligible_value'])}\n")
+    print(f"Reservado  {_money(money['reserved']):>16}")
+    print(f"A aportar  {_money(money['to_invest']):>16}")
+    print(f"Livre      {_money(money['free']):>16}")
+    print(f"{'-' * 28}\nTotal      {_money(money['total']):>16}")
+    print(f"\nElegível para rebalanceamento: {_money(totals['eligible_value'])}\n")
     spread = PF.allocation(positions, tree)
     for node in sorted(spread, key=lambda n: -spread[n]["value"]):
         item = spread[node]

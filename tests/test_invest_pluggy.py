@@ -119,3 +119,24 @@ def test_bucket_account_skips_the_asset_by_asset_check():
                    _investment(item_id="outra", code="SAPR11", quantity=10, balance=50.0)]
     pending = PS.reconcile(investments, {}, ASSETS, TODAY, bucket_items={"bucket-1"})
     assert [item["ticker"] for item in pending] == ["SAPR11"]
+
+
+def test_account_balance_becomes_a_balance_update():
+    """Saldo de conta é ativo por saldo: o ativo aponta para a conta em pluggy_code."""
+    assets = A.load([{"ticker": "CONTA-XP", "name": "Conta XP", "node": "a_aportar",
+                      "valuation": "pluggy", "pluggy_code": "acc-1"}])
+    accounts_data = [{"item_id": "i", "account_id": "acc-1", "name": "XP",
+                      "type": "BANK", "balance": 8000.60, "currency": "BRL"}]
+    pending = PS.reconcile_accounts(accounts_data, {"CONTA-XP": {"value": 6000.0}},
+                                    assets, TODAY)
+    assert pending[0]["kind"] == "balance_update"
+    assert PS.suggested_trades(pending)[0]["price"] == 8000.60
+
+
+def test_account_already_in_sync_says_nothing():
+    assets = A.load([{"ticker": "CONTA-XP", "name": "Conta XP", "node": "a_aportar",
+                      "valuation": "pluggy", "pluggy_code": "acc-1"}])
+    accounts_data = [{"item_id": "i", "account_id": "acc-1", "name": "XP",
+                      "type": "BANK", "balance": 8000.60, "currency": "BRL"}]
+    assert PS.reconcile_accounts(accounts_data, {"CONTA-XP": {"value": 8000.60}},
+                                 assets, TODAY) == []

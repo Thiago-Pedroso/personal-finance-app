@@ -62,6 +62,56 @@ def fetch(item_ids=None) -> list[dict]:
     return out
 
 
+def normalize_account(raw, item_id: str) -> dict:
+    return {
+        "item_id": str(item_id),
+        "account_id": str(getattr(raw, "id", "") or ""),
+        "name": (getattr(raw, "name", None) or "").strip(),
+        "type": getattr(raw, "type", None),
+        "balance": float(getattr(raw, "balance", None) or 0.0),
+        "currency": getattr(raw, "currency_code", None) or "BRL",
+    }
+
+
+def fetch_accounts(item_ids=None) -> list[dict]:
+    """Saldo das contas. Cartão fica de fora: fatura é dívida, não saldo."""
+    client = pc.build_client(pc.get_api_key())
+    out = []
+    for item_id in (item_ids or pc.item_ids()):
+        try:
+            accounts = pc.list_accounts(client, item_id)
+        except Exception as error:
+            print(f"  ! item {str(item_id)[:8]}: {str(error)[:120]}")
+            continue
+        out.extend(normalize_account(raw, item_id) for raw in accounts
+                   if getattr(raw, "type", None) != "CREDIT")
+    return out
+
+
+def reconcile_accounts(accounts_data: list[dict], positions: dict, assets: dict,
+                       today: str) -> list[dict]:
+    """Saldo de conta é ativo por saldo: o ativo aponta para a conta em `pluggy_code`."""
+    by_id = {account["account_id"]: account for account in accounts_data}
+    pending = []
+    for ticker, asset in assets.items():
+        code = (asset.get("pluggy_code") or "").strip()
+        account = by_id.get(code)
+        if not account:
+            continue
+        current = positions.get(ticker, {}).get("value", 0.0)
+        if abs(account["balance"] - current) <= 0.01:
+            continue
+        pending.append({
+            "kind": "balance_update", "ticker": ticker,
+            "difference": account["balance"] - current, "value": account["balance"],
+            "message": f"{asset['name']}: saldo em conta é "
+                       f"R$ {account['balance']:,.2f}.",
+            "trade": {"date": today, "ticker": ticker, "side": "BALANCE",
+                      "price": account["balance"], "source": "pluggy",
+                      "note": "saldo informado pela instituição"}})
+    return pending
+
+
 def _match(investment: dict, assets: dict) -> str | None:
     """Casa a posição da corretora com um ativo do catálogo."""
     code = investment["code"]
