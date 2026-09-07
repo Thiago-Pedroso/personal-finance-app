@@ -4,18 +4,22 @@
   uv run python -m finance.invest apply [arquivo]   # aplica .invest_decisions.json
   uv run python -m finance.invest show              # resumo da carteira no terminal
   uv run python -m finance.invest plan 3000         # simula um aporte
+  uv run python -m finance.invest sync              # confere com as corretoras (Pluggy)
 """
 
 import argparse
+import json
 import sys
+from datetime import date
 from pathlib import Path
 
 from .. import sheets
-from ..config import INVEST_DECISIONS_FILE
+from ..config import INVEST_DECISIONS_FILE, INVEST_PENDING_FILE
 from . import accounts as ACC
 from . import assets as A
 from . import decisions as D
 from . import plan as PL
+from . import pluggy_sync as PS
 from . import policy as P
 from . import portfolio as PF
 from . import quotes as Q
@@ -60,6 +64,52 @@ def cmd_apply(args) -> int:
     for problem in result["problems"]:
         print(f"  ! {problem}")
     R.generate()
+    return 0
+
+
+def cmd_sync(args) -> int:
+    """Confere a carteira com o que as corretoras informam. Nunca escreve sozinho:
+    divergência de quantidade pede movimentação, saldo pede confirmação."""
+    assets, accounts, tree, trades = _load_state()
+    positions = PF.build(assets, trades, Q.load())
+    today = date.today().isoformat()
+
+    print("Lendo investimentos na Pluggy...")
+    investments = PS.fetch()
+    pending = PS.reconcile(investments, positions, assets, today)
+
+    buckets_report = {}
+    for account in accounts.values():
+        if account["kind"] != "bucket" or not account["pluggy_item_id"]:
+            continue
+        total = PS.account_total(investments, account["pluggy_item_id"])
+        held = {ticker: positions[ticker]["value"] for ticker, asset in assets.items()
+                if asset["account"] == account["id"] and ticker in positions}
+        report = PS.bucket_report(total, held)
+        buckets_report[account["id"]] = report
+        print(f"\n{account['name']}: total {_money(report['total'])} · "
+              f"registrado {_money(report['registered'])} · "
+              f"a alocar {_money(report['unallocated'])}")
+
+    updates = PS.suggested_trades(pending)
+    for report in buckets_report.values():
+        updates.extend(T.normalize(row) for row in PS.bucket_updates(report, today))
+
+    INVEST_PENDING_FILE.write_text(json.dumps(
+        {"generated_at": today, "pending": pending, "buckets": buckets_report,
+         "suggested_trades": updates}, ensure_ascii=False, indent=2) + "\n")
+    print(f"\n{len(pending)} pendência(s):")
+    for item in pending:
+        print(f"  ! {item['message']}")
+    print(f"\nGravado em {INVEST_PENDING_FILE}")
+    if updates and args.apply_balances:
+        only_balances = [t for t in updates if t["side"] == "BALANCE"]
+        T.append(only_balances)
+        print(f"Saldos aplicados: {len(only_balances)}")
+        R.generate()
+    elif updates:
+        print(f"{len(updates)} atualização(ões) de saldo sugerida(s). "
+              "Use --apply-balances para gravar.")
     return 0
 
 
@@ -115,6 +165,11 @@ def main() -> int:
     report_cmd = sub.add_parser("report", help="gera data/reports/invest.json")
     report_cmd.add_argument("--no-snapshot", action="store_true")
     report_cmd.set_defaults(func=cmd_report)
+
+    sync_cmd = sub.add_parser("sync", help="confere com as corretoras via Pluggy")
+    sync_cmd.add_argument("--apply-balances", action="store_true",
+                          help="grava os saldos informados pelas corretoras")
+    sync_cmd.set_defaults(func=cmd_sync)
 
     show_cmd = sub.add_parser("show", help="resumo da carteira")
     show_cmd.set_defaults(func=cmd_show)

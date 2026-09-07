@@ -12,7 +12,7 @@ import json
 from datetime import date, datetime, timezone
 
 from .. import sheets
-from ..config import REPORTS_DIR, ensure_dirs
+from ..config import INVEST_PENDING_FILE, REPORTS_DIR, ensure_dirs
 from . import accounts as ACC
 from . import assets as A
 from . import plan as PL
@@ -40,9 +40,19 @@ def problems(tree: dict, assets: dict, positions: dict, quote_map: dict) -> list
     return out
 
 
+def load_pending() -> dict:
+    """Pendências da última conferência com as corretoras, se houver."""
+    if not INVEST_PENDING_FILE.exists():
+        return {}
+    try:
+        return json.loads(INVEST_PENDING_FILE.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+
+
 def build(assets: dict, trades: list, quote_map: dict, tree: dict, accounts: dict,
           contribution: float, history: list | None = None,
-          balances: dict | None = None) -> dict:
+          balances: dict | None = None, pending: dict | None = None) -> dict:
     positions = PF.build(assets, trades, quote_map, balances)
     totals = PF.totals(positions, tree)
     spread = PF.allocation(positions, tree)
@@ -63,6 +73,7 @@ def build(assets: dict, trades: list, quote_map: dict, tree: dict, accounts: dic
         "plan": PL.build(positions, assets, tree, contribution),
         "quotes": {ticker: quote_map[ticker] for ticker in sorted(quote_map)},
         "history": history or [],
+        "pending": pending or {},
         "problems": problems(tree, assets, positions, quote_map),
     }
 
@@ -121,7 +132,7 @@ def generate(write_snapshot: bool = True) -> dict:
             sheets.update_fields(Q.TAB, changes)
 
     report = build(assets, trades, quote_map, tree, accounts, contribution,
-                   history_from(snapshots))
+                   history_from(snapshots), pending=load_pending())
     path = REPORTS_DIR / "invest.json"
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     total = report["totals"]
