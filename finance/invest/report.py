@@ -63,6 +63,7 @@ def build(assets: dict, trades: list, quote_map: dict, tree: dict, accounts: dic
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "contribution": contribution,
         "totals": totals,
+        "wealth": PF.wealth(positions, tree),
         "policy": [{**tree[node], "weight": P.weight(tree, node),
                     "is_leaf": P.is_leaf(tree, node),
                     "counts": P.counts(tree, node)} for node in P.order(tree)],

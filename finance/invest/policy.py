@@ -10,6 +10,11 @@ from . import sheets_io as io
 TAB = "InvestPolicy"
 TOLERANCE = 0.005
 
+# O que cada nó representa no patrimônio. Só o vocabulário é fixo: os nós, os nomes e
+# quantos existem de cada papel continuam sendo do usuário.
+ROLES = ("strategy", "reserved", "to_invest", "free")
+STRATEGY = "strategy"
+
 
 def load(records=None) -> dict:
     """Devolve {node: {name, parent, target_pct, in_totals, color, icon}}."""
@@ -20,12 +25,14 @@ def load(records=None) -> dict:
         if not node:
             continue
         parent = (row.get("parent") or "").strip() or None
+        role = (row.get("role") or "").strip().lower()
         tree[node] = {
             "node": node,
             "name": (row.get("name") or node).strip(),
             "parent": parent,
             "target_pct": float(row.get("target_pct") or 0.0),
             "in_totals": bool(row.get("in_totals")),
+            "role": role if role in ROLES else STRATEGY,
             "color": row.get("color"),
             "icon": row.get("icon"),
         }
@@ -93,6 +100,18 @@ def leaf_weights(tree: dict) -> dict:
     return {node: weight(tree, node) for node in leaves(tree) if counts(tree, node)}
 
 
+def by_role(tree: dict) -> dict:
+    """{papel: [nós]}, para a tela somar cada bloco do patrimônio."""
+    out: dict = {role: [] for role in ROLES}
+    for node in order(tree):
+        out[tree[node]["role"]].append(node)
+    return out
+
+
+def role_of(tree: dict, node: str) -> str:
+    return tree[node]["role"] if node in tree else STRATEGY
+
+
 def validate(tree: dict) -> list[str]:
     """Problemas encontrados, em português, prontos para a tela. Lista vazia = ok."""
     problems = []
@@ -110,7 +129,8 @@ def validate(tree: dict) -> list[str]:
         if children(tree, node):
             groups[node] = children(tree, node)
     for parent, group in groups.items():
-        counted = [node for node in group if tree[node]["in_totals"]]
+        counted = [node for node in group
+                   if tree[node]["in_totals"] and tree[node]["role"] == STRATEGY]
         if not counted:
             continue
         total = sum(tree[node]["target_pct"] for node in counted)

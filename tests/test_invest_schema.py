@@ -39,7 +39,8 @@ def test_asset_and_policy_roundtrip():
     assert first == asset
 
     node = {"node": "renda_variavel", "name": "Renda Variável", "parent": None,
-            "target_pct": 0.8, "in_totals": True, "color": None, "icon": None}
+            "target_pct": 0.8, "in_totals": True, "role": "strategy",
+            "color": None, "icon": None}
     assert _roundtrip(sheets.INVEST_POLICY_SCHEMA, node) == node
 
 

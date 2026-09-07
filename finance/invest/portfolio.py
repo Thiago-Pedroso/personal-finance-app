@@ -79,13 +79,15 @@ def _last_balance_per_day(trades: list[dict]) -> list[dict]:
             if trade["side"] != "BALANCE" or latest[trade["date"]] == index]
 
 
-def _by_balance(position: dict, trades: list[dict]) -> dict:
+def _by_balance(position: dict, trades: list[dict], fx: float | None = None) -> dict:
     balance = 0.0
     contributed = 0.0
     opened = False
     for trade in _last_balance_per_day(trades):
         side = trade["side"]
-        total = T.total_brl(trade)
+        # com câmbio de hoje, o saldo em dólar deixa de ficar congelado na taxa do dia
+        # em que foi informado
+        total = (trade["price"] * fx) if fx else T.total_brl(trade)
         if side == "BALANCE":
             if not opened:
                 # saldo antes de qualquer movimento é abertura: dinheiro que já era seu.
@@ -123,6 +125,15 @@ def _price_of(asset: dict, quotes: dict) -> tuple[float | None, bool]:
     return float(price), bool(quote.get("stale"))
 
 
+def _fx_for(asset: dict, quotes: dict) -> float | None:
+    """Cotação de hoje da moeda do ativo, quando ele não é em reais."""
+    currency = (asset.get("currency") or "BRL").upper()
+    if currency == "BRL":
+        return None
+    quote = quotes.get(f"{currency}BRL") or quotes.get(currency)
+    return quote.get("price") if quote else None
+
+
 def build(assets: dict, trades: list[dict], quotes: dict | None = None,
           balances: dict | None = None) -> dict:
     """{ticker: posição}. `quotes` traz {ticker: {price, stale}} já em reais;
@@ -145,14 +156,14 @@ def build(assets: dict, trades: list[dict], quotes: dict | None = None,
         elif asset["valuation"] == "pluggy":
             # sincronizado é o mesmo ativo por saldo: o que muda é quem escreve o
             # lançamento. `balances` só entra quando o valor chega ao vivo, sem gravar.
-            _by_balance(position, rows)
+            _by_balance(position, rows, _fx_for(asset, quotes))
             informed = balances.get(ticker)
             if informed is not None:
                 position["value"] = float(informed)
             position["stale"] = informed is None and not position["last_balance_date"]
             position["price_source"] = "pluggy"
         else:
-            _by_balance(position, rows)
+            _by_balance(position, rows, _fx_for(asset, quotes))
         position["profit"] = position["value"] - position["cost"]
         position["profit_pct"] = (position["profit"] / position["cost"]
                                   if position["cost"] else None)
@@ -195,6 +206,21 @@ def totals(positions: dict, tree: dict) -> dict:
         "eligible_value": eligible_value, "eligible_cost": eligible_cost,
         "income": sum(p["income"] for p in positions.values()),
         "realized": sum(p["realized"] for p in positions.values()),
+    }
+
+
+def wealth(positions: dict, tree: dict) -> dict:
+    """Onde o dinheiro está, somado pelo papel de cada nó.
+
+    `invested` é a carteira, `reserved` o que está guardado com destino, `to_invest` o que
+    já saiu da conta e ainda não virou posição, e `free` o saldo sem compromisso."""
+    out = {role: 0.0 for role in P.ROLES}
+    for position in positions.values():
+        out[P.role_of(tree, position["node"])] += position["value"]
+    return {
+        "invested": out["strategy"], "reserved": out["reserved"],
+        "to_invest": out["to_invest"], "free": out["free"],
+        "total": sum(out.values()),
     }
 
 

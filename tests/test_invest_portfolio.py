@@ -230,3 +230,41 @@ def test_two_balances_on_the_same_day_keep_only_the_last():
     position = PF.build(assets, trades)["TESOURO"]
     assert round(position["value"], 2) == 7900.00
     assert round(position["income"], 2) == 900.00      # e não 900 + 34,18
+
+
+def test_wealth_sums_by_the_role_of_each_node():
+    tree = P.load(TEMPLATE + [
+        {"node": "reservas", "name": "Reservas", "parent": "", "target_pct": 0.0,
+         "in_totals": False, "role": "reserved"},
+        {"node": "livre", "name": "Livre", "parent": "", "target_pct": 0.0,
+         "in_totals": False, "role": "free"},
+        {"node": "a_aportar", "name": "Esperando aporte", "parent": "",
+         "target_pct": 0.0, "in_totals": False, "role": "to_invest"},
+    ])
+    assets = _assets(
+        {"ticker": "ACAO", "node": "acoes", "target_pct": 1.0},
+        {"ticker": "COFRE", "node": "reservas", "valuation": "balance"},
+        {"ticker": "CONTA", "node": "livre", "valuation": "balance"},
+        {"ticker": "NA-XP", "node": "a_aportar", "valuation": "balance"},
+    )
+    trades = [
+        {"date": "2026-01-01", "ticker": "ACAO", "side": "BUY", "quantity": 10,
+         "price": 10.0},
+        {"date": "2026-01-01", "ticker": "COFRE", "side": "BALANCE", "price": 500.0},
+        {"date": "2026-01-01", "ticker": "CONTA", "side": "BALANCE", "price": 300.0},
+        {"date": "2026-01-01", "ticker": "NA-XP", "side": "BALANCE", "price": 200.0},
+    ]
+    money = PF.wealth(PF.build(assets, trades, {"ACAO": {"price": 10.0}}), tree)
+    assert money == {"invested": 100.0, "reserved": 500.0, "to_invest": 200.0,
+                     "free": 300.0, "total": 1100.0}
+
+
+def test_balance_in_dollars_follows_todays_rate():
+    """15,70 dólares valem o câmbio de hoje, não o do dia em que foram informados."""
+    assets = _assets({"ticker": "INTER-GLOBAL", "node": "stocks", "currency": "USD",
+                      "valuation": "balance", "target_pct": 1.0})
+    trades = [{"date": "2026-09-07", "ticker": "INTER-GLOBAL", "side": "BALANCE",
+               "price": 15.70, "currency": "USD", "fx_rate": 5.0}]
+    quotes = {"USDBRL": {"price": 5.4321}}
+    position = PF.build(assets, trades, quotes)["INTER-GLOBAL"]
+    assert round(position["value"], 2) == round(15.70 * 5.4321, 2)

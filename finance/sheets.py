@@ -28,7 +28,7 @@ from gspread.utils import ValueRenderOption, rowcol_to_a1
 
 from .config import DEFAULT_TIMEZONE, GOOGLE_SA_CREDENTIALS, ROOT, SHEET_ID
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 # Escopos: Sheets (ler/gravar) + Drive (abrir a planilha por ID / criar abas).
 _SCOPES = [
@@ -100,9 +100,11 @@ INVEST_ACCOUNTS_SCHEMA = [
 ]
 
 # Política de alocação como árvore. `node` é id estável, `name` é o rótulo editável.
+# `role` diz o que o nó representa no patrimônio: estratégia, reserva, dinheiro a caminho
+# da corretora ou saldo sem destino.
 INVEST_POLICY_SCHEMA = [
     ("node", "str"), ("name", "str"), ("parent", "opt"), ("target_pct", "fnum"),
-    ("in_totals", "bool"), ("color", "opt"), ("icon", "opt"),
+    ("in_totals", "bool"), ("role", "opt"), ("color", "opt"), ("icon", "opt"),
 ]
 
 # Única aba com fórmula: `price` guarda o GOOGLEFINANCE e é lida já calculada.

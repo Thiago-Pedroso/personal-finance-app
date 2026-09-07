@@ -101,3 +101,37 @@ def test_order_puts_children_under_the_parent():
     assert ordered.index("br") > ordered.index("rv")
     assert ordered.index("acoes") > ordered.index("br")
     assert set(ordered) == {row["node"] for row in TEMPLATE}
+
+
+def test_role_defaults_to_strategy_and_groups_the_tree():
+    tree = P.load(TEMPLATE + [
+        {"node": "reservas", "name": "Reservas", "parent": "", "target_pct": 0.0,
+         "in_totals": False, "role": "reserved"},
+        {"node": "livre", "name": "Livre", "parent": "", "target_pct": 0.0,
+         "in_totals": False, "role": "free"},
+        {"node": "a_aportar", "name": "Esperando aporte", "parent": "",
+         "target_pct": 0.0, "in_totals": False, "role": "to_invest"},
+    ])
+    assert tree["acoes"]["role"] == "strategy"      # sem coluna preenchida
+    grouped = P.by_role(tree)
+    assert grouped["reserved"] == ["reservas"]
+    assert grouped["free"] == ["livre"]
+    assert grouped["to_invest"] == ["a_aportar"]
+    assert "acoes" in grouped["strategy"]
+
+
+def test_unknown_role_falls_back_to_strategy():
+    tree = P.load([{"node": "x", "name": "X", "parent": "", "target_pct": 1.0,
+                    "in_totals": True, "role": "sei la"}])
+    assert tree["x"]["role"] == "strategy"
+
+
+def test_nodes_outside_the_strategy_do_not_have_to_add_up():
+    """Reserva e saldo livre não são alvo: cobrar 100% deles seria ruído."""
+    tree = P.load(TEMPLATE + [
+        {"node": "reservas", "name": "Reservas", "parent": "", "target_pct": 0.0,
+         "in_totals": False, "role": "reserved"},
+        {"node": "livre", "name": "Livre", "parent": "", "target_pct": 0.0,
+         "in_totals": False, "role": "free"},
+    ])
+    assert P.validate(tree) == []
