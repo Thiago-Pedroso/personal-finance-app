@@ -327,11 +327,12 @@ def write_records(tab: str, records: list[dict]) -> None:
 
 @_retry
 def append_rows(tab: str, records: list[dict],
-                value_input_option: str = "USER_ENTERED") -> int:
+                value_input_option: str = "RAW") -> int:
     """Acrescenta linhas ao fim da aba, sem tocar no que já está lá.
 
-    Caminho de escrita das abas com fórmula: um campo cujo valor comece com "=" é
-    enviado como fórmula e o Sheets passa a calculá-lo."""
+    O padrão é RAW: numa aba de dados, USER_ENTERED faria o Sheets reinterpretar texto
+    (uma data viraria número serial e voltaria ilegível). Abas com fórmula pedem
+    `value_input_option="USER_ENTERED"` explicitamente."""
     if not records:
         return 0
     schema = SCHEMAS[tab]

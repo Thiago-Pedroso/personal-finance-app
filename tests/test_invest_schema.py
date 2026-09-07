@@ -101,7 +101,8 @@ def test_append_rows_sends_formula_untouched(monkeypatch):
     formula = '=GOOGLEFINANCE("NYSEARCA:VOO")*GOOGLEFINANCE("CURRENCY:USDBRL")'
     written = sheets.append_rows("Quotes", [{
         "ticker": "VOO", "quote_symbol": "NYSEARCA:VOO", "price": formula,
-        "currency": "BRL", "kind": "stock_us", "updated_at": "=NOW()"}])
+        "currency": "BRL", "kind": "stock_us", "updated_at": "=NOW()"}],
+        value_input_option="USER_ENTERED")
 
     assert written == 1
     rows, option = worksheet.appended[0]
@@ -125,3 +126,21 @@ def test_quote_row_roundtrip():
              "currency": "BRL", "kind": "stock_br", "updated_at": 46270.7314,
              "last_price": 22.52, "last_price_at": "2026-09-07"}
     assert _roundtrip(sheets.QUOTES_SCHEMA, quote) == quote
+
+
+def test_data_tabs_append_as_raw(monkeypatch):
+    """USER_ENTERED numa aba de dados transformaria a data em número serial."""
+    worksheet = RecordingWorksheet()
+    monkeypatch.setattr(sheets, "_ws", lambda tab: worksheet)
+    sheets.append_rows("InvestTrades", [{"id": "t1", "date": "2026-04-16",
+                                         "ticker": "BBAS3", "side": "BUY"}])
+    rows, option = worksheet.appended[0]
+    assert option == "RAW"
+    assert rows[0][1] == "2026-04-16"
+
+
+def test_quotes_tab_asks_for_user_entered():
+    from finance.invest import quotes as Q
+    import inspect
+    source = inspect.getsource(Q.ensure)
+    assert "USER_ENTERED" in source

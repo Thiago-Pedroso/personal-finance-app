@@ -152,7 +152,8 @@ def rows_for(entries: list[dict]) -> list[dict]:
 def ensure(entries: list[dict]) -> int:
     """Cria as linhas que faltam. Escrita com USER_ENTERED, então a fórmula vira fórmula."""
     rows = rows_for(entries)
-    return sheets.append_rows(TAB, rows) if rows else 0
+    return sheets.append_rows(TAB, rows,
+                              value_input_option="USER_ENTERED") if rows else 0
 
 
 def keep_last_good(records: list[dict], quotes: dict, today: str) -> list[tuple]:
