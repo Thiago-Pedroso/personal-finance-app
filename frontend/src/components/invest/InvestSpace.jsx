@@ -12,7 +12,7 @@ export const INVEST_TABS = [
   ['visao', 'Visão Geral'],
   ['carteira', 'Carteira'],
   ['aporte', 'Aporte'],
-  ['caixinhas', 'Caixinhas'],
+  ['caixinhas', 'Reservas e saldo'],
   ['operacoes', 'Movimentações'],
 ]
 

@@ -5,6 +5,38 @@ import { Card, CardHead } from '../ui/primitives.jsx'
 import { SensitiveAmount } from '../ui/SensitiveValue.jsx'
 import { DriftBar, DriftChip, Money, pct, Problems, Profit } from './shared.jsx'
 
+// Onde o dinheiro está, e não só quanto ele soma: a mesma quantia parada na corretora
+// e guardada para a viagem contam histórias diferentes.
+function Wealth({ money }) {
+  const lines = [
+    ['Investido', money.invested, 'na estratégia'],
+    ['Reservado', money.reserved, 'guardado com destino'],
+    ['A aportar', money.to_invest, 'saiu da conta, ainda não virou posição'],
+    ['Livre', money.free, 'sem compromisso'],
+  ].filter(([, value]) => Math.abs(value) > 0.005)
+  return (
+    <Card className="px-5 py-4">
+      <p className="text-[12px] font-semibold uppercase tracking-wider text-muted">
+        Patrimônio</p>
+      <div className="mt-3 flex flex-col gap-2">
+        {lines.map(([label, value, hint]) => (
+          <div key={label} className="flex items-baseline justify-between gap-3"
+            title={hint}>
+            <span className="text-[13px] text-muted">{label}</span>
+            <span className="tnum text-[15px] font-semibold">
+              <Money value={value} /></span>
+          </div>
+        ))}
+        <div className="mt-1 flex items-baseline justify-between gap-3 border-t
+          border-border/60 pt-2">
+          <span className="text-[13px] font-semibold">Total</span>
+          <span className="tnum text-[19px] font-bold"><Money value={money.total} /></span>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
 function Tile({ label, children, sub }) {
   return (
     <Card className="px-5 py-4">
@@ -62,6 +94,9 @@ function History({ points }) {
 
 export function Visao({ data, goTab }) {
   const { totals, allocation, plan, history, problems } = data
+  const money = data.wealth
+    || { invested: totals.eligible_value, reserved: 0, to_invest: 0,
+      free: totals.value - totals.eligible_value, total: totals.value }
   const reserves = totals.value - totals.eligible_value
   const counted = allocation.filter((item) => item.in_totals)
 
@@ -70,19 +105,20 @@ export function Visao({ data, goTab }) {
       <Problems items={problems} />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Tile label="Patrimônio"
-          sub={reserves > 0.01
-            ? `${brl(totals.eligible_value)} na estratégia · ${brl(reserves)} fora`
-            : 'tudo dentro da estratégia'}>
-          <Money value={totals.value} />
-        </Tile>
-        <Tile label="Rentabilidade"
-          sub={`custo ${brl(totals.cost)}`}>
-          <Profit value={totals.profit} pctValue={totals.profit_pct} />
-        </Tile>
-        <Tile label="Proventos e vendas"
-          sub={totals.realized ? `inclui ${brl(totals.realized)} realizados` : 'recebido até aqui'}>
-          <Money value={totals.income + totals.realized} />
+        <Wealth money={money} />
+        <div className="flex flex-col gap-4">
+          <Tile label="Rentabilidade" sub={`custo ${brl(totals.cost)}`}>
+            <Profit value={totals.profit} pctValue={totals.profit_pct} />
+          </Tile>
+          <Tile label="Proventos e vendas"
+            sub={totals.realized
+              ? `inclui ${brl(totals.realized)} realizados` : 'recebido até aqui'}>
+            <Money value={totals.income + totals.realized} />
+          </Tile>
+        </div>
+        <Tile label="Elegível para rebalanceamento"
+          sub={reserves > 0.01 ? `${brl(reserves)} fora da estratégia` : 'toda a carteira'}>
+          <Money value={totals.eligible_value} />
         </Tile>
       </div>
 

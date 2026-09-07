@@ -6,19 +6,33 @@ import { Modal } from '../ui/Modal.jsx'
 import { Button, Card, CardHead, Empty } from '../ui/primitives.jsx'
 import { Money, pct } from './shared.jsx'
 
-// Caixinha é ativo por saldo numa conta do tipo bucket. A instituição sabe o total,
-// você sabe a divisão, e a diferença entre os dois é dinheiro a alocar.
-function bucketsOf(data) {
+// Tudo que não é posição de mercado: reserva com destino, dinheiro esperando aporte e
+// saldo sem compromisso. Cada linha é um saldo com nome, e o papel vem do nó da política.
+const ROLES = [
+  ['reserved', 'Reservas', 'guardado com um destino'],
+  ['to_invest', 'A aportar', 'saiu da conta e ainda não virou posição'],
+  ['free', 'Livre', 'sem compromisso'],
+]
+
+function roleOfNode(data) {
+  const roles = {}
+  ;(data.policy || []).forEach((node) => { roles[node.node] = node.role })
+  return roles
+}
+
+function groupsOf(data) {
+  const roles = roleOfNode(data)
   const accounts = Object.fromEntries((data.accounts || []).map((a) => [a.id, a]))
-  const rows = data.positions.filter((position) =>
-    position.valuation === 'balance' && accounts[position.account]?.kind === 'bucket')
-  const groups = new Map()
-  rows.forEach((row) => {
-    const account = accounts[row.account]
-    if (!groups.has(row.account)) groups.set(row.account, { account, rows: [] })
-    groups.get(row.account).rows.push(row)
+  const out = []
+  ROLES.forEach(([role, title, hint]) => {
+    const rows = data.positions.filter((position) =>
+      roles[position.node] === role && position.valuation !== 'quote')
+    if (rows.length) {
+      out.push({ role, title, hint, accounts,
+        rows: [...rows].sort((a, b) => b.value - a.value) })
+    }
   })
-  return [...groups.values()]
+  return out
 }
 
 function UpdateModal({ bucket, onClose, onConfirm, busy }) {
@@ -104,14 +118,16 @@ function NewBucketModal({ accountId, node, onClose, onConfirm, busy }) {
 export function Caixinhas({ data, onApply, busy }) {
   const [updating, setUpdating] = useState(null)
   const [creating, setCreating] = useState(null)
-  const groups = bucketsOf(data)
+  const groups = groupsOf(data)
   const pending = (data.pending?.buckets) || {}
+  const bucketNode = (data.policy || []).find((node) => node.role === 'reserved')
 
   if (!groups.length) {
     return (
       <Empty>
-        Nenhuma caixinha ainda. Crie uma conta com tipo <b>bucket</b> e um ativo por
-        saldo dentro dela para acompanhar reserva e objetivos aqui.
+        Nada por aqui ainda. Crie um nó com papel <b>reserved</b>, <b>to_invest</b> ou
+        <b> free</b> na política e um ativo por saldo dentro dele para acompanhar
+        reserva, dinheiro a caminho da corretora e saldo livre.
       </Empty>
     )
   }
@@ -127,23 +143,25 @@ export function Caixinhas({ data, onApply, busy }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {groups.map(({ account, rows }) => {
+      {groups.map(({ role, title, hint, rows, accounts }) => {
         const total = rows.reduce((sum, row) => sum + row.value, 0)
-        const report = pending[account.id]
+        const bucketAccount = rows.map((row) => accounts[row.account])
+          .find((account) => account?.kind === 'bucket')
+        const report = bucketAccount ? pending[bucketAccount.id] : null
         const unallocated = report?.unallocated ?? 0
         return (
-          <Card key={account.id}>
-            <CardHead title={account.name}
+          <Card key={role}>
+            <CardHead title={title}
               sub={report
-                ? `a instituição informa ${brl(report.total)}`
-                : 'saldos informados por você'}
-              right={
+                ? `${hint} · a instituição informa ${brl(report.total)}`
+                : hint}
+              right={role === 'reserved' ? (
                 <Button variant="ghost"
-                  onClick={() => setCreating({ accountId: account.id,
+                  onClick={() => setCreating({ accountId: rows[0]?.account,
                     node: rows[0]?.node })}>
                   <Plus className="size-4" /> Caixinha
                 </Button>
-              } />
+              ) : null} />
             <div className="flex flex-col gap-2 px-5 pb-4">
               {rows.map((row) => (
                 <button key={row.ticker} onClick={() => setUpdating(row)}
@@ -152,10 +170,12 @@ export function Caixinhas({ data, onApply, busy }) {
                   <div>
                     <p className="text-[13.5px] font-semibold">{row.name}</p>
                     <p className="text-[11px] text-faint">
-                      {row.last_balance_date
-                        ? `atualizado em ${row.last_balance_date}`
-                        : 'sem atualização'}
+                      {row.price_source === 'pluggy' ? 'sincronizado' : (
+                        row.last_balance_date
+                          ? `atualizado em ${row.last_balance_date}`
+                          : 'sem atualização')}
                       {row.income > 0 && ` · rendeu ${brl(row.income)}`}
+                      {accounts[row.account] && ` · ${accounts[row.account].name}`}
                     </p>
                   </div>
                   <div className="hidden h-1.5 overflow-hidden rounded-full bg-surface2
@@ -168,7 +188,7 @@ export function Caixinhas({ data, onApply, busy }) {
               ))}
               <div className="flex items-center justify-between border-t border-border/60
                 px-3 pt-3 text-[13px]">
-                <span className="text-muted">Soma das caixinhas</span>
+                <span className="text-muted">Soma</span>
                 <span className="tnum font-semibold"><Money value={total} /></span>
               </div>
               {report && Math.abs(unallocated) > 0.01 && (
@@ -188,7 +208,7 @@ export function Caixinhas({ data, onApply, busy }) {
 
       <p className="flex items-center gap-2 px-1 text-[12px] text-faint">
         <PiggyBank className="size-3.5" />
-        Caixinha fica fora do rebalanceamento: aparece no patrimônio e não recebe aporte
+        Nada aqui entra no rebalanceamento: aparece no patrimônio e não recebe aporte
         automático.
       </p>
 
