@@ -3,7 +3,6 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { ArrowDown, ArrowUp, Plus, RotateCcw, Save, Trash2 } from 'lucide-react'
 
 import { Button, Card } from '../ui/primitives.jsx'
-import { inputCls } from '../ui/MultiSelect.jsx'
 import {
   InvestmentCardHeader, InvestmentPageHeader, Money, pct,
 } from './shared.jsx'
@@ -132,56 +131,60 @@ export function Simulador({ data, onApply, busy }) {
             {labelOptions.map((name) => <option key={name} value={name} />)}
           </datalist>
 
-          <div className="overflow-x-auto px-2 pb-2 sm:px-3">
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr className="text-left text-[11px] uppercase tracking-wide text-subtle">
-                  <th className="px-3 py-2">Item</th>
-                  <th className="px-3 py-2 text-right">Custo</th>
-                  <th className="px-3 py-2 text-right">Restante</th>
-                  <th className="px-3 py-2 text-right">% relativo</th>
-                  <th className="w-24" />
+          <div className="overflow-x-auto">
+            <table className="invest-table invest-responsive-table w-full text-[15px]">
+              <thead className="bg-table-head text-[14px] text-strong">
+                <tr className="h-16 border-b border-white/15">
+                  <th className="px-5 text-left font-bold">Item</th>
+                  <th className="px-3 text-right font-bold">Custo</th>
+                  <th className="px-3 text-right font-bold">Restante</th>
+                  <th className="px-3 text-right font-bold">% relativo</th>
+                  <th className="px-2 py-2" />
                 </tr>
               </thead>
               <tbody>
                 {withRunning.map((r, i) => (
-                  <tr key={r.id} className="border-t border-border/60">
-                    <td className="px-3 py-1.5">
-                      <span className="mr-2 inline-block size-2.5 rounded-full"
+                  <tr key={r.id} className="min-h-[72px] border-b border-border/60
+                    last:border-0">
+                    <td data-primary="true" data-label="Item" className="px-5 py-4">
+                      <span className="mr-2 inline-block size-2.5 shrink-0 rounded-full"
                         style={{ background: colorFor(r.id) }} />
                       <input value={r.label} list="alloc-sim-labels"
                         placeholder="nome livre…"
                         onChange={(e) => setRow(r.id, 'label', e.target.value)}
-                        className={inputCls('inline-block w-40')} />
+                        className="min-w-0 rounded-lg border border-border bg-surface2
+                          px-2 py-2 text-[15px] focus:border-brand" />
                     </td>
-                    <td className="px-3 py-1.5 text-right">
+                    <td data-label="Custo" className="px-3 py-4 text-right">
                       <input value={r.amountInput} inputMode="decimal"
                         placeholder="0" onChange={(e) =>
                           setRow(r.id, 'amountInput', e.target.value)}
-                        className={inputCls('tnum w-28 text-right')} />
+                        className="tnum w-28 rounded-lg border border-border bg-surface2
+                          px-2 py-2 text-right text-[15px] focus:border-brand" />
                     </td>
-                    <td className={`tnum px-3 py-1.5 text-right font-semibold
-                      ${r.restante < 0 ? 'text-red' : 'text-secondary'}`}>
+                    <td data-label="Restante" className={`tnum px-3 py-4 text-right
+                      font-semibold ${r.restante < 0 ? 'text-red' : 'text-secondary'}`}>
                       <Money value={r.restante} />
                     </td>
-                    <td className="tnum px-3 py-1.5 text-right text-subtle">
+                    <td data-label="% relativo" className="tnum px-3 py-4 text-right
+                      text-secondary">
                       {pct(r.relPct)}
                     </td>
-                    <td className="px-3 py-1.5">
+                    <td data-label="Ações" className="px-2 py-4">
                       <div className="flex items-center justify-end gap-0.5">
                         <button onClick={() => moveRow(r.id, -1)} disabled={i === 0}
-                          className="rounded-lg p-1 text-subtle hover:bg-surface2
+                          className="rounded-lg p-2 text-subtle hover:bg-surface2
                             disabled:opacity-30" title="Mover pra cima">
                           <ArrowUp className="size-3.5" />
                         </button>
                         <button onClick={() => moveRow(r.id, 1)}
                           disabled={i === withRunning.length - 1}
-                          className="rounded-lg p-1 text-subtle hover:bg-surface2
+                          className="rounded-lg p-2 text-subtle hover:bg-surface2
                             disabled:opacity-30" title="Mover pra baixo">
                           <ArrowDown className="size-3.5" />
                         </button>
                         <button onClick={() => removeRow(r.id)}
-                          className="rounded-lg p-1 text-red hover:bg-red/10"
+                          className="rounded-lg p-2 text-red hover:bg-red/10"
                           title="Remover">
                           <Trash2 className="size-3.5" />
                         </button>
@@ -189,17 +192,19 @@ export function Simulador({ data, onApply, busy }) {
                     </td>
                   </tr>
                 ))}
-                <tr className="border-t border-border bg-surface2/40 font-bold">
-                  <td className="px-3 py-2 text-secondary">
+                <tr className="min-h-[72px] bg-surface2/40 font-bold">
+                  <td data-primary="true" data-label="Item" className="px-5 py-4
+                    text-secondary">
                     <span className="mr-2 inline-block size-2.5 rounded-full"
                       style={{ background: FREE_COLOR }} />Livre</td>
-                  <td />
-                  <td className={`tnum px-3 py-2 text-right
+                  <td data-label="Custo" className="px-3 py-4" />
+                  <td data-label="Restante" className={`tnum px-3 py-4 text-right
                     ${livre < 0 ? 'text-red' : 'text-strong'}`}>
                     <Money value={livre} /></td>
-                  <td className="tnum px-3 py-2 text-right text-subtle">
+                  <td data-label="% relativo" className="tnum px-3 py-4 text-right
+                    text-secondary">
                     {pct(baseNumber ? livre / baseNumber : 0)}</td>
-                  <td />
+                  <td data-label="Ações" className="px-2 py-4" />
                 </tr>
               </tbody>
             </table>
@@ -219,51 +224,54 @@ export function Simulador({ data, onApply, busy }) {
           </div>
         </Card>
 
-        <Card className="order-first p-5 xl:order-none sm:p-6">
-          <h3 className="text-[15px] font-bold text-strong">Como ficou</h3>
-          {chartTotal > 0 ? (
-            <div className="relative mt-2 h-[220px] min-w-0" role="img"
-              aria-label="Gráfico da divisão simulada">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={slices} dataKey="value" nameKey="name"
-                    innerRadius={64} outerRadius={94} paddingAngle={2}
-                    stroke="var(--color-surface)" strokeWidth={3}>
-                    {slices.map((s) => <Cell key={s.name} fill={s.fill} />)}
-                  </Pie>
-                  <Tooltip content={({ active, payload }) => active && payload?.length ? (
-                    <div className="rounded-xl border border-border bg-surface2/95
-                      px-3 py-2 text-[13px] shadow-xl">
-                      <p className="font-bold text-strong">{payload[0].name}</p>
-                      <p className="tnum mt-1 text-secondary">
-                        <Money value={payload[0].value} /> ·{' '}
-                        {pct(payload[0].value / chartTotal)}</p>
-                    </div>
-                  ) : null} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="pointer-events-none absolute inset-0 grid place-content-center
-                text-center">
-                <p className="text-[11px] font-semibold text-subtle">Base</p>
-                <p className="tnum mt-1 text-[16px] font-bold text-strong">
-                  <Money value={baseNumber} /></p>
+        <Card className="order-first xl:order-none">
+          <InvestmentCardHeader title="Como ficou"
+            description="A fatia de cada linha sobre o que foi digitado." />
+          <div className="px-5 pb-6 sm:px-6">
+            {chartTotal > 0 ? (
+              <div className="relative h-[220px] min-w-0" role="img"
+                aria-label="Gráfico da divisão simulada">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={slices} dataKey="value" nameKey="name"
+                      innerRadius={64} outerRadius={94} paddingAngle={2}
+                      stroke="var(--color-surface)" strokeWidth={3}>
+                      {slices.map((s) => <Cell key={s.name} fill={s.fill} />)}
+                    </Pie>
+                    <Tooltip content={({ active, payload }) => active && payload?.length ? (
+                      <div className="rounded-xl border border-border bg-surface2/95
+                        px-3 py-2 text-[13px] shadow-xl">
+                        <p className="font-bold text-strong">{payload[0].name}</p>
+                        <p className="tnum mt-1 text-secondary">
+                          <Money value={payload[0].value} /> ·{' '}
+                          {pct(payload[0].value / chartTotal)}</p>
+                      </div>
+                    ) : null} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-0 grid place-content-center
+                  text-center">
+                  <p className="text-[11px] font-semibold text-subtle">Base</p>
+                  <p className="tnum mt-1 text-[16px] font-bold text-strong">
+                    <Money value={baseNumber} /></p>
+                </div>
               </div>
+            ) : (
+              <p className="py-8 text-center text-[13px] text-subtle">
+                Defina uma base e ao menos uma linha com valor pra ver o gráfico.
+              </p>
+            )}
+            <div className="mt-4 flex flex-col gap-1.5 border-t border-border/70 pt-4">
+              {slices.map((s) => (
+                <div key={s.name} className="flex items-center justify-between text-[13px]">
+                  <span className="flex items-center gap-2 text-secondary">
+                    <span className="size-2.5 rounded-full" style={{ background: s.fill }} />
+                    {s.name}
+                  </span>
+                  <span className="tnum text-subtle">{pct(s.value / chartTotal)}</span>
+                </div>
+              ))}
             </div>
-          ) : (
-            <p className="mt-6 py-8 text-center text-[13px] text-subtle">
-              Defina uma base e ao menos uma linha com valor pra ver o gráfico.
-            </p>
-          )}
-          <div className="mt-4 flex flex-col gap-1.5 border-t border-border/70 pt-4">
-            {slices.map((s) => (
-              <div key={s.name} className="flex items-center justify-between text-[13px]">
-                <span className="flex items-center gap-2 text-secondary">
-                  <span className="size-2.5 rounded-full" style={{ background: s.fill }} />
-                  {s.name}
-                </span>
-                <span className="tnum text-subtle">{pct(s.value / chartTotal)}</span>
-              </div>
-            ))}
           </div>
         </Card>
       </div>
