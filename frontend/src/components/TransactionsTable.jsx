@@ -27,7 +27,7 @@ import {
 
 const EMPTY = { q: '', cats: [], tags: [], accs: [], flow: '', rev: false,
   d0: '', d1: '', a0: '', a1: '', sub: '', queued: false, excl: false,
-  hiddenCats: [] }
+  hiddenCats: [], hiddenSubs: [] }
 
 export function TransactionsTable({ txns, openEdit, title, presetCat,
   initialFilter, compact, pageSize = 25, queuedIds, treatments,
@@ -86,6 +86,7 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
       if (f.cats.length && !tcats.some((c) => f.cats.includes(c))) return false
       if (f.hiddenCats.length && tcats.every((c) => f.hiddenCats.includes(c))) return false
       if (f.sub && !tsubs.includes(f.sub)) return false
+      if (f.hiddenSubs.length && tsubs.every((s) => f.hiddenSubs.includes(s))) return false
       if (f.tags.length && !f.tags.every(
         (tag) => (t.tags || []).includes(tag))) return false
       if (f.accs.length && !f.accs.includes(t.account_name)) return false
@@ -347,11 +348,15 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
               { label: 'Marcar Todas', onClick: () => set('hiddenCats', []) },
               { label: 'Desmarcar Todas', onClick: () => set('hiddenCats', catOpts) },
             ]} />
-          <select value={f.sub} onChange={(e) => set('sub', e.target.value)}
-            className={inputCls()}>
-            <option value="">Subcategoria (todas)</option>
-            {subOpts.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+          <MultiSelect label="Ocultar Sub" options={subOpts}
+            value={subOpts.filter((s) => !f.hiddenSubs.includes(s))}
+            count={f.hiddenSubs.length}
+            onChange={(visible) =>
+              set('hiddenSubs', subOpts.filter((s) => !visible.includes(s)))}
+            actions={[
+              { label: 'Marcar Todas', onClick: () => set('hiddenSubs', []) },
+              { label: 'Desmarcar Todas', onClick: () => set('hiddenSubs', subOpts) },
+            ]} />
           <MultiSelect label="Tags" options={tagOpts} value={f.tags}
             onChange={(value) => set('tags', value)} />
           <MultiSelect label="Conta" options={accOpts} value={f.accs}
