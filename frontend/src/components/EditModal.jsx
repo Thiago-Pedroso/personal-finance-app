@@ -40,7 +40,7 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
   const [mode, setMode] = useState('value')
   const [cat, setCat] = useState(first.category || '')
   const [sub, setSub] = useState(first.subcategory || '')
-  const [field, setField] = useState('merchant_name')
+  const [field, setField] = useState('description')
   const [match, setMatch] = useState('contains')
   const [value, setValue] = useState('')
   const [byType, setByType] = useState(false)
