@@ -1,0 +1,17 @@
+# Contas de demonstração (dados SINTÉTICOS).
+# kind: broker (corretora), wallet (carteira própria) ou bucket (conta de caixinhas).
+- id: corretora
+  name: Corretora
+  institution: Corretora Exemplo
+  kind: broker
+  currency: BRL
+- id: global
+  name: Conta Global
+  institution: Banco Exemplo
+  kind: wallet
+  currency: USD
+- id: caixinhas
+  name: Caixinhas
+  institution: Banco Exemplo
+  kind: bucket
+  currency: BRL

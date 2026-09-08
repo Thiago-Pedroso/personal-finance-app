@@ -17,16 +17,24 @@ novas regras. Um dashboard React (leitura + edição leve) visualiza tudo.
 
 ## Funcionalidades
 
-- **Banco de dados no Google Sheets** — ledger, regras, taxonomia e orçamento vivem numa
+- **Banco de dados no Google Sheets**: ledger, regras, taxonomia (com metadados visuais
+  de categorias e subcategorias), mapa da Pluggy e orçamento vivem numa
   planilha sua; nada de dados financeiros no git.
 - **Sync incremental** das transações da Pluggy (`finance.sync`).
 - **Categorização** por regras determinísticas + loop assistido pelo Claude, com
   **aprendizado de regras** retroativo (`finance.categorize`).
 - **Relatórios** mensais (JSON + Markdown) e um `dashboard.json` agregado (`finance.report`).
+- **Tags pessoais** em múltiplos lançamentos, com edição em massa, filtros e análise por
+  período. As tags ficam somente na planilha de cada usuário.
 - **Dashboard React/Vite**: visão geral, transações com filtros, análise por categoria,
-  planejamento/orçamento, fila de revisão, edição via o mesmo pipeline de regras, splits e
-  drill-down global.
+  análise por tags, planejamento/orçamento, fila de revisão, edição via o mesmo pipeline,
+  splits e drill-down global.
+- **Modo de privacidade** no dashboard: oculta valores agregados sem esconder percentuais,
+  gráficos ou lançamentos individuais. A preferência fica somente no navegador.
 - **Seed de demonstração** — um comando popula sua planilha com um banco mocado funcional.
+- **Espaço Investimentos**: carteira derivada das suas movimentações, com cotação vinda do
+  `GOOGLEFINANCE` da própria planilha, política de alocação em árvore, simulador de aporte
+  e caixinhas. Detalhes em [Investimentos](#investimentos).
 
 ## Stack
 
@@ -44,7 +52,7 @@ robô" do Google Cloud (um e-mail + uma chave JSON) que o programa usa para ler/
 **sem abrir navegador nem pedir seu login**. Você faz esta configuração **uma vez só**. As
 instruções abaixo seguem os nomes do console em português.
 
-**1.1. Crie um projeto no Google Cloud.** Acesse <https://console.cloud.google.com>, clique no
+**1.1. Crie um projeto no Google Cloud.** Acesse [https://console.cloud.google.com](https://console.cloud.google.com), clique no
 seletor de projeto no topo → *Novo projeto* → dê um nome (ex.: `finance-control`) → *Criar*.
 
 **1.2. Habilite as duas APIs.** No menu ☰ → *APIs e serviços* → *Biblioteca*. Busque
@@ -66,7 +74,7 @@ lista de Credenciais), copie o **e-mail** dela — é algo como
 `finance-bot@finance-control.iam.gserviceaccount.com`. (Ele também está dentro do
 `credentials.json`, no campo `"client_email"`.)
 
-**1.6. Crie a planilha e compartilhe com a Service Account.** No <https://sheets.google.com> crie
+**1.6. Crie a planilha e compartilhe com a Service Account.** No [https://sheets.google.com](https://sheets.google.com) crie
 uma **planilha em branco** (você é o dono). Clique em *Compartilhar* e cole o **e-mail da Service
 Account** do passo anterior, dando permissão de **Editor**. ⚠️ **Este é o passo que mais gente
 esquece** — sem ele o app dá "permission denied".
@@ -75,6 +83,7 @@ esquece** — sem ele o app dá "permission denied".
 `https://docs.google.com/spreadsheets/d/`**`<SHEET_ID>`**`/edit`.
 
 **1.8. Configure o `.env` e popule a demo:**
+
 ```bash
 cp .env.example .env
 # no .env, preencha SHEET_ID=<o id do passo 1.7>
@@ -118,6 +127,8 @@ Ou os passos individuais, em linguagem natural com o Claude Code ou direto pelo 
 uv run python -m finance.sync --days 30     # puxa transações novas da Pluggy → Sheets
 uv run python -m finance.categorize         # categoriza (+ apply --learn)
 uv run python -m finance.report             # gera relatórios locais a partir do Sheets
+uv run python -m finance.migrate            # acrescenta campos novos sem apagar dados
+uv run python -m finance.migrate --dry-run  # confere migrações de data sem gravar
 ```
 
 Comandos de inspeção (somente leitura):
@@ -128,16 +139,182 @@ uv run python -m finance.show queue
 uv run python -m finance.show find "texto"
 ```
 
+## Guia prático: o que dá para fazer, e onde
+
+O app tem duas metades, e elas não fazem a mesma coisa.
+
+**O dashboard decide sobre o que já existe.** Ele categoriza, cria regra, marca tag, divide
+lançamento, edita orçamento e registra ordens da carteira. Tudo que ele grava passa pelo
+mesmo pipeline Python da conversa, então não existe um segundo caminho para escrever na
+planilha.
+
+**O Claude Code muda a estrutura.** Categoria nova, tratamento, mapa da Pluggy, correção de
+valor, lançamento que o banco não trouxe, regra que precisa ser reescrita. Nada disso tem
+tela, e é de propósito: são decisões que valem para o histórico inteiro, e sai mais rápido
+pedir em uma frase do que preencher formulário.
+
+### O ciclo de um mês
+
+**1. Puxar as transações.** `./start.sh --sync` busca na Pluggy, aplica as regras, atualiza
+os saldos da carteira e sobe o dashboard. Sem `--sync` ele só relê a planilha, que basta na
+maioria dos dias.
+
+**2. As regras fazem a parte repetida.** Toda transação passa pela aba `Rules` antes de
+chegar até você, e o que casa já aparece categorizado (`category_source: rule`). Depois vem
+o palpite da Pluggy, pela aba `PluggyMap`. Quando esse palpite é só o tipo da transação
+(PIX recebido, PIX enviado, TED/DOC), ele não vale como categoria e o lançamento volta para
+a revisão.
+
+**3. O que sobrou vira a tela de Revisão.** Ela junta o histórico inteiro, não só o mês
+aberto: lançamento sem categoria, palpite não confirmado e valor atípico para a categoria.
+
+**4. Você decide, lançamento a lançamento.** Clicar em qualquer linha abre a caixa de
+edição, com os cinco caminhos da tabela abaixo. Dá para selecionar vários e agir de uma vez.
+
+**5. Pronto.** Cada gravação regera os relatórios sozinha, e os dados já estão na planilha.
+Não existe passo de salvar, e nada de financeiro vai para o git.
+
+### Os cinco caminhos da caixa de edição
+
+| ação | o que acontece na prática |
+|---|---|
+| **Só este(s)** | grava categoria e subcategoria nesses lançamentos, como decisão manual. Não cria regra e não toca em mais nada. É o caminho do caso único, do gasto que não vai se repetir. |
+| **Editar + criar regra** | grava a categoria **e** cria uma regra na aba `Rules`. Você escolhe o campo (lojista, contraparte ou descrição) e como ele casa (contém, igual a, começa com, regex), e a tela mostra quantos lançamentos do mês bateriam antes de você salvar. A regra vale para trás, reclassificando o que já estava no histórico, e é ela que faz o mês seguinte chegar quase pronto. |
+| **Tags** | adiciona ou remove etiquetas em vários lançamentos de uma vez, sem tocar na categoria. Tag é um corte paralelo ("Viagem Recife", "Trabalho") e nunca vira regra automática. |
+| **Dividir** | quebra um lançamento em partes com categorias diferentes. O caso típico é a conta que você adiantou: a sua parte vai para a categoria real, a parte do outro vai para `Compartilhado`, que fica fora do fluxo e se anula quando o reembolso cair. |
+| **Mandar pro Claude** | não muda nada sozinho. Guarda o lançamento numa fila local com a sua nota e uma sugestão opcional; na sessão seguinte o Claude lê a fila, resolve e conta o que fez. É para o caso que precisa de contexto, não de clique. |
+
+Existe ainda **rasurar**, que tira o lançamento dos agregados sem apagar nada, para a
+duplicata do banco ou o estorno que suja o mês. É reversível.
+
+### Por que as regras são o centro
+
+Uma regra é um par: um texto que aparece no extrato e a categoria que ele significa. Elas
+vivem na aba `Rules` da sua planilha e são lidas em toda categorização, então o trabalho
+feito uma vez não volta. Três coisas que valem saber:
+
+- Regra criada pelo dashboard já nasce aplicada ao passado.
+- Regra não adivinha. Se o texto não casar como você escreveu, o lançamento volta para a
+  revisão, e isso é intencional: melhor pedir confirmação do que categorizar errado.
+- Para **ver, mudar ou apagar** uma regra não há tela. Abra a aba `Rules` na planilha ou
+  peça na conversa ("me mostra as regras que apontam para Alimentação", "essa regra está
+  pegando coisa demais, restringe para o lojista").
+
+### O que só acontece na conversa
+
+- **Criar, renomear ou apagar categoria e subcategoria**, com cor, ícone e tratamento
+  (`fluxo`, `poupança` ou `movimento`). O dashboard só oferece o que já existe na aba
+  `Taxonomy`, então categoria nova nasce sempre aqui.
+- **Reclassificar em massa** depois de mexer na taxonomia, e conferir se as regras e o
+  `PluggyMap` continuam apontando para nomes que existem.
+- **Corrigir valor** com `amount_override`.
+- **Criar lançamento que o banco não trouxe**, como o PIX enviado para alguém que comprou
+  em seu nome e que vira várias linhas detalhadas.
+- **Ajustar o mapa da Pluggy** (aba `PluggyMap`), que traduz a categoria do agregador para
+  a sua taxonomia.
+- **Perguntar.** "Por que setembro foi mais caro que agosto?", "quanto foi de cachorro no
+  ano?", "essa assinatura ainda faz sentido?". O dashboard mostra, a conversa interpreta.
+
+### No espaço Investimentos
+
+| na tela | na conversa |
+|---|---|
+| registrar as ordens executadas depois de simular um aporte | dizer a classe de um ticker novo, que entra com a classe pendente |
+| mudar o alvo de cada ativo dentro da classe e travar um ativo | criar ou renomear nó da política e definir o papel dele (`strategy`, `reserved`, `to_invest`, `free`) |
+| informar o saldo de uma caixinha e criar caixinha nova | corrigir movimentação lançada errada |
+| conferir com a corretora e aceitar os saldos informados | criar as abas pela primeira vez e importar a planilha antiga |
+
+Regra de bolso para saber onde ir: se a decisão vale para um lançamento, é tela; se vale
+para o histórico inteiro, é conversa.
+
+## Investimentos
+
+O segundo espaço do app acompanha a carteira. Ele é opcional: quem só quer controlar
+gastos nunca precisa criar as abas.
+
+```bash
+uv run python -m finance.seed --invest       # carteira de demonstração (dados sintéticos)
+uv run python -m finance.invest report       # gera data/reports/invest.json
+uv run python -m finance.invest show         # resumo no terminal
+uv run python -m finance.invest plan 3000    # simula um aporte
+uv run python -m finance.invest sync         # confere com as corretoras (Pluggy)
+uv run python -m finance.invest apply        # aplica data/.invest_decisions.json
+```
+
+**Onde o dinheiro está.** O app separa o patrimônio pelo compromisso de cada real, não
+por onde ele está guardado. Quem decide é a coluna `role` de cada nó da política:
+
+| role | o que é |
+|---|---|
+| `strategy` | a carteira, o que entra no rebalanceamento |
+| `reserved` | guardado com um destino (reserva de emergência, viagem, entrada do imóvel) |
+| `to_invest` | já saiu da conta e ainda não virou posição |
+| `free` | saldo sem compromisso |
+
+Só esses quatro valores são fixos. Quantos nós existem em cada papel, e como se chamam,
+é escolha sua.
+
+**Como o valor de cada ativo é apurado.** Três fontes, escolhidas por ativo na coluna
+`valuation`:
+
+| valuation | de onde vem | para quê |
+|---|---|---|
+| `quote` | fórmula `GOOGLEFINANCE` na aba `Quotes` | ações, FIIs, ETFs, cripto, câmbio |
+| `balance` | saldo que você informa, com data | conta no exterior, caixinha, papel sem cotação |
+| `pluggy` | saldo sincronizado da instituição | Tesouro, CDB, fundos e **saldo de conta corrente** |
+
+Saldo de conta é um ativo por saldo como qualquer outro: aponta para a conta pelo
+`pluggy_code` e se atualiza no `sync`. Fatura de cartão fica de fora, porque é dívida.
+Saldo em moeda estrangeira é informado na moeda dele e convertido pelo câmbio do dia em que
+você olha, não pelo do dia em que foi informado.
+
+A aba `Quotes` é a única com fórmula. O app escreve a chamada quando um ticker novo
+aparece e lê o resultado já calculado, então não existe chave de API nem preço digitado à
+mão. A cotação da bolsa tem o atraso de licenciamento de sempre (cerca de 20 minutos) e a
+tela mostra o horário do último cálculo em vez de fingir que é agora.
+
+**Política de alocação.** A aba `InvestPolicy` é uma árvore: `target_pct` é a fatia do nó
+dentro do pai, e o alvo de uma folha é o produto do caminho até a raiz. A forma é livre,
+então dá para tirar o nível de país, trocar "EUA" por "Global" ou acrescentar um terceiro
+país sem tocar em código. `in_totals: FALSE` mantém o dinheiro no patrimônio e o tira do
+rebalanceamento, que é como cripto, reserva e caixinha entram.
+
+**Premissas que valem conhecer.**
+
+- Preço médio é a média ponderada **só das compras**, a regra brasileira. Uma venda reduz a
+  quantidade, preserva o preço médio e produz resultado realizado.
+- Rentabilidade é lucro dividido por custo, nunca a soma dos percentuais das classes.
+- O motor de aporte **nunca sugere venda**: rebalanceia com dinheiro novo, e o que não cabe
+  num lote inteiro fica visível como sobra.
+- A Pluggy entrega posição boa e transação fraca, então ela **compara e avisa**, sem
+  escrever na carteira. Diferença de quantidade pede a movimentação que falta; diferença de
+  valor em ativo por saldo vira lançamento de atualização.
+- **Transação de investimento da Pluggy nunca é importada.** Numa conta real, das 68 que
+  ela tinha, todas eram compra, nenhuma venda, nenhum provento, quatro ativos sem nenhuma
+  e uma compra fatiada em onze linhas de uma cota. Elas não reconstroem carteira, então o
+  caminho automático é só o saldo.
+- `BUY` diz quanto dinheiro entrou e `BALANCE` diz quanto o ativo vale. São dimensões
+  diferentes: registrar um não altera o outro, e num ativo sincronizado os dois convivem.
+- Imposto está fora do escopo: o app não calcula DARF nem controla faixa de isenção.
+
+**Quem já tem uma planilha** pode importar o histórico:
+
+```bash
+uv run python -m finance.invest.import_sheet <ID_DA_PLANILHA_ANTIGA>
+uv run python -m finance.invest apply
+```
+
 ## Estrutura
 
 ```
 finance/        # pipeline Python (sync, rules, categorize, report, sheets, seed, ...)
   sheets.py     # camada de acesso ao Google Sheets (banco de dados)
   seed.py       # inicializa a planilha com o banco de demonstração
+  invest/       # carteira: política, ativos, movimentações, cotações, aporte, Pluggy
 frontend/       # dashboard React (Vite)
 data/
   seed/         # fixtures SINTÉTICOS do banco mocado (versionados) — fonte do seed
-  reports/      # YYYY-MM.{json,md} + dashboard.json (gerados; gitignored)
+  reports/      # YYYY-MM.{json,md} + dashboard.json + invest.json (gerados; gitignored)
 docs/
   SHEETS_INTEGRATION.md  # esquema do banco, auth, quotas, troubleshooting
 CLAUDE.md       # contrato de operação (lido pelo Claude Code a cada sessão)
@@ -155,4 +332,5 @@ CLAUDE.md       # contrato de operação (lido pelo Claude Code a cada sessão)
 ```bash
 PYTHONPATH=. uv run python tests/test_sheets_roundtrip.py   # coerção de tipos (sem rede)
 PYTHONPATH=. uv run python tests/test_pipeline_inmemory.py  # pipeline end-to-end (em memória)
+PYTHONPATH=. uv run python tests/test_schema_migration.py    # migração aditiva (sem rede)
 ```

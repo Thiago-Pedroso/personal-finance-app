@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Card, CardHead, Button } from './ui/primitives.jsx'
 import { CashflowChart, CategoryDonut, HBars, Sparkline } from './charts.jsx'
-import { catMeta } from '../lib/categories.jsx'
+import { catMeta, subcategoryMeta } from '../lib/categories.jsx'
 import { useDrill } from '../lib/useDrill.jsx'
 import { brl, signedBrl, fmtPct, pctDelta, monthLabel } from '../lib/format.js'
+import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 import {
   TrendingUp, TrendingDown, ArrowRight, ChevronLeft, ListFilter,
 } from 'lucide-react'
@@ -33,7 +34,7 @@ function Kpi({ label, value, prev, kind, onClick, spark }) {
       <div className="text-[12px] font-semibold uppercase tracking-wider
         text-muted">{label}</div>
       <div className={`mt-1.5 text-[28px] font-bold tnum ${valColor}`}>
-        {brl(value)}</div>
+        <SensitiveAmount>{brl(value)}</SensitiveAmount></div>
       <div className="mt-2 flex items-center gap-1.5 text-[12.5px]">
         {d == null ? <span className="text-faint">sem mês anterior</span> : (
           <>
@@ -41,7 +42,8 @@ function Kpi({ label, value, prev, kind, onClick, spark }) {
               ? 'text-red' : 'text-faint'}>
               {up ? <TrendingUp className="inline size-3.5" />
                 : <TrendingDown className="inline size-3.5" />}{' '}
-              {signedBrl(d)}{showPct ? ` (${fmtPct(p)})` : ''}
+              <SensitiveAmount>{signedBrl(d)}</SensitiveAmount>
+              {showPct ? ` (${fmtPct(p)})` : ''}
             </span>
             <span className="text-faint">vs. mês anterior</span>
           </>
@@ -88,7 +90,8 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
     : dash.months
   const subItems = focus
     ? Object.entries(mdata.by_category?.[focus]?.subcategories || {})
-        .map(([label, s]) => ({ label, value: s.expense, count: s.count }))
+        .map(([label, s]) => ({ label, value: s.expense, count: s.count,
+          color: subcategoryMeta(focus, label).color }))
         .filter((s) => s.value > 0).sort((a, b) => b.value - a.value)
     : null
   const tag = focus ? ` · ${focus}` : ''
@@ -147,7 +150,7 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
               <>
                 <div className="mt-1 flex items-baseline gap-2">
                   <span className="text-[30px] font-bold tnum text-brand">
-                    {brl(daily)}</span>
+                    <SensitiveAmount>{brl(daily)}</SensitiveAmount></span>
                   <span className="text-[13px] text-muted">por dia</span>
                 </div>
                 <div className="mt-0.5 text-[12.5px] text-faint">
@@ -161,7 +164,7 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
                 <div className="mt-1 flex items-baseline gap-2">
                   <span className={`text-[30px] font-bold tnum ${
                     mNet >= 0 ? 'text-green' : 'text-red'}`}>
-                    {signedBrl(mNet)}</span>
+                    <SensitiveAmount>{signedBrl(mNet)}</SensitiveAmount></span>
                   <span className="text-[13px] text-muted">saldo do mês</span>
                 </div>
                 <div className="mt-0.5 text-[12.5px] text-faint">
@@ -175,8 +178,12 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
               <>
                 <div className="flex items-center justify-between text-[12.5px]">
                   <span className="text-muted">Gasto vs. planejado</span>
-                  <span className="tnum text-muted">{brl(realizedPlan)}{' '}
-                    <span className="text-faint">/ {brl(planned)}</span></span>
+                  <span className="tnum text-muted">
+                    <SensitiveAmount>{brl(realizedPlan)}</SensitiveAmount>{' '}
+                    <span className="text-faint">/{' '}
+                      <SensitiveAmount>{brl(planned)}</SensitiveAmount>
+                    </span>
+                  </span>
                 </div>
                 <div className="mt-2 h-2.5 overflow-hidden rounded-full
                   bg-white/[0.06]">
@@ -190,8 +197,10 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
             ) : (
               <>
                 <div className="flex items-center justify-between text-[12.5px]">
-                  <span className="text-green">entrou {brl(mIncome)}</span>
-                  <span className="text-red">saiu {brl(mExpense)}</span>
+                  <span className="text-green">entrou{' '}
+                    <SensitiveAmount>{brl(mIncome)}</SensitiveAmount></span>
+                  <span className="text-red">saiu{' '}
+                    <SensitiveAmount>{brl(mExpense)}</SensitiveAmount></span>
                 </div>
                 <div className="mt-2 h-2.5 overflow-hidden rounded-full
                   bg-white/[0.06]">
@@ -233,11 +242,12 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
           <div className="text-[12px] font-semibold uppercase tracking-wider
             text-muted">Poupado</div>
           <div className="mt-1.5 text-[28px] font-bold tnum text-violet">
-            {brl(mSaved)}</div>
+            <SensitiveAmount>{brl(mSaved)}</SensitiveAmount></div>
           <div className="mt-2 flex flex-wrap items-center gap-x-1.5 text-[12.5px]">
             <span className="text-violet">
               {taxaPoup != null ? `${taxaPoup}% da renda` : 'poupado no mês'}</span>
-            <span className="text-faint">· sobra {signedBrl(mNet - mSaved)}</span>
+            <span className="text-faint">· sobra{' '}
+              <SensitiveAmount>{signedBrl(mNet - mSaved)}</SensitiveAmount></span>
           </div>
         </Card>
       </div>
@@ -283,10 +293,12 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
           <div className="px-5 pb-5">
             {focus ? (
               <HBars items={subItems.slice(0, 12)}
+                totalValue={subItems.reduce((sum, item) => sum + item.value, 0)}
                 onClick={(s) => openCat(focus, s)}
                 onOpen={(s) => openCat(focus, s)} />
             ) : (
               <HBars items={cats.slice(0, 9)} byCat
+                totalValue={cats.reduce((sum, item) => sum + item.value, 0)}
                 onClick={(c) => setFocus(c)}
                 onOpen={(c) => openCat(c)} />
             )}
@@ -309,7 +321,7 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
                   <M.Icon className="size-3.5" style={{ color: M.color }} />
                   {m.label}</span>
                 <span className={`tnum ${m.net >= 0 ? 'text-green' : 'text-red'}`}>
-                  {signedBrl(m.net)}</span>
+                  <SensitiveAmount>{signedBrl(m.net)}</SensitiveAmount></span>
               </button>
               )
             })}
@@ -347,7 +359,8 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
           <CategoryDonut
             palette={!!focus}
             slices={focus
-              ? (subItems || []).map((s) => ({ label: s.label, value: s.value }))
+              ? (subItems || []).map((s) => ({ label: s.label, value: s.value,
+                  color: s.color }))
               : cats.map((c) => ({ label: c.label, value: c.value }))}
             onSelect={(label) => focus
               ? openCat(focus, label) : setFocus(label)}

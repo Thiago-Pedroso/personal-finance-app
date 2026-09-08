@@ -2,32 +2,50 @@ import {
   Utensils, Car, Home, HeartPulse, Gamepad2, ShoppingBag, Wrench,
   Briefcase, GraduationCap, Landmark, ArrowLeftRight, TrendingUp,
   PiggyBank, Award, Users, Banknote, Shapes, HelpCircle,
+  ShoppingCart, Plane, HeartHandshake, Receipt, Shirt, Gift, Dog,
+  CarTaxiFront, Undo2,
 } from 'lucide-react'
+import {
+  derivedAccent, taxonomyChipStyle, validHexColor,
+} from './colors.js'
 
-// ícone + cor por categoria (nomes EXATOS do taxonomy.yaml)
-export const CAT = {
-  'Alimentação':    { Icon: Utensils,      color: '#f4685f' },
-  'Transporte':     { Icon: Car,           color: '#5aa2ff' },
-  'Moradia':        { Icon: Home,          color: '#b08cff' },
-  'Saúde':          { Icon: HeartPulse,    color: '#36c98b' },
-  'Lazer':          { Icon: Gamepad2,      color: '#ec6cb9' },
-  'Compras':        { Icon: ShoppingBag,   color: '#ffb35c' },
-  'Serviços':       { Icon: Wrench,        color: '#4dd0c4' },
-  'Trabalho':       { Icon: Briefcase,     color: '#79b8ff' },
-  'Educação':       { Icon: GraduationCap, color: '#c98bff' },
-  'Impostos/Taxas': { Icon: Landmark,      color: '#e0a93b' },
-  'Transferências': { Icon: ArrowLeftRight, color: '#8a97a6' },
-  'Investimentos':  { Icon: TrendingUp,    color: '#7ee7a8' },
-  'Reserva':        { Icon: PiggyBank,     color: '#ffd166' },
-  'Formatura':      { Icon: Award,         color: '#ff8fab' },
-  'Compartilhado':  { Icon: Users,         color: '#9bd1ff' },
-  'Renda':          { Icon: Banknote,      color: '#3fc97f' },
-  'Outros':         { Icon: Shapes,        color: '#8a97a6' },
+// Registry de ícones: nome (vindo da planilha) -> componente.
+const ICONS = {
+  Utensils, Car, Home, HeartPulse, Gamepad2, ShoppingBag, Wrench,
+  Briefcase, GraduationCap, Landmark, ArrowLeftRight, TrendingUp,
+  PiggyBank, Award, Users, Banknote, Shapes, ShoppingCart, Plane,
+  HeartHandshake, Receipt, Shirt, Gift, Dog, CarTaxiFront, Undo2,
 }
+
+const FALLBACK = { Icon: Shapes, color: '#8a97a6' }
+
+// Cor/ícone por categoria vêm da aba Taxonomy (dashboard.category_meta).
+// Variável de módulo em vez de contexto: o dado é global, carrega uma vez, e
+// assim os 12 componentes que chamam catMeta() não precisam mudar.
+let META = {}
+let SUBCATEGORY_META = {}
+
+export function setCategoryMeta(meta, subcategoryMeta) {
+  META = meta || {}
+  SUBCATEGORY_META = subcategoryMeta || {}
+}
+
 export const UNCAT = { Icon: HelpCircle, color: '#e0a93b' }
 
-export const catMeta = (name) => CAT[name] || CAT['Outros']
-export const catColor = (name) => (CAT[name] || CAT['Outros']).color
+export const catMeta = (name) => {
+  const m = META[name]
+  if (!m) return FALLBACK
+  const color = validHexColor(m.color, FALLBACK.color)
+  return { Icon: ICONS[m.icon] || FALLBACK.Icon, color }
+}
+export const catColor = (name) => catMeta(name).color
+
+export function subcategoryMeta(category, subcategory) {
+  const configured = SUBCATEGORY_META[category]?.[subcategory] || {}
+  const color = validHexColor(configured.color, null)
+    || derivedAccent(catColor(category), `${category}:${subcategory}`)
+  return { Icon: configured.icon ? ICONS[configured.icon] || null : null, color }
+}
 
 // Tipos de transferência que a Pluggy "chuta" — não são categoria de verdade.
 const TYPE_SUBS = new Set(['PIX recebido', 'PIX enviado', 'TED/DOC'])
@@ -47,29 +65,42 @@ export function effectiveCategory(t) {
 }
 
 // Chip: ícone colorido + nome. `onClick` torna clicável (filtrar/drill).
-export function CategoryTag({ category, subcategory, uncategorized, hint,
-  size = 'sm', onClick, title }) {
-  const meta = uncategorized ? UNCAT : catMeta(category)
-  const I = meta.Icon
+function TaxonomyChip({ label, meta, size, onClick, title }) {
+  const Icon = meta.Icon
   const px = size === 'xs' ? 'px-1.5 py-0.5 text-[11px]'
     : 'px-2 py-1 text-[12px]'
   const isz = size === 'xs' ? 'size-3' : 'size-3.5'
-  const cls = `inline-flex items-center gap-1.5 rounded-full border font-medium
+  const cls = `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap
+    rounded-full border font-medium
     ${px} ${onClick ? 'cursor-pointer hover:brightness-125 transition' : ''}`
-  const style = uncategorized
-    ? { color: '#e0a93b', borderColor: '#e0a93b55', background: '#e0a93b18' }
-    : { color: meta.color, borderColor: meta.color + '55',
-        background: meta.color + '1a' }
   const Cmp = onClick ? 'button' : 'span'
   return (
+    <Cmp className={cls} style={taxonomyChipStyle(meta.color)} onClick={onClick}
+      title={title || label}>
+      {Icon && <Icon className={`${isz} shrink-0`} />}
+      {label}
+    </Cmp>
+  )
+}
+
+export function SubcategoryTag({ category, subcategory, size = 'sm', onClick,
+  title }) {
+  return <TaxonomyChip label={subcategory}
+    meta={subcategoryMeta(category, subcategory)} size={size}
+    onClick={onClick} title={title} />
+}
+
+export function CategoryTag({ category, subcategory, uncategorized, hint,
+  size = 'sm', onClick, onSubcategoryClick, title }) {
+  const label = uncategorized ? 'Sem categoria' : category
+  const meta = uncategorized ? UNCAT : catMeta(category)
+  return (
     <span className="inline-flex items-center gap-1.5">
-      <Cmp className={cls} style={style} onClick={onClick}
-        title={title || hint || category || 'Sem categoria'}>
-        <I className={isz} />
-        {uncategorized ? 'Sem categoria' : category}
-      </Cmp>
+      <TaxonomyChip label={label} meta={meta} size={size} onClick={onClick}
+        title={title || hint || label} />
       {subcategory && !uncategorized && (
-        <span className="text-[12px] text-faint">{subcategory}</span>
+        <SubcategoryTag category={category} subcategory={subcategory} size={size}
+          onClick={onSubcategoryClick} title={title} />
       )}
     </span>
   )

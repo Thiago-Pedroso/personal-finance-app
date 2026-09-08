@@ -21,6 +21,9 @@ Controle financeiro pessoal operado via Claude Code. As transações chegam do O
 5. git commit                                  # commitar só CÓDIGO/DOCS (dados já estão no Sheets)
 ```
 
+Mexeu na carteira? `uv run python -m finance.invest report` depois de qualquer `apply`,
+pelo mesmo motivo do passo 4.
+
 > Os dados **persistem automaticamente no Google Sheets** a cada `apply`/`sync`. Não há mais
 > `ledger.jsonl` para commitar — o git guarda só código, docs e os fixtures sintéticos de
 > `data/seed/`. O histórico dos dados fica no *Histórico de versões* da própria planilha.
@@ -40,18 +43,98 @@ uv run python -m finance.categorize stats
 
 ---
 
-## Banco no Google Sheets (4 abas)
+## Banco no Google Sheets (6 abas de gastos + 6 de investimentos)
 
 | Aba | Conteúdo | Módulo |
 |---|---|---|
 | `Ledger` | 1 transação por linha | `finance/ledger.py` |
 | `Rules` | regras de categorização | `finance/rules.py` |
 | `Taxonomy` | categorias → subcategorias | `finance/taxonomy.py` |
-| `Config` | blobs JSON: `budgets`, `sync_state`, `schema_version` | `finance/budgets.py`, `finance/sync.py` |
+| `SubcategoryMeta` | cor e ícone opcionais por subcategoria | `finance/taxonomy.py` |
+| `PluggyMap` | categoria da Pluggy → taxonomia pessoal | `finance/pluggy_map.py` |
+| `Config` | blobs JSON: `budgets`, `sync_state`, `timezone`, `min_transaction_date`, `schema_version`, `invest_monthly_contribution`, `invest_contribution_mode`, `invest_allocation_sim` | `finance/budgets.py`, `finance/sync.py` |
+| `InvestTrades` | 1 movimentação por linha (a única entrada de fatos da carteira) | `finance/invest/trades.py` |
+| `InvestAssets` | catálogo: classe, conta, setor, alvo, como o valor é apurado | `finance/invest/assets.py` |
+| `InvestAccounts` | onde o dinheiro está custodiado (corretora, carteira, caixinhas) | `finance/invest/accounts.py` |
+| `InvestPolicy` | política de alocação como árvore, com o papel de cada nó | `finance/invest/policy.py` |
+| `Quotes` | cotações via `GOOGLEFINANCE` (**única aba com fórmula**) | `finance/invest/quotes.py` |
+| `InvestSnapshots` | 1 linha por nó por dia: histórico de patrimônio | `finance/invest/report.py` |
+
+`Config[timezone]` guarda o fuso IANA usado para transformar timestamps UTC da Pluggy em datas
+locais. O padrão é `America/Sao_Paulo`; nunca derive datas financeiras do fuso do computador.
 
 A camada de acesso é `finance/sheets.py` (auth via Service Account, 1 request por operação,
 retry com backoff). Se algo falhar, `uv run python main.py` dá o diagnóstico. Para (re)inicializar
 o banco: `uv run python -m finance.seed [--force]`.
+
+---
+
+## Investimentos (segundo espaço do app)
+
+Carteira derivada das movimentações, com cotação vinda do `GOOGLEFINANCE` da própria
+planilha. É opcional: quem só controla gastos nunca cria essas abas.
+
+```bash
+uv run python -m finance.invest show          # resumo da carteira
+uv run python -m finance.invest plan 3000     # simula um aporte
+uv run python -m finance.invest report        # gera data/reports/invest.json
+uv run python -m finance.invest sync          # confere com as corretoras via Pluggy
+uv run python -m finance.invest apply         # aplica data/.invest_decisions.json
+uv run python -m finance.seed --invest        # carteira de demonstração (sintética)
+```
+
+### Como registrar pela conversa: `data/.invest_decisions.json`
+
+Arquivo **efêmero e local** (gitignored), espelho do `.decisions.json` da categorização.
+
+```json
+{
+  "trades":   [{"date": "2026-09-07", "ticker": "SAPR11", "side": "BUY",
+                "quantity": 30, "price": 4.5, "account": "xp"}],
+  "balances": [{"ticker": "INTER-GLOBAL", "date": "2026-09-07", "value": 13450}],
+  "assets":   [{"ticker": "SAPR11", "node": "fiis", "sector": "Saneamento",
+                "target_pct": 0.1}],
+  "targets":  {"acoes": {"BBAS3": 0.07}},
+  "locked":   {"acoes": ["ITUB3"]}
+}
+```
+
+Depois: `uv run python -m finance.invest apply`. Ticker que ainda não existe é cadastrado
+sozinho, com o símbolo deduzido do formato e a linha de cotação criada; a **classe** dele
+fica pendente, porque isso é decisão de política.
+
+### Onde o dinheiro está
+
+Cada nó da política tem um `role`, e é ele que divide o patrimônio em quatro números:
+`strategy` (a carteira), `reserved` (guardado com destino), `to_invest` (saiu da conta e
+ainda não virou posição) e `free` (sem compromisso). Só o vocabulário é fixo: quantos nós
+existem em cada papel, e os nomes deles, são do usuário.
+
+Saldo de conta corrente é um ativo por saldo apontando para a conta em `pluggy_code`, e se
+atualiza sozinho no `sync`. Cartão de crédito não entra: fatura é dívida.
+
+### Regras do domínio (aplique sem perguntar)
+
+- **Preço médio** é a média ponderada **só das compras**. Venda reduz a quantidade,
+  preserva o preço médio e gera resultado realizado. Imposto está fora do escopo.
+- **Rentabilidade** é lucro dividido por custo. Nunca somar os percentuais das classes.
+- **Ativo por saldo** (`valuation: balance`): um `BALANCE` antes de qualquer movimento é
+  abertura e vira custo; depois de um aporte, a diferença vira rendimento. Nunca lançar
+  atualização de saldo como aporte.
+- **A Pluggy compara, não escreve**: diferença de quantidade pede a movimentação que falta;
+  diferença de valor em ativo por saldo vira `BALANCE`.
+- **Proventos** saem da descrição do próprio ledger (`RENDIMENTOS DE CLIENTES VISC11 S/ 10`).
+  Quando a quantidade não bate com a carteira, é sinal de compra não registrada.
+- **Nunca sugerir venda** para rebalancear: só entra dinheiro novo.
+- **Transação de investimento da Pluggy nunca é importada**, só posição. As que ela tem são
+  incompletas e fatiadas, e não reconstroem a carteira.
+- `BUY` é quanto entrou, `BALANCE` é quanto vale. Um não substitui o outro, e no mesmo dia
+  só o último `BALANCE` conta.
+- Saldo em moeda estrangeira fica gravado **na moeda do ativo** e usa o câmbio de hoje na
+  leitura, nunca o do dia em que foi informado. Quem informa saldo informa na moeda do
+  ativo; quem converte é o app.
+- A aba `Quotes` não aceita `write_records()` (viraria texto). Use `append_rows()` ou
+  `update_fields(..., value_input_option="USER_ENTERED")`.
 
 ---
 
@@ -81,6 +164,7 @@ Campos relevantes:
 - `category_source` — `"rule"` | `"pluggy-map"` | `"manual"` | `"split"`
 - `splits` — array `[{amount, category, subcategory, note}]` onde a soma = valor efetivo
 - `note` — observação livre (aparece no hover do dashboard)
+- `tags` — lista JSON de etiquetas pessoais, independente da categoria
 - `needs_review` / `reviewed` — controle de qualidade interno
 
 **Valor efetivo** = `amount_override` se definido, senão `signed_amount`.
@@ -114,6 +198,11 @@ aba `Ledger` do Sheets.
         {"amount": -150.00, "category": "Lazer", "subcategory": "Viagem", "note": "Minha parte"},
         {"amount": -150.00, "category": "Compartilhado", "subcategory": "Outro", "note": "Parte de terceiro"}
       ]
+    },
+    {
+      "ids": ["uuid-1", "uuid-2"],
+      "tags_add": ["Viagem Recife"],
+      "tags_remove": ["Trabalho"]
     }
   ],
   "confirm_provisional": false
@@ -122,37 +211,41 @@ aba `Ledger` do Sheets.
 
 Depois: `uv run python -m finance.categorize apply && uv run python -m finance.report`
 
+Tags são manuais e podem ser aplicadas em massa pelo dashboard ou pelo arquivo de decisões.
+Não crie regras automáticas para tags. Valores reais de tags pertencem à planilha privada do
+usuário e nunca devem entrar no repositório.
+
 ---
 
-## Taxonomia resumida
+## Taxonomia
 
-```
-Alimentação:    Supermercado, Restaurante, Delivery, Café/Padaria, Ocasiões especiais
-Transporte:     Combustível, App/Táxi, Transporte público, Estacionamento, Manutenção,
-                Aluguel de veículo, Lava-jato
-Moradia:        Aluguel, Condomínio, Energia, Água, Internet/TV, Gás
-Saúde:          Plano de saúde, Farmácia, Consultas/Exames, Academia
-Lazer:          Streaming, Bares, Cinema/Eventos, Viagem, Hobbies
-Compras:        Vestuário, Eletrônicos, Casa, Presentes, Online
-Serviços:       Assinaturas, Profissionais, Seguros, Bancário/Tarifas, Barbearia
-Trabalho:       Impostos MEI, Assinaturas, Serviços
-Educação:       Cursos, Livros
-Impostos/Taxas: Impostos, Multas/Juros
-Renda:          Salário, Bolsa de pesquisa, Projetos PJ, Aluguel recebido,
-                Ajuda de custo, Reembolso, Outras receitas
-Doações:        Pessoas, Instituições
-Outros:         A revisar
+**Não está no código.** Categorias, subcategorias, tratamento, cor e ícone vivem nas abas
+`Taxonomy` e `SubcategoryMeta` da planilha, e cada pessoa tem as suas. Para ver as atuais:
+
+```bash
+uv run python -m finance.show stats          # contadores por categoria
 ```
 
-**Fora do fluxo de gastos** (excluídas dos relatórios de consumo):
-`Transferências`, `Investimentos`, `Reserva`, `Compartilhado`, `Formatura`
+O **tratamento** de cada categoria decide como ela entra na conta:
 
-A taxonomia vive na aba `Taxonomy`. Ao adicionar/renomear categorias, avise o Claude para
-reclassificar o que for preciso.
+| tratamento | efeito |
+|---|---|
+| `fluxo` | conta em Receitas/Gastos (padrão) |
+| `poupança` | não é gasto; alimenta "Poupado" e a taxa de poupança |
+| `movimento` | fora da conta, só auditoria (transferências, rateios) |
+
+`data/seed/taxonomy.yaml` é só a **semente de demonstração**, para quem começa do zero.
+
+Ao adicionar ou renomear categorias, avise o Claude para reclassificar o que for preciso
+e para conferir se as regras da aba `Rules` e o mapa da `PluggyMap` continuam apontando
+para nomes que existem.
 
 ---
 
 ## Padrões recorrentes (aplique sem perguntar)
+
+> Os nomes de categoria abaixo são **exemplos** da taxonomia de demonstração. Confira os
+> equivalentes na aba `Taxonomy` antes de gravar.
 
 ### Compromissadas / aplicações automáticas
 Entradas com "APLICAÇÃO COMPROMISSADA"/"RECOMPRA COMPROMISSADA" → `Investimentos/Aporte` ou
@@ -203,6 +296,7 @@ open("data/.claude_queue.jsonl", "w").close()
   `.gitignore` — **nunca commitar, nunca expor**.
 - Os dados financeiros vivem na **planilha do Google Sheets do usuário**, fora do git.
 - Arquivos de trabalho efêmeros e locais (`data/.to_categorize.json`, `data/.decisions.json`,
-  `data/.budget_input.json`, `data/.claude_queue.jsonl`) e os relatórios gerados
-  (`data/reports/`) também estão no `.gitignore`.
+  `data/.budget_input.json`, `data/.claude_queue.jsonl`, `data/.invest_decisions.json`,
+  `data/.invest_pending.json`) e os relatórios gerados (`data/reports/`) também estão no
+  `.gitignore`.
 - `data/seed/` é versionado de propósito: são **fixtures sintéticos**, nunca dados reais.

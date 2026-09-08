@@ -7,12 +7,13 @@ Uso:
 """
 
 import argparse
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from . import ledger as L
 from . import pluggy_client as pc
 from . import sheets
 from .config import BACKFILL_DAYS, ensure_dirs
+from .transaction_dates import load_timezone
 
 
 def _load_state() -> dict:
@@ -21,6 +22,21 @@ def _load_state() -> dict:
 
 def _save_state(state: dict) -> None:
     sheets.write_config("sync_state", state)
+
+
+def _load_min_date() -> str | None:
+    """Piso de data opcional: descarta lançamentos anteriores, mesmo em backfill."""
+    value = sheets.read_config("min_transaction_date", None)
+    if value in (None, ""):
+        return None
+    value = str(value).strip()
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        raise SystemExit(
+            f"Config[min_transaction_date] inválido: {value!r}. Use o formato YYYY-MM-DD."
+        )
+    return value
 
 
 def main() -> None:
@@ -33,14 +49,20 @@ def main() -> None:
     items = pc.item_ids()
     if not items:
         raise SystemExit("ITEM_IDS vazio no .env. Adicione o(s) ID(s) do(s) item(ns).")
+    sheets.ensure_current_schema()
 
     print("Autenticando na Pluggy...")
     api_key = pc.get_api_key()
     state = _load_state()
     ledger = L.load_ledger()
+    local_timezone = load_timezone()
+    min_date = _load_min_date()
     run_started = datetime.now(timezone.utc)
 
-    total_added = total_updated = 0
+    if min_date:
+        print(f"Piso de data ativo: descartando lançamentos anteriores a {min_date}.")
+
+    total_added = total_updated = total_discarded = 0
     with pc.build_client(api_key) as client:
         for item_id in items:
             print(f"=== Item {item_id} ===")
@@ -61,12 +83,19 @@ def main() -> None:
                 txs = pc.fetch_transactions(
                     client, acc_id, var_from=var_from, created_at_from=created_at_from
                 )
-                recs = [L.normalize(t, acc, item_id) for t in txs]
+                recs = [L.normalize(t, acc, item_id, local_timezone) for t in txs]
+                discarded = 0
+                if min_date:
+                    kept = [r for r in recs if r["date"] >= min_date]
+                    discarded = len(recs) - len(kept)
+                    recs = kept
                 a, u = L.upsert(ledger, recs)
                 total_added += a
                 total_updated += u
+                total_discarded += discarded
+                suffix = f", -{discarded} antes do piso" if discarded else ""
                 print(f"  {name} [{acc.type}] ({mode}): "
-                      f"{len(txs)} recebidas, +{a} novas, ~{u} atualizadas")
+                      f"{len(txs)} recebidas, +{a} novas, ~{u} atualizadas{suffix}")
                 state[acc_id] = {
                     "account_name": name,
                     "item_id": str(item_id),
@@ -76,6 +105,8 @@ def main() -> None:
     L.save_ledger(ledger)
     _save_state(state)
     print(f"\nLedger: {len(ledger)} transações (+{total_added} novas, ~{total_updated} atualizadas).")
+    if total_discarded:
+        print(f"{total_discarded} descartadas por serem anteriores a {min_date}.")
     uncat = sum(1 for r in ledger.values() if not r["category"])
     if uncat:
         print(f"{uncat} sem categoria → rode a skill finance-categorize.")

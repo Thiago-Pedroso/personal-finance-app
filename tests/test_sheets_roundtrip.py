@@ -41,6 +41,7 @@ def test_splits_survive_json_roundtrip():
     rec = {"id": "x", "date": "2026-05-01", "account_name": "Conta", "description": "d",
            "amount": 300.0, "signed_amount": -300.0, "needs_review": False,
            "reviewed": True, "amount_override": -290.0,
+           "tags": ["Viagem Teste", "Evento"],
            "splits": [{"amount": -150.0, "category": "Lazer", "subcategory": "Viagem",
                        "note": "Minha parte"},
                       {"amount": -140.0, "category": "Compartilhado", "subcategory": "Outro",
@@ -48,7 +49,19 @@ def test_splits_survive_json_roundtrip():
     r1 = _roundtrip(sheets.LEDGER_SCHEMA, rec)
     assert r1["splits"] == rec["splits"]
     assert r1["amount_override"] == -290.0
+    assert r1["tags"] == rec["tags"]
     assert r1["reviewed"] is True and r1["needs_review"] is False
+
+
+def test_tag_normalization_and_updates():
+    from finance import ledger
+    tags = ledger.normalize_tags([
+        " Viagem   Teste ", "viágem teste", "Evento", "", None, {"tag": "inválida"},
+        "x" * 81,
+    ])
+    assert tags == ["Evento", "Viagem Teste"]
+    updated = ledger.update_tags(tags, ["Trabalho"], ["VIAGEM TESTE"])
+    assert updated == ["Evento", "Trabalho"]
 
 
 def test_rule_optional_numeric_fields():

@@ -32,9 +32,14 @@ export const updateQueue = (index, patch) =>
 //            rule?{field,match,value,type}, note?, samples? }
 export const postEdit = (payload) => postJSON('/api/edit', payload)
 
-// rasurar/restaurar: tira (ou devolve) lançamentos dos agregados, reversível.
-export const postExclude = (ids, excluded) =>
-  postJSON('/api/edit', { mode: 'exclude', ids, excluded })
-
 // budgets = { income_plan, spending:{recurring,months}, savings_goals }
 export const postBudget = (budgets) => postJSON('/api/budget', budgets)
+
+// ---- espaço Investimentos ----------------------------------------------------
+export const getInvest = () => getJSON('/data/invest.json')
+export const getInvestPending = () => getJSON('/api/invest/pending')
+// payload = { trades?, assets?, accounts?, policy?, targets?, locked?, balances?,
+//             contribution?, contribution_mode?, allocation_sim? }
+export const postInvest = (payload) => postJSON('/api/invest/apply', payload)
+export const refreshInvest = () => postJSON('/api/invest/refresh', {})
+export const syncInvest = (opts = {}) => postJSON('/api/invest/sync', opts)

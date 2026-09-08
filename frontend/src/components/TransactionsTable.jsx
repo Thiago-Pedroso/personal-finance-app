@@ -6,8 +6,11 @@ import {
 import { Card } from './ui/primitives.jsx'
 import { MultiSelect, inputCls } from './ui/MultiSelect.jsx'
 import { Badge, Button } from './ui/primitives.jsx'
-import { effectiveCategory, CategoryTag } from '../lib/categories.jsx'
+import {
+  effectiveCategory, CategoryTag, SubcategoryTag,
+} from '../lib/categories.jsx'
 import { signedBrl, brl, fullDate, longDate } from '../lib/format.js'
+import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 
 // rótulos de categoria para FILTRO (split → partes; palpite Pluggy → "Sem categoria")
 function effLabels(t) {
@@ -19,13 +22,14 @@ function effLabels(t) {
 import {
   Search, Pencil, ChevronLeft, ChevronRight, X, ArrowUpDown,
   ArrowUp, ArrowDown, SlidersHorizontal, StickyNote, MessageSquare,
-  PiggyBank, ArrowLeftRight, EyeOff,
+  PiggyBank, ArrowLeftRight, EyeOff, Wand2, Check,
 } from 'lucide-react'
 
-const EMPTY = { q: '', cats: [], accs: [], flow: '', rev: false,
-  d0: '', d1: '', a0: '', a1: '', sub: '', queued: false, excl: false }
+const EMPTY = { q: '', cats: [], tags: [], accs: [], flow: '', rev: false,
+  d0: '', d1: '', a0: '', a1: '', sub: '', queued: false, excl: false,
+  hiddenCats: [], hiddenSubs: [] }
 
-export function TransactionsTable({ txns, openEdit, title, presetCat,
+export function TransactionsTable({ txns, openEdit, saveEdit, title, presetCat,
   initialFilter, compact, pageSize = 25, queuedIds, treatments,
   excludedCount = 0 }) {
   const qids = queuedIds || new Set()
@@ -53,6 +57,21 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
     () => [...new Set(txns.flatMap(effLabels))].sort(), [txns])
   const accOpts = useMemo(
     () => [...new Set(txns.map((t) => t.account_name))].sort(), [txns])
+  const tagOpts = useMemo(
+    () => [...new Set(txns.flatMap((transaction) => transaction.tags || []))].sort(),
+    [txns])
+  // opções de subcategoria: restringe às categorias selecionadas e tira as ocultas
+  const subOpts = useMemo(() => {
+    const inScope = txns.filter((t) => {
+      const tcats = effLabels(t)
+      if (f.cats.length && !tcats.some((c) => f.cats.includes(c))) return false
+      if (f.hiddenCats.length && tcats.every((c) => f.hiddenCats.includes(c))) return false
+      return true
+    })
+    const subs = inScope.flatMap((t) =>
+      t.splits?.length ? t.splits.map((s) => s.subcategory) : [t.subcategory])
+    return [...new Set(subs.filter(Boolean))].sort()
+  }, [txns, f.cats, f.hiddenCats])
 
   const rows = useMemo(() => {
     const q = f.q.trim().toLowerCase()
@@ -65,7 +84,11 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
         ? t.splits.map((s) => s.subcategory || '')
         : [t.subcategory || '']
       if (f.cats.length && !tcats.some((c) => f.cats.includes(c))) return false
+      if (f.hiddenCats.length && tcats.every((c) => f.hiddenCats.includes(c))) return false
       if (f.sub && !tsubs.includes(f.sub)) return false
+      if (f.hiddenSubs.length && tsubs.every((s) => f.hiddenSubs.includes(s))) return false
+      if (f.tags.length && !f.tags.every(
+        (tag) => (t.tags || []).includes(tag))) return false
       if (f.accs.length && !f.accs.includes(t.account_name)) return false
       if (f.flow === 'in' && t.signed_amount <= 0) return false
       if (f.flow === 'out' && t.signed_amount >= 0) return false
@@ -77,7 +100,8 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
       if (a0 != null && abs < a0) return false
       if (a1 != null && abs > a1) return false
       if (q) {
-        const hay = `${t.description} ${t.counterparty || ''} ${t.category || ''} ${t.subcategory || ''}`.toLowerCase()
+        const hay = (`${t.description} ${t.counterparty || ''} ${t.category || ''} `
+          + `${t.subcategory || ''} ${(t.tags || []).join(' ')}`).toLowerCase()
         if (!hay.includes(q)) return false
       }
       return true
@@ -104,6 +128,13 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
       enableSorting: false,
     },
     { accessorKey: 'date', header: 'Data',
+      // desempate por hora: dentro do mesmo dia, a ordem segue a mesma direção
+      // da data (desc = mais tarde no topo, como no resto da lista)
+      sortingFn: (a, b) => {
+        const ka = `${a.original.date} ${a.original.time || '00:00'}`
+        const kb = `${b.original.date} ${b.original.time || '00:00'}`
+        return ka < kb ? -1 : ka > kb ? 1 : 0
+      },
       cell: (c) => <span className="tnum text-muted">{fullDate(c.getValue())}</span> },
     {
       accessorKey: 'description', header: 'Descrição', enableSorting: false,
@@ -111,6 +142,10 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
         <div className="min-w-[180px]">
           <div className="flex items-center gap-1.5 font-medium">
             {row.original.description}
+            {row.original.time && (
+              <span className="tnum shrink-0 text-[11px] font-normal
+                text-faint">{row.original.time}</span>
+            )}
             {row.original.note && (
               <span title={row.original.note}
                 className="inline-flex cursor-help text-amber"
@@ -123,7 +158,7 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
             <div className="text-[12px] text-faint">{row.original.counterparty}</div>
           )}
           {row.original.note && (
-            <div className="mt-0.5 line-clamp-1 max-w-[280px] text-[11.5px]
+            <div className="mt-0.5 line-clamp-1 text-[11.5px]
               italic text-faint" title={row.original.note}>
               “{row.original.note}”
             </div>
@@ -169,12 +204,23 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
             <EyeOff className="size-3" />rasurado
           </span>
         ) : null
+        // palpite do mapa da Pluggy, ainda não confirmado por ninguém
+        const pluggyGuess = t.category_source === 'pluggy-map' && !t.reviewed
+        const pm = pluggyGuess ? (
+          <span title="Categoria sugerida pelo mapa da Pluggy — ainda não confirmada"
+            className="inline-flex items-center gap-1 rounded-full border
+              border-blue/40 bg-blue/10 px-1.5 py-0.5 text-[11px] font-semibold
+              text-blue cursor-help">
+            <Wand2 className="size-3" />Pluggy
+          </span>
+        ) : null
         if (e.kind === 'split') {
           return (
             <div className="flex flex-wrap items-center gap-1.5">
               <Badge tone="violet">dividido</Badge>
               {e.splits.map((s, k) => (
                 <CategoryTag key={k} size="xs" category={s.category}
+                  subcategory={s.subcategory}
                   title={`${s.category}${s.subcategory ? '/' + s.subcategory : ''} ${signedBrl(s.amount)}`}
                   onClick={() => pick(s.category)} />
               ))}
@@ -188,18 +234,31 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
               <CategoryTag uncategorized hint={e.hint}
                 onClick={() => pick('Sem categoria')} />
               {t.needs_review && <Badge tone="amber">revisar</Badge>}
-              {tb}{qb}{xb}
+              {tb}{qb}{xb}{pm}
             </span>
           )
         }
         return (
           <span className="flex flex-wrap items-center gap-2">
-            <CategoryTag category={e.label} subcategory={e.subcategory}
-              onClick={() => pick(e.label)} />
+            <CategoryTag category={e.label} onClick={() => pick(e.label)} />
             {t.needs_review && <Badge tone="amber">revisar</Badge>}
-            {tb}{qb}{xb}
+            {tb}{qb}{xb}{pm}
           </span>
         )
+      },
+    },
+    {
+      accessorKey: 'subcategory', header: 'Subcategoria', enableSorting: false,
+      cell: ({ row }) => {
+        const t = row.original
+        if (t.splits?.length) return <span className="text-faint">—</span>
+        const e = effectiveCategory(t)
+        if (e.kind !== 'cat' || !e.subcategory) {
+          return <span className="text-faint">—</span>
+        }
+        return <SubcategoryTag category={e.label} subcategory={e.subcategory}
+          onClick={() => set('sub', e.subcategory)}
+          title="Filtrar por esta subcategoria" />
       },
     },
     { accessorKey: 'account_name', header: 'Conta', enableSorting: false,
@@ -213,15 +272,30 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
     },
     {
       id: 'act', header: '', enableSorting: false,
-      cell: ({ row }) => (
-        <button onClick={() => openEdit([row.original])}
-          className="rounded-lg p-1.5 text-muted hover:bg-surface2
-            hover:text-text" title="Editar">
-          <Pencil className="size-3.5" />
-        </button>
-      ),
+      cell: ({ row }) => {
+        const t = row.original
+        const canConfirm = saveEdit
+          && t.category_source === 'pluggy-map' && !t.reviewed
+        return (
+          <div className="flex items-center justify-end gap-1">
+            {canConfirm && (
+              <button onClick={() => saveEdit({ mode: 'value', ids: [t.id],
+                category: t.category, subcategory: t.subcategory })}
+                className="rounded-lg p-1.5 text-muted hover:bg-surface2
+                  hover:text-green" title="Confirmar — concordo com o palpite da Pluggy">
+                <Check className="size-3.5" />
+              </button>
+            )}
+            <button onClick={() => openEdit([t])}
+              className="rounded-lg p-1.5 text-muted hover:bg-surface2
+                hover:text-text" title="Editar">
+              <Pencil className="size-3.5" />
+            </button>
+          </div>
+        )
+      },
     },
-  ], [openEdit, queuedIds, treatments])  // eslint-disable-line react-hooks/exhaustive-deps
+  ], [openEdit, saveEdit, queuedIds, treatments])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // agrupa por dia quando ordenado por data (padrão) — some a coluna Data
   const grouped = (sorting[0]?.id || 'date') === 'date'
@@ -301,8 +375,26 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
 
       {showFilters && (
         <div className="flex flex-wrap items-center gap-2 px-5 pb-3 pt-3">
-          <MultiSelect label="Categoria" options={catOpts} value={f.cats}
-            onChange={(v) => set('cats', v)} />
+          <MultiSelect label="Categoria" options={catOpts}
+            value={catOpts.filter((c) => !f.hiddenCats.includes(c))}
+            count={f.hiddenCats.length}
+            onChange={(visible) =>
+              set('hiddenCats', catOpts.filter((c) => !visible.includes(c)))}
+            actions={[
+              { label: 'Marcar Todas', onClick: () => set('hiddenCats', []) },
+              { label: 'Desmarcar Todas', onClick: () => set('hiddenCats', catOpts) },
+            ]} />
+          <MultiSelect label="Subcategoria" options={subOpts}
+            value={subOpts.filter((s) => !f.hiddenSubs.includes(s))}
+            count={f.hiddenSubs.length}
+            onChange={(visible) =>
+              set('hiddenSubs', subOpts.filter((s) => !visible.includes(s)))}
+            actions={[
+              { label: 'Marcar Todas', onClick: () => set('hiddenSubs', []) },
+              { label: 'Desmarcar Todas', onClick: () => set('hiddenSubs', subOpts) },
+            ]} />
+          <MultiSelect label="Tags" options={tagOpts} value={f.tags}
+            onChange={(value) => set('tags', value)} />
           <MultiSelect label="Conta" options={accOpts} value={f.accs}
             onChange={(v) => set('accs', v)} />
           <select value={f.flow} onChange={(e) => set('flow', e.target.value)}
@@ -364,10 +456,13 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
       <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border-y
         border-border bg-surface2/40 px-5 py-2.5 text-[12.5px]">
         <span className="text-muted">{rows.length} de {txns.length} lançamentos</span>
-        <span className="text-green">entradas {brl(totIn)}</span>
-        <span className="text-red">saídas {brl(totOut)}</span>
+        <span className="text-green">entradas{' '}
+          <SensitiveAmount>{brl(totIn)}</SensitiveAmount></span>
+        <span className="text-red">saídas{' '}
+          <SensitiveAmount>{brl(totOut)}</SensitiveAmount></span>
         <span className={totIn + totOut >= 0 ? 'text-green' : 'text-red'}>
-          líquido {signedBrl(totIn + totOut)}</span>
+          líquido{' '}
+          <SensitiveAmount>{signedBrl(totIn + totOut)}</SensitiveAmount></span>
       </div>
 
       {selected.length > 0 && (
@@ -397,7 +492,7 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
                   return (
                     <th key={h.id}
                       onClick={sortable ? h.column.getToggleSortingHandler() : undefined}
-                      className={`whitespace-nowrap px-4 py-2.5 text-[11px]
+                      className={`whitespace-nowrap px-5 py-3 text-[11px]
                         font-semibold uppercase tracking-wide text-faint
                         ${sortable ? 'cursor-pointer select-none hover:text-muted' : ''}`}>
                       <span className="inline-flex items-center gap-1">
@@ -425,7 +520,7 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
                     <tr key={`h-${day}`}>
                       <td colSpan={colCount}
                         className="border-y border-border bg-surface2/40
-                          px-4 py-2">
+                          px-5 py-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[12.5px] font-semibold
                             text-muted">{longDate(day)}</span>
@@ -433,7 +528,8 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
                             {ag.count} lanç. · líquido{' '}
                             <span className={ag.net >= 0
                               ? 'text-green' : 'text-red'}>
-                              {signedBrl(ag.net)}</span>
+                              <SensitiveAmount>{signedBrl(ag.net)}</SensitiveAmount>
+                            </span>
                           </span>
                         </div>
                       </td>
@@ -449,7 +545,7 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
                           : isQueued(r.original.id)
                             ? 'bg-blue/[0.05] border-l-2 border-l-blue/50' : ''}`}>
                     {r.getVisibleCells().map((c) => (
-                      <td key={c.id} className="px-4 py-2.5 align-top">
+                      <td key={c.id} className="px-5 py-3 align-top">
                         {flexRender(c.column.columnDef.cell, c.getContext())}
                       </td>
                     ))}

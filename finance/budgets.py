@@ -27,10 +27,7 @@ import sys
 from collections import defaultdict
 
 from . import sheets
-
-# Categorias que não são "gasto" de fluxo de caixa (não têm teto de orçamento).
-NON_CASHFLOW = {"Transferências", "Investimentos", "Reserva", "Formatura",
-                "Compartilhado"}
+from . import taxonomy as T
 
 
 def default() -> dict:
@@ -94,6 +91,7 @@ def _cli(month: str | None) -> None:
         sys.exit(f"Sem dados para {m}. Disponíveis: {months[0]}..{months[-1]}")
 
     b = load()
+    treatments = T.load_treatments()   # só "fluxo" tem teto de orçamento
     realized: dict = defaultdict(float)
     income = 0.0
     for r in ledger.values():
@@ -104,7 +102,7 @@ def _cli(month: str | None) -> None:
         for pt in parts:
             cat = pt.get("category") or "Outros"
             amt = pt["amount"]
-            if cat in NON_CASHFLOW:
+            if T.treatment_of(treatments, cat) != "fluxo":
                 continue
             if amt < 0:
                 realized[cat] += -amt

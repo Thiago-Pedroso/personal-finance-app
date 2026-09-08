@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Card, CardHead, Button, Badge } from './ui/primitives.jsx'
+import { Card, CardHead, Button } from './ui/primitives.jsx'
 import { inputCls } from './ui/MultiSelect.jsx'
 import { TransactionsTable } from './TransactionsTable.jsx'
+import { CategoryTag } from '../lib/categories.jsx'
 import { signedBrl } from '../lib/format.js'
 import { Trash2, MessageSquare, Pencil, Check, X } from 'lucide-react'
+import { InvestPendingCards } from './invest/PendingCards.jsx'
 
 function Stat({ label, value, tone }) {
   return (
@@ -41,9 +43,8 @@ function QueueItem({ q, taxonomy, onUpdate, onRemove }) {
           {new Date(q.ts).toLocaleString('pt-BR')} · {q.ids.length} lançamento(s)
           {q.edited_at && <span className="italic">· editado</span>}
           {q.suggestion && (
-            <Badge tone="blue">{q.suggestion.category}
-              {q.suggestion.subcategory
-                ? ` / ${q.suggestion.subcategory}` : ''}</Badge>
+            <CategoryTag size="xs" category={q.suggestion.category}
+              subcategory={q.suggestion.subcategory} />
           )}
         </div>
         {!edit && (
@@ -105,7 +106,7 @@ function QueueItem({ q, taxonomy, onUpdate, onRemove }) {
 }
 
 export function Review({ dash, queue, queuedIds, onRemoveQueue,
-  onUpdateQueue, openEdit }) {
+  onUpdateQueue, openEdit, saveEdit }) {
   // todo o histórico que precisa de ação (não só o mês selecionado)
   const pend = dash.review || []
   const total = dash.pending ?? pend.length
@@ -121,6 +122,8 @@ export function Review({ dash, queue, queuedIds, onRemoveQueue,
         <Stat label="Na fila do Claude" value={queue.length}
           tone={queue.length ? 'text-blue' : 'text-green'} />
       </div>
+
+      <InvestPendingCards />
 
       <Card className="border-blue/25 bg-blue/[0.05] px-5 py-4 text-[13px]
         text-muted">
@@ -144,8 +147,8 @@ export function Review({ dash, queue, queuedIds, onRemoveQueue,
         </Card>
       )}
 
-      <TransactionsTable txns={pend} openEdit={openEdit} pageSize={50}
-        queuedIds={queuedIds} treatments={dash.treatments}
+      <TransactionsTable txns={pend} openEdit={openEdit} saveEdit={saveEdit}
+        pageSize={50} queuedIds={queuedIds} treatments={dash.treatments}
         excludedCount={dash.excluded_count}
         title={`Pendências — todo o histórico (${pend.length})`} />
     </div>

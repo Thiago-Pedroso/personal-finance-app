@@ -3,16 +3,18 @@ import { Modal } from './ui/Modal.jsx'
 import { Button, Spinner } from './ui/primitives.jsx'
 import { inputCls } from './ui/MultiSelect.jsx'
 import { useToast } from './ui/Toast.jsx'
-import { postEdit, postExclude } from '../lib/api.js'
 import { signedBrl, brl, dayMonth } from '../lib/format.js'
+import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 import {
-  Tag, Sparkles, MessageSquare, SplitSquareHorizontal, Plus, Trash2, Users,
-  EyeOff, Eye,
+  Pencil, Tags, Sparkles, MessageSquare, SplitSquareHorizontal, Plus, Trash2,
+  Users, EyeOff, Eye, X,
 } from 'lucide-react'
 
 const MODES = [
-  { k: 'value', label: 'Só este(s)', icon: Tag,
+  { k: 'value', label: 'Só este(s)', icon: Pencil,
     hint: 'Grava a categoria só nestes lançamentos (manual).' },
+  { k: 'tags', label: 'Tags', icon: Tags,
+    hint: 'Adiciona ou remove etiquetas sem alterar a categorização.' },
   { k: 'rule', label: 'Editar + criar regra', icon: Sparkles,
     hint: 'Cria uma regra e aplica retroativo a tudo que casa.' },
   { k: 'split', label: 'Dividir', icon: SplitSquareHorizontal, single: true,
@@ -31,19 +33,23 @@ const MATCHES = [
   ['startswith', 'começa com'], ['regex', 'regex'],
 ]
 
-export function EditModal({ open, onClose, txns, taxonomy, allTxns, onSaved }) {
+export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTags,
+  onSaved, saveEdit }) {
   const t = useToast()
   const first = txns[0] || {}
   const [mode, setMode] = useState('value')
   const [cat, setCat] = useState(first.category || '')
   const [sub, setSub] = useState(first.subcategory || '')
-  const [field, setField] = useState('merchant_name')
+  const [field, setField] = useState('description')
   const [match, setMatch] = useState('contains')
   const [value, setValue] = useState('')
   const [byType, setByType] = useState(false)
   const [ruleExcl, setRuleExcl] = useState(false)
   const [note, setNote] = useState(
     () => (txns.length === 1 ? txns[0]?.note : '') || '')
+  const [tagInput, setTagInput] = useState('')
+  const [tagsToAdd, setTagsToAdd] = useState([])
+  const [tagsToRemove, setTagsToRemove] = useState([])
   const [saving, setSaving] = useState(false)
   const [excluding, setExcluding] = useState(false)
 
@@ -114,8 +120,25 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, onSaved }) {
   }, [mode, ruleValue, match, field, byType, allTxns, first])
 
   const ids = txns.map((x) => x.id)
+  const usedTags = useMemo(() => [...new Set(
+    txns.flatMap((transaction) => transaction.tags || []))].sort(), [txns])
+  const suggestedTags = (availableTags || []).filter(
+    (tag) => !usedTags.includes(tag) && !tagsToAdd.includes(tag))
+  const addTag = (rawTag) => {
+    const tag = rawTag.trim().replace(/\s+/g, ' ')
+    if (!tag) return
+    setTagsToRemove((tags) => tags.filter((value) => value !== tag))
+    setTagsToAdd((tags) => tags.includes(tag) ? tags : [...tags, tag])
+    setTagInput('')
+  }
+  const removeTag = (tag) => {
+    setTagsToAdd((tags) => tags.filter((value) => value !== tag))
+    setTagsToRemove((tags) => tags.includes(tag) ? tags : [...tags, tag])
+  }
   const canSave = mode === 'queue'
     ? note.trim().length > 0 || !!cat
+    : mode === 'tags'
+      ? tagsToAdd.length > 0 || tagsToRemove.length > 0
     : mode === 'split'
       ? splitOk
       : !!cat && (mode !== 'rule' || !!ruleValue)
@@ -132,6 +155,12 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, onSaved }) {
           date: x.date, description: x.description, signed_amount: x.signed_amount,
         })),
       }
+      if (mode === 'tags') {
+        payload.category = null
+        payload.note = null
+        payload.tags_add = tagsToAdd
+        payload.tags_remove = tagsToRemove
+      }
       if (mode === 'rule') {
         payload.rule = {
           field, match, value: ruleValue,
@@ -147,10 +176,12 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, onSaved }) {
           note: r.note || '',
         }))
       }
-      const r = await postEdit(payload)
+      await saveEdit(payload)
       if (mode === 'queue') {
         t(`${ids.length} lançamento(s) na Fila do Claude.\n` +
           'Veja/edite em "Fila do Claude" (topo) ou na aba Revisar.', 'success', 6000)
+      } else if (mode === 'tags') {
+        t(`Tags atualizadas em ${ids.length} lançamento(s).`, 'success')
       } else if (mode === 'split') {
         t(`Lançamento dividido em ${rows.length} partes.`, 'success')
       } else {
@@ -159,7 +190,9 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, onSaved }) {
             ? (ruleExcl ? ' + regra que já rasura o que casar.' : ' + regra aprendida.')
             : '.'), 'success')
       }
-      onSaved(mode !== 'queue')
+      // edição de linha já apareceu na tela e grava em segundo plano;
+      // só regra e fila precisam de releitura aqui
+      if (mode === 'rule' || mode === 'queue') onSaved(mode !== 'queue')
       onClose()
     } catch (e) {
       t('Erro ao salvar: ' + e.message, 'error', 7000)
@@ -171,12 +204,11 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, onSaved }) {
   async function toggleExclude() {
     setExcluding(true)
     try {
-      await postExclude(ids, !allExcluded)
+      await saveEdit({ mode: 'exclude', ids, excluded: !allExcluded })
       t(allExcluded
         ? `${ids.length} lançamento(s) restaurado(s).`
         : `${ids.length} lançamento(s) rasurado(s) — fora dos relatórios.`,
         'success')
-      onSaved(true)
       onClose()
     } catch (e) {
       t('Erro: ' + e.message, 'error', 7000)
@@ -192,7 +224,9 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, onSaved }) {
         ? `Editar ${txns.length} lançamentos` : 'Editar lançamento'}
       sub={txns.length === 1
         ? `${first.description} · ${signedBrl(first.signed_amount)}`
-        : `${signedBrl(txns.reduce((a, x) => a + x.signed_amount, 0))} no total`}
+        : <><SensitiveAmount>{signedBrl(
+          txns.reduce((a, x) => a + x.signed_amount, 0))}</SensitiveAmount>{' '}
+          no total</>}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
@@ -205,7 +239,7 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, onSaved }) {
         </>
       }>
       {/* modo */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {MODES.filter((m) => !m.single || single).map((m) => {
           const I = m.icon
           return (
@@ -235,6 +269,87 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, onSaved }) {
           ))}
           {txns.length > 8 && <div className="px-1 pt-1">
             +{txns.length - 8} outros…</div>}
+        </div>
+      )}
+
+      {mode === 'tags' && (
+        <div className="mt-4 flex flex-col gap-4">
+          <div>
+            <div className="text-[12px] font-semibold text-muted">
+              Adicionar tags
+            </div>
+            <div className="mt-2 flex gap-2">
+              <input value={tagInput}
+                onChange={(event) => setTagInput(event.target.value)}
+                maxLength={80}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    addTag(tagInput)
+                  }
+                }}
+                placeholder="Digite uma tag"
+                className={inputCls('min-w-0 flex-1')} />
+              <Button onClick={() => addTag(tagInput)} disabled={!tagInput.trim()}>
+                <Plus className="size-4" /> Adicionar
+              </Button>
+            </div>
+            {tagsToAdd.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {tagsToAdd.map((tag) => (
+                  <button key={tag} onClick={() => setTagsToAdd(
+                    (tags) => tags.filter((value) => value !== tag))}
+                    className="inline-flex items-center gap-1 rounded-full border
+                      border-blue/40 bg-blue/10 px-2 py-1 text-[12px] text-blue">
+                    {tag}<X className="size-3" />
+                  </button>
+                ))}
+              </div>
+            )}
+            {suggestedTags.length > 0 && (
+              <div className="mt-3">
+                <div className="text-[11px] text-faint">Tags já utilizadas</div>
+                <div className="mt-1.5 flex max-h-24 flex-wrap gap-1.5 overflow-y-auto">
+                  {suggestedTags.map((tag) => (
+                    <button key={tag} onClick={() => addTag(tag)}
+                      className="rounded-full border border-border bg-surface2
+                        px-2 py-1 text-[12px] text-muted hover:border-faint
+                        hover:text-text">
+                      <Plus className="mr-1 inline size-3" />{tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <div>
+            <div className="text-[12px] font-semibold text-muted">
+              Tags presentes na seleção
+            </div>
+            {usedTags.length ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {usedTags.map((tag) => {
+                  const removed = tagsToRemove.includes(tag)
+                  return (
+                    <button key={tag} onClick={() => removed
+                      ? setTagsToRemove((tags) => tags.filter(
+                          (value) => value !== tag))
+                      : removeTag(tag)}
+                      className={`inline-flex items-center gap-1 rounded-full border
+                        px-2 py-1 text-[12px] ${removed
+                          ? 'border-red/40 bg-red/10 text-red line-through'
+                          : 'border-border bg-surface2 text-muted hover:text-red'}`}>
+                      {tag}<X className="size-3" />
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="mt-2 text-[12px] text-faint">
+                Nenhum lançamento selecionado possui tags.
+              </p>
+            )}
+          </div>
         </div>
       )}
 
@@ -369,7 +484,7 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, onSaved }) {
       )}
 
       {/* nota da transação (contexto p/ o Claude; aparece no hover) */}
-      {mode !== 'queue' && (
+      {mode !== 'queue' && mode !== 'tags' && (
         <label className="mt-4 block text-[12px] text-muted">
           Nota {txns.length > 1 ? '(aplicada a todos)' : ''} — contexto,
           aparece no hover e fica registrada pro Claude
@@ -393,7 +508,7 @@ trata como Compartilhado e anula com o que ele me mandou…"
       )}
 
       {/* rasurar: tira de todos os relatórios, reversível */}
-      {mode !== 'queue' && (
+      {mode !== 'queue' && mode !== 'tags' && (
         <div className={`mt-4 flex items-center justify-between gap-3 rounded-xl
           border px-3 py-2.5 ${allExcluded
             ? 'border-amber/40 bg-amber/5' : 'border-border bg-surface2/40'}`}>

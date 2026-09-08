@@ -10,6 +10,10 @@ import {
   auditRecurring, emergencyReserve, savingsRateSeries,
 } from '../lib/finance.js'
 import { brl, brl0, fmtPct } from '../lib/format.js'
+import { usePrivacy } from '../lib/usePrivacy.jsx'
+import {
+  SensitiveAmount, SensitiveFinancialText, SensitiveMoneyInput,
+} from './ui/SensitiveValue.jsx'
 import {
   ShieldCheck, PiggyBank, Sparkles,
   TrendingUp, TrendingDown, Repeat,
@@ -21,7 +25,7 @@ function MoneyInput({ value, onChange, className = '' }) {
     <div className="relative">
       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2
         text-[12px] text-faint">R$</span>
-      <input type="number" value={value}
+      <SensitiveMoneyInput value={value}
         onChange={(e) => onChange(e.target.value === '' ? 0 : +e.target.value)}
         className={inputCls(`w-full pl-8 tnum ${className}`)} />
     </div>
@@ -45,13 +49,16 @@ function Metric({ label, value, tone = 'text-text', sub }) {
     <div>
       <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">
         {label}</div>
-      <div className={`mt-0.5 text-[15px] font-bold tnum ${tone}`}>{value}</div>
+      <div className={`mt-0.5 text-[15px] font-bold tnum ${tone}`}>
+        <SensitiveAmount>{value}</SensitiveAmount>
+      </div>
       {sub && <div className="text-[11px] text-faint">{sub}</div>}
     </div>
   )
 }
 
 function Projetor({ inp }) {
+  const { valuesHidden } = usePrivacy()
   const thisYear = new Date().getFullYear()
   const [initial, setInitial] = useState(inp.patrimonio || 0)
   const [monthly, setMonthly] = useState(inp.aporteSugerido || 500)
@@ -83,10 +90,13 @@ function Projetor({ inp }) {
             <MoneyInput value={initial} onChange={setInitial} />
           </Field>
           <Field label="Aporte mensal"
-            hint={`sua sobra média: ${brl(inp.sobraMedia)}`}>
+            hint={<SensitiveFinancialText>{`sua sobra média: ${brl(
+              inp.sobraMedia)}`}</SensitiveFinancialText>}>
             <MoneyInput value={monthly} onChange={setMonthly} />
-            <Slider className="mt-2.5" value={Math.min(monthly, 10000)}
-              min={0} max={10000} step={50} onChange={setMonthly} />
+            <Slider className="mt-2.5"
+              value={valuesHidden ? 0 : Math.min(monthly, 10000)}
+              min={0} max={10000} step={50} onChange={setMonthly}
+              disabled={valuesHidden} />
           </Field>
           <Field label="Rentabilidade (a.a.)">
             <div className="flex flex-wrap gap-1 rounded-xl border border-border
@@ -128,7 +138,7 @@ function Projetor({ inp }) {
             <div className="text-[12px] font-semibold uppercase tracking-wider
               text-muted">Patrimônio em {thisYear + years}</div>
             <div className="mt-1 text-[34px] font-bold tnum text-brand">
-              {brl(r.finalBalance)}</div>
+              <SensitiveAmount>{brl(r.finalBalance)}</SensitiveAmount></div>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Metric label="Aportado" value={brl0(r.contributed)} />
@@ -179,18 +189,20 @@ function ReservaCard({ inp }) {
       </div>
       <div className="mt-1.5 flex justify-between text-[11.5px] text-faint">
         <span>meta {target} meses</span>
-        <span>{r.missing > 0 ? `faltam ${brl0(r.missing)}` : 'meta batida ✓'}</span>
+        <span>{r.missing > 0 ? <>
+          faltam <SensitiveAmount>{brl0(r.missing)}</SensitiveAmount>
+        </> : 'meta batida ✓'}</span>
       </div>
       <div className="mt-4 flex flex-col gap-2 border-t border-border pt-3">
         <label className="flex items-center justify-between gap-2 text-[12px]
           text-muted">Tenho hoje
-          <input type="number" value={saldo}
+          <SensitiveMoneyInput value={saldo}
             onChange={(e) => setSaldo(e.target.value === '' ? 0 : +e.target.value)}
             className={inputCls('w-32 py-1 tnum')} />
         </label>
         <label className="flex items-center justify-between gap-2 text-[12px]
           text-muted">Gasto essencial/mês
-          <input type="number" value={gasto}
+          <SensitiveMoneyInput value={gasto}
             onChange={(e) => setGasto(e.target.value === '' ? 0 : +e.target.value)}
             className={inputCls('w-32 py-1 tnum')} />
         </label>
@@ -204,8 +216,9 @@ function ReservaCard({ inp }) {
           ))}
         </div>
         <p className="text-[11px] text-faint">
-          pré-preenchido com seus essenciais (Moradia, Alimentação, Saúde,
-          Transporte, Serviços): {brl(inp.gastosEssenciais)}/mês — ajuste se quiser</p>
+          pré-preenchido com as categorias marcadas como essenciais na aba
+          Taxonomy:{' '}<SensitiveAmount>{brl(inp.gastosEssenciais)}</SensitiveAmount>
+          /mês — ajuste se quiser</p>
       </div>
     </Card>
   )
@@ -259,8 +272,9 @@ function AuditorCard({ recurring }) {
           <div className="text-[11px] font-semibold uppercase tracking-wider
             text-muted">Gasto recorrente</div>
           <div className="mt-1 text-[30px] font-bold tnum text-red">
-            {brl0(a.totalYearly)}</div>
-          <div className="text-[12px] text-faint">por ano · {brl(a.totalMonthly)}/mês</div>
+            <SensitiveAmount>{brl0(a.totalYearly)}</SensitiveAmount></div>
+          <div className="text-[12px] text-faint">por ano ·{' '}
+            <SensitiveAmount>{brl(a.totalMonthly)}</SensitiveAmount>/mês</div>
           <div className="mt-3 border-t border-border pt-3 text-[12px] text-muted">
             {a.items.length} cobranças recorrentes. Revise o que não usa mais —
             cortar as maiores é onde está o dinheiro.
@@ -285,7 +299,8 @@ function AuditorCard({ recurring }) {
                       text-faint"><Repeat className="size-3" />{it.cadence}</span>
                   </span>
                   <span className="tnum shrink-0 text-muted">
-                    {brl0(it.yearly)}<span className="text-faint">/ano</span></span>
+                    <SensitiveAmount>{brl0(it.yearly)}</SensitiveAmount>
+                    <span className="text-faint">/ano</span></span>
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
                   <div className="h-full rounded-full"

@@ -1,23 +1,96 @@
 # Suas categorias e subcategorias. VOCÊ manda nisto — edite à vontade.
-# Formato: <Categoria>: [<sub>, <sub>, ...]
-# A categorização (regras + IA) só usa nomes que existem aqui. Ao adicionar/renomear,
-# avise o Claude para reclassificar o que for preciso.
+#
+# Dois formatos aceitos:
+#   Categoria: [sub, sub, ...]                        # só as subcategorias
+#   Categoria: {subs: [...], color: "#rrggbb",        # com cor/ícone/tratamento
+#               icon: NomeLucide, treatment: fluxo,
+#               essential: true}
+#
+# treatment: fluxo (conta em Receitas/Gastos) | poupança (vira "Poupado")
+#            | movimento (fora da conta, só auditoria)
+# essential: entra na base de cálculo da reserva de emergência
+# icon: nome de um ícone lucide-react (ver o registry em frontend/src/lib/categories.jsx)
+#
+# A categorização (regras + IA) só usa nomes que existem aqui. Ao adicionar ou
+# renomear, avise o Claude para reclassificar o que for preciso.
 
-Alimentação:        [Supermercado, Restaurante, Delivery, Café/Padaria, Ocasiões especiais]
-Transporte:         [Combustível, App/Táxi, Transporte público, Estacionamento, Manutenção, Aluguel de veículo, Lava-jato]
-Moradia:            [Aluguel, Condomínio, Energia, Água, Internet/TV, Gás]
-Saúde:              [Plano de saúde, Farmácia, Consultas/Exames, Academia]
-Lazer:              [Streaming, Bares, Cinema/Eventos, Viagem, Hobbies]
-Compras:            [Vestuário, Eletrônicos, Casa, Presentes, Online]
-Serviços:           [Assinaturas, Profissionais, Seguros, Bancário/Tarifas, Barbearia]
-Trabalho:           [Impostos MEI, Assinaturas, Serviços]   # despesas de trabalho (contam no fluxo)
-Educação:           [Cursos, Livros]
-Impostos/Taxas:     [Impostos, Multas/Juros]
-Transferências:     [PIX enviado, PIX recebido, TED/DOC, Pagamento de cartão]
-Investimentos:      [Aporte, Resgate, Rendimentos]
-Reserva:            [Aporte, Resgate, Rendimento]   # poupança / cofrinhos (fora do fluxo)
-Formatura:          [Despesa, Recebido]   # dinheiro de comissão de formatura (não é pessoal; fora do fluxo)
-Compartilhado:      [Escritório, Evento, Outro]   # rateios reembolsáveis (fora do fluxo; anula com recebidos)
-Renda:              [Salário, Bolsa de pesquisa, Projetos PJ, Aluguel recebido, Ajuda de custo, Reembolso, Outras receitas]
-Doações:            [Pessoas, Instituições]   # dinheiro doado (saída real; conta no fluxo)
-Outros:             [A revisar]
+Alimentação:
+  subs: [Supermercado, Restaurante, Delivery, Café/Padaria, Ocasiões especiais]
+  color: "#2a78d6"
+  icon: Utensils
+  essential: true
+Transporte:
+  subs: [Combustível, App/Táxi, Transporte público, Estacionamento, Manutenção,
+         Aluguel de veículo, Lava-jato, Pedágio]
+  color: "#eb6834"
+  icon: Car
+  essential: true
+Moradia:
+  subs: [Aluguel, Condomínio, Energia, Água, Internet/TV, Gás]
+  color: "#1baf7a"
+  icon: Home
+  essential: true
+Saúde:
+  subs: [Plano de saúde, Farmácia, Consultas/Exames, Academia]
+  color: "#eda100"
+  icon: HeartPulse
+  essential: true
+Serviços:
+  subs: [Assinaturas, Profissionais, Seguros, Bancário/Tarifas, Barbearia]
+  color: "#e87ba4"
+  icon: Wrench
+  essential: true
+Compras:
+  subs: [Vestuário, Eletrônicos, Casa, Presentes, Online]
+  color: "#008300"
+  icon: ShoppingBag
+Lazer:
+  subs: [Streaming, Bares, Cinema/Eventos, Viagem, Hobbies]
+  color: "#4a3aa7"
+  icon: Gamepad2
+Educação:
+  subs: [Cursos, Livros]
+  color: "#e34948"
+  icon: GraduationCap
+Trabalho:
+  subs: [Impostos MEI, Assinaturas, Serviços]
+  color: "#2a78d6"
+  icon: Briefcase
+Impostos/Taxas:
+  subs: [Impostos, Multas/Juros]
+  color: "#eb6834"
+  icon: Landmark
+Doações:
+  subs: [Pessoas, Instituições]
+  color: "#1baf7a"
+  icon: HeartHandshake
+Renda:
+  subs: [Salário, Freelance, Aluguel recebido, Ajuda de custo, Reembolso, Outras receitas]
+  color: "#008300"
+  icon: Banknote
+Outros:
+  subs: [A revisar]
+  color: "#8a97a6"
+  icon: Shapes
+
+# --- fora do fluxo de gastos ---------------------------------------------------------
+Transferências:
+  subs: [PIX enviado, PIX recebido, TED/DOC, Pagamento de cartão]
+  treatment: movimento
+  color: "#8a97a6"
+  icon: ArrowLeftRight
+Compartilhado:
+  subs: [Escritório, Evento, Outro]        # rateios reembolsáveis; anula com os recebidos
+  treatment: movimento
+  color: "#2a78d6"
+  icon: Users
+Reserva:
+  subs: [Aporte, Resgate, Rendimento]      # cofrinhos
+  treatment: poupança
+  color: "#eda100"
+  icon: PiggyBank
+Investimentos:
+  subs: [Aporte, Resgate, Rendimentos]
+  treatment: poupança
+  color: "#1baf7a"
+  icon: TrendingUp

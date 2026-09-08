@@ -242,15 +242,6 @@ wheels = [
 ]
 
 [[package]]
-name = "lazy-imports"
-version = "1.2.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/25/67/04432aae0c1e2729bff14e1841f4a3fb63a9e354318e66622251487760c3/lazy_imports-1.2.0.tar.gz", hash = "sha256:3c546b3c1e7c4bf62a07f897f6179d9feda6118e71ef6ecc47a339cab3d2e2d9", size = 24470, upload-time = "2025-12-28T13:51:51.218Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/cd/62/60ed24fa8707f10c1c5aef94791252b820be3dd6bdfc6e2fcdb08bc8912f/lazy_imports-1.2.0-py3-none-any.whl", hash = "sha256:97134d6552e2ba16f1a278e316f05313ab73b360e848e40d593d08a5c2406fdf", size = 18681, upload-time = "2025-12-28T13:51:49.802Z" },
-]
-
-[[package]]
 name = "oauthlib"
 version = "3.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -261,18 +252,17 @@ wheels = [
 
 [[package]]
 name = "pluggy-sdk"
-version = "1.0.0.post53"
+version = "1.0.0.post65"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "lazy-imports" },
     { name = "pydantic" },
     { name = "python-dateutil" },
     { name = "typing-extensions" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/27/95/06b1620f177c361f0fddcfc8919f689e53d243ca611d9e36e2e7adf2c1e4/pluggy_sdk-1.0.0.post53.tar.gz", hash = "sha256:0624ce306cb323deaf4725090561b124f11166e6db5b6c5857e102be8b839705", size = 192453, upload-time = "2025-09-06T01:28:05.172Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/64/6f/743fc1bef89a2d69479a211bae4d215ea3378c1640427ac385607b7a63fd/pluggy_sdk-1.0.0.post65.tar.gz", hash = "sha256:fb666b5e1498a2a47481539811f23eb470b71b017ada68628ca06178ca35f077", size = 241555, upload-time = "2026-08-15T01:20:06.742Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7e/ab/e165186bfbc3825f14ff66f70123cd31bd07b747aefbfa355921248d6447/pluggy_sdk-1.0.0.post53-py3-none-any.whl", hash = "sha256:6d90811bccae782a759a15dae38f964ff69e23ba212872dcd8c1230c6dd28492", size = 448198, upload-time = "2025-09-06T01:28:02.756Z" },
+    { url = "https://files.pythonhosted.org/packages/01/13/c7d57d5ddd4f8ba3a9fb34642be6f13ba0e6b6e11f1c0effc6ba28c245e0/pluggy_sdk-1.0.0.post65-py3-none-any.whl", hash = "sha256:e4f9f1c99565544a1cab65be320eecd139643ebc8de2249b6a6a98f76fdb5856", size = 538385, upload-time = "2026-08-15T01:20:05.218Z" },
 ]
 
 [[package]]

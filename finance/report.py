@@ -19,6 +19,7 @@ from datetime import date, datetime, timezone
 from . import budgets as B
 from . import ledger as L
 from . import taxonomy as T
+from . import transaction_dates as TD
 from .config import REPORTS_DIR, ensure_dirs
 
 # Tratamento por categoria (fluxo|poupança|movimento) — fonte da verdade é a taxonomia.
@@ -37,18 +38,14 @@ def _is_rendimento(sub: str | None) -> bool:
 
 
 # Campos de cada transação embutidos nos arquivos mensais (consumidos pelo front).
-_TXN_FIELDS = ("id", "date", "description", "counterparty", "signed_amount",
+_TXN_FIELDS = ("id", "date", "time", "description", "counterparty", "signed_amount",
                "type", "account_name", "category", "subcategory",
                "category_source", "reviewed", "needs_review", "note",
-               "amount_override", "excluded")
-
-# Subcategorias que são tipo de transação (palpite da Pluggy), não categoria real.
-_TYPE_SUBS = {"PIX recebido", "PIX enviado", "TED/DOC"}
-
+               "amount_override", "excluded", "tags")
 
 def _is_pending(r: dict) -> bool:
     """Precisa de ação do usuário: sem categoria, anomalia, ou palpite da
-    Pluggy não confirmado (tipo de transação ≠ categoria de verdade)."""
+    Pluggy ainda não confirmado (categoria certa ou não, quem decide é o usuário)."""
     if r.get("excluded"):        # rasurado sai de tudo, inclusive das pendências
         return False
     if r.get("splits"):
@@ -57,8 +54,7 @@ def _is_pending(r: dict) -> bool:
         return True
     if r.get("needs_review"):
         return True
-    if (r.get("category_source") == "pluggy-map" and not r.get("reviewed")
-            and (r.get("subcategory") in _TYPE_SUBS)):
+    if r.get("category_source") == "pluggy-map" and not r.get("reviewed"):
         return True
     return False
 
@@ -246,13 +242,42 @@ def _plan_for_month(b: dict, mj: dict, month: str, today: date) -> dict:
     }
 
 
+def _bucket_balances() -> dict:
+    """Saldo das caixinhas, quando o espaço Investimentos já existe.
+
+    O estoque passa a vir de lá: a meta continua no planejamento com o seu alvo, e o
+    quanto já se tem deixa de ser digitado à mão."""
+    path = REPORTS_DIR / "invest.json"
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return {}
+    out = {}
+    for position in data.get("positions", []):
+        if position.get("valuation") == "balance":
+            for key in (position.get("name"), position.get("ticker")):
+                if key:
+                    out[_norm(key)] = float(position.get("value") or 0.0)
+    return out
+
+
 def _savings(b: dict, cum_in: float, cum_out: float, mon_in: float,
              mon_out: float) -> dict:
     goals = b.get("savings_goals", []) or []
-    g_out = [{"name": g.get("name", "Meta"),
-              "target": round(float(g.get("target", 0) or 0), 2),
-              "current": round(float(g.get("current", 0) or 0), 2)}
-             for g in goals]
+    buckets = _bucket_balances()
+    g_out = []
+    for g in goals:
+        name = g.get("name", "Meta")
+        held = buckets.get(_norm(name))
+        g_out.append({
+            "name": name,
+            "target": round(float(g.get("target", 0) or 0), 2),
+            "current": round(held if held is not None
+                             else float(g.get("current", 0) or 0), 2),
+            "source": "carteira" if held is not None else "informado",
+        })
     target = round(sum(g["target"] for g in g_out), 2)
     current = round(sum(g["current"] for g in g_out), 2)
     return {
@@ -370,7 +395,7 @@ def _recurring(recs: list) -> list:
 
 
 def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
-             month=None) -> None:
+             month=None, category_meta=None, subcategory_meta=None) -> None:
     """Gera os relatórios (arquivos em REPORTS_DIR).
 
     Aceita ledger/taxonomia/tratamentos/budgets já carregados para evitar reler
@@ -379,7 +404,14 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
     demanda."""
     ensure_dirs()
     global _TREAT
-    _TREAT = treatments if treatments is not None else T.load_treatments()
+    if treatments is None or taxonomy is None or category_meta is None:
+        tax_l, treat_l, meta_l = T.load_full()   # 1 request serve aos três
+        taxonomy = taxonomy if taxonomy is not None else tax_l
+        treatments = treatments if treatments is not None else treat_l
+        category_meta = category_meta if category_meta is not None else meta_l
+    if subcategory_meta is None:
+        subcategory_meta = T.load_subcategory_meta(taxonomy)
+    _TREAT = treatments
     if recs is None:
         recs = list(L.load_ledger().values())
     if not recs:
@@ -388,10 +420,20 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
     # Aplica o override manual de valor (cópia em memória; o ledger no disco
     # mantém signed_amount cru + amount_override). Tudo a jusante (agregados,
     # splits, insights, recorrências, dashboard) passa a ver o valor efetivo.
+    tz = TD.load_timezone()
     for r in recs:
         ov = r.get("amount_override")
         if ov is not None:
             r["signed_amount"] = ov
+        # HH:MM no fuso do app, só quando a Pluggy (ou uma cópia manual) trouxe
+        # datetime; sem isso, a hora fica em branco em vez de inventada.
+        r["time"] = None
+        if r.get("datetime"):
+            try:
+                r["time"] = TD.local_transaction_time(
+                    TD.parse_provider_datetime(r["datetime"]), tz)
+            except (TypeError, ValueError):
+                pass
 
     months: dict = {}
     month_txns: dict = {}
@@ -435,6 +477,14 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
                        ensure_ascii=False, indent=2) + "\n")
         (REPORTS_DIR / f"{m}.md").write_text(_md(mj, prev))
 
+    # Numa varredura completa, apaga meses que saíram do ledger — senão o disco
+    # guarda dados já removidos e o front pode servi-los num F5.
+    if not month:
+        vivos = {f"{m}.{ext}" for m in ordered for ext in ("json", "md")}
+        for antigo in REPORTS_DIR.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9].*"):
+            if antigo.name not in vivos:
+                antigo.unlink()
+
     # ---- dashboard.json (consumido pelo frontend)
     by_cat12: dict = defaultdict(lambda: {"expense": 0.0, "income": 0.0, "count": 0})
     for r in recs:
@@ -454,7 +504,13 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
     dash = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "currency": "BRL",
-        "taxonomy": taxonomy if taxonomy is not None else T.load(),
+        "taxonomy": taxonomy,
+        # cor/ícone por categoria: vêm da planilha, o front cai num neutro se faltar
+        "category_meta": category_meta or {},
+        "subcategory_meta": subcategory_meta or {},
+        # categorias "de sobrevivência": base do cálculo de reserva de emergência
+        "essential_cats": sorted(c for c, m in (category_meta or {}).items()
+                                 if m.get("essential")),
         "budgets": bud,
         "recurring": _recurring(recs),
         # tratamento por categoria (fonte da verdade da taxonomia) + listas derivadas
@@ -466,9 +522,12 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
         "by_category_12m": sorted(
             ({"category": k, **{kk: round(vv, 2) for kk, vv in v.items()}}
              for k, v in by_cat12.items()), key=lambda x: -x["expense"]),
-        "recent": [{k: r[k] for k in ("id", "date", "description", "signed_amount",
-                                      "category", "subcategory", "account_name",
-                                      "needs_review")} for r in recent],
+        "recent": [{k: r.get(k) for k in (
+            "id", "date", "description", "signed_amount", "category",
+            "subcategory", "account_name", "needs_review", "tags")}
+            for r in recent],
+        "tags": sorted({tag for r in recs for tag in (r.get("tags") or [])},
+                       key=L.tag_key),
         "needs_review": sum(1 for r in recs
                             if r["needs_review"] and not r.get("excluded")),
         "uncategorized": sum(1 for r in recs

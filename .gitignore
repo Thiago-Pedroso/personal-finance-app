@@ -38,3 +38,6 @@ skills-lock.json
 # em arquivos novos que ninguém previu. A fonte da verdade dos dados é o Google Sheets.
 data/*
 !data/seed/
+
+# Documentos locais gerados na raiz (podem conter valores reais da carteira)
+/*.html

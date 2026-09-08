@@ -12,8 +12,11 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DATA = path.join(ROOT, 'data')
 const REPORTS_DIR = path.join(DATA, 'reports')
 const DECISIONS = path.join(DATA, '.decisions.json')
+const EDITS = path.join(DATA, '.edits.json')
 const QUEUE = path.join(DATA, '.claude_queue.jsonl')
 const BUDGET_INPUT = path.join(DATA, '.budget_input.json')
+const INVEST_DECISIONS = path.join(DATA, '.invest_decisions.json')
+const INVEST_PENDING = path.join(DATA, '.invest_pending.json')
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -53,12 +56,65 @@ async function applyBudget(b) {
     log: r.stdout.trim(), stderr: r.stderr.trim() }
 }
 
+// Investimentos: tudo passa pelo mesmo arquivo de decisões do caminho por conversa,
+// então a tela não tem validação própria nem um segundo jeito de gravar.
+async function applyInvest(payload) {
+  fs.writeFileSync(INVEST_DECISIONS, JSON.stringify(payload, null, 2) + '\n')
+  const r = await run('uv', ['run', 'python', '-m', 'finance.invest', 'apply'])
+  return { ok: r.ok, step: r.ok ? 'done' : 'invest',
+    log: r.stdout.trim(), stderr: r.stderr.trim() }
+}
+
 // edições são serializadas para nunca correr o risco de corromper o ledger
 let lock = Promise.resolve()
 const serialize = (fn) => (lock = lock.then(fn, fn))
 
+// O relatório existe só para o disco estar certo no próximo F5 — ninguém espera por
+// ele. Roda fora do caminho da resposta e agrupado por uma janela de silêncio, para
+// 10 edições seguidas não dispararem 10 regerações.
+let reportTimer = null
+function scheduleReport() {
+  if (reportTimer) clearTimeout(reportTimer)
+  reportTimer = setTimeout(() => {
+    reportTimer = null
+    serialize(() => run('uv', ['run', 'python', '-m', 'finance.report']))
+  }, 1500)
+}
+
+// Edição de linha: grava só as células que mudaram. Não lê a aba inteira, não
+// carrega regras e não gera relatório. Criar regra continua no caminho pesado,
+// porque uma regra afeta lançamentos além do que está sendo editado.
+async function applyRowEdit(p) {
+  const fields = {}
+  if (p.mode === 'tags') {
+    if (p.tags_add?.length) fields.tags_add = p.tags_add
+    if (p.tags_remove?.length) fields.tags_remove = p.tags_remove
+  } else if (p.mode === 'split' && Array.isArray(p.splits) && p.splits.length) {
+    fields.splits = p.splits.map((s) => ({
+      amount: Number(s.amount), category: s.category,
+      subcategory: s.subcategory || null, note: s.note || '',
+    }))
+    if (p.note != null) fields.note = String(p.note)
+  } else {
+    if (p.category) {
+      fields.category = p.category
+      fields.subcategory = p.subcategory || null
+    }
+    if (p.note != null) fields.note = String(p.note)
+  }
+  if (p.excluded !== undefined) fields.excluded = !!p.excluded
+  if (!Object.keys(fields).length)
+    return { ok: false, step: 'edit', stderr: 'nada para gravar' }
+
+  fs.writeFileSync(EDITS,
+    JSON.stringify({ edits: [{ ids: p.ids, fields }] }, null, 2) + '\n')
+  const r = await run('uv', ['run', 'python', '-m', 'finance.edit', EDITS])
+  return { ok: r.ok, step: r.ok ? 'done' : 'edit',
+    log: r.stdout.trim(), stderr: r.stderr.trim() }
+}
+
 async function applyEdit(p) {
-  // p = { mode, ids[], category, subcategory, rule?{field,match,value,type}, note? }
+  // p = { mode, ids[], category, subcategory, tags_add[], tags_remove[] }
   if (p.mode === 'queue') {
     const line = JSON.stringify({
       ts: new Date().toISOString(),
@@ -71,10 +127,22 @@ async function applyEdit(p) {
     return { ok: true, mode: 'queue', queued: p.ids.length }
   }
 
+  if (p.mode !== 'rule') {
+    const r = await applyRowEdit(p)
+    if (r.ok) scheduleReport()
+    return r
+  }
+
   const learn = p.mode === 'rule'
   const decisions = { assignments: [], rules: [] }
   const noteVal = p.note == null ? '' : String(p.note)
-  if (p.mode === 'split' && Array.isArray(p.splits) && p.splits.length) {
+  if (p.mode === 'tags') {
+    decisions.assignments.push({
+      ids: p.ids,
+      tags_add: Array.isArray(p.tags_add) ? p.tags_add : [],
+      tags_remove: Array.isArray(p.tags_remove) ? p.tags_remove : [],
+    })
+  } else if (p.mode === 'split' && Array.isArray(p.splits) && p.splits.length) {
     decisions.assignments.push({
       ids: p.ids,
       note: noteVal,
@@ -199,6 +267,40 @@ function financeServer() {
           } catch (e) {
             return json(res, 500, { ok: false, error: String(e) })
           }
+        }
+
+        // ---- investimentos
+        if (url === '/api/invest/apply' && req.method === 'POST') {
+          let payload
+          try { payload = await readBody(req) }
+          catch { return json(res, 400, { ok: false, error: 'JSON inválido' }) }
+          try {
+            const result = await serialize(() => applyInvest(payload))
+            return json(res, result.ok ? 200 : 500, result)
+          } catch (e) {
+            return json(res, 500, { ok: false, error: String(e) })
+          }
+        }
+        if (url === '/api/invest/refresh' && req.method === 'POST') {
+          const result = await serialize(() =>
+            run('uv', ['run', 'python', '-m', 'finance.invest', 'report']))
+          return json(res, result.ok ? 200 : 500,
+            { ok: result.ok, log: result.stdout.trim(), stderr: result.stderr.trim() })
+        }
+        if (url === '/api/invest/sync' && req.method === 'POST') {
+          const body = await readBody(req).catch(() => ({}))
+          const args = ['run', 'python', '-m', 'finance.invest', 'sync']
+          if (body.applyBalances) args.push('--apply-balances')
+          if (body.applyIncome) args.push('--apply-income')
+          const result = await serialize(() => run('uv', args))
+          return json(res, result.ok ? 200 : 500,
+            { ok: result.ok, log: result.stdout.trim(), stderr: result.stderr.trim() })
+        }
+        if (url === '/api/invest/pending' && req.method === 'GET') {
+          if (!fs.existsSync(INVEST_PENDING)) return json(res, 200, { pending: [] })
+          try {
+            return json(res, 200, JSON.parse(fs.readFileSync(INVEST_PENDING, 'utf8')))
+          } catch { return json(res, 200, { pending: [] }) }
         }
 
         // ---- planejamento: grava budgets.json + recalcula (serializado)

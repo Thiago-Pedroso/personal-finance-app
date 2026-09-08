@@ -30,6 +30,8 @@ REPORTS_DIR = DATA / "reports"
 TO_CATEGORIZE_FILE = DATA / ".to_categorize.json"
 DECISIONS_FILE = DATA / ".decisions.json"
 CLAUDE_QUEUE_FILE = DATA / ".claude_queue.jsonl"
+INVEST_DECISIONS_FILE = DATA / ".invest_decisions.json"
+INVEST_PENDING_FILE = DATA / ".invest_pending.json"
 
 # ---- Google Sheets (banco de dados na nuvem) ------------------------------------------
 # ID da planilha (da URL: .../spreadsheets/d/<SHEET_ID>/edit). Cada usuário tem a sua.
@@ -39,6 +41,7 @@ GOOGLE_SA_CREDENTIALS = os.environ.get("GOOGLE_SA_CREDENTIALS", "credentials.jso
 
 # Janela máxima de histórico que a Pluggy disponibiliza no backfill.
 BACKFILL_DAYS = 365
+DEFAULT_TIMEZONE = "America/Sao_Paulo"
 
 
 def ensure_dirs() -> None:

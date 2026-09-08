@@ -61,11 +61,15 @@ Ambos `credentials.json` e `.env` estão no `.gitignore` — **nunca commite**.
 
 ---
 
-## 3. Esquema do banco (4 abas)
+## 3. Esquema do banco (12 abas)
+
+Seis abas do controle de gastos e seis do controle de investimentos. As de investimento
+só são criadas para quem usa a carteira.
 
 A linha 1 de cada aba é o cabeçalho. Tipos entre parênteses referem-se à coerção em
 `finance/sheets.py` (`str` texto; `opt` texto opcional/vazio=None; `float` número; `fnum`
-número opcional; `bool` TRUE/FALSE; `json` serializado como JSON).
+número opcional; `bool` TRUE/FALSE; `json` serializado como JSON; `qnum` número vindo de
+fórmula, tolerante a `#N/A`).
 
 ### Aba `Ledger` — uma transação por linha
 
@@ -96,6 +100,7 @@ Espelha o que `finance/ledger.py::normalize()` produz. Colunas:
 | `note` | opt | observação livre |
 | `amount_override` | fnum | sobrepõe `signed_amount` nos relatórios |
 | `synced_at` | opt | timestamp do sync |
+| `tags` | json | lista de etiquetas pessoais, por exemplo `["Viagem"]` |
 
 ### Aba `Rules` — uma regra por linha
 
@@ -114,11 +119,48 @@ Espelha o que `finance/ledger.py::normalize()` produz. Colunas:
 
 ### Aba `Taxonomy` — uma categoria por linha
 
-| `Category` (str) | `Subcategories` (str, separadas por vírgula) |
-|---|---|
-| Alimentação | Supermercado, Restaurante, Delivery, ... |
+| coluna | tipo | para que serve |
+|---|---|---|
+| `Category` | str | nome da categoria |
+| `Subcategories` | str | separadas por vírgula |
+| `Treatment` | str | `fluxo` (conta em Receitas/Gastos), `poupança` (vira "Poupado") ou `movimento` (fora da conta, só auditoria) |
+| `Color` | opt | hex do chip e do gráfico, ex.: `#2a78d6` |
+| `Icon` | opt | nome de um ícone `lucide-react`, ex.: `Utensils` |
+| `Essential` | bool | entra na base de cálculo da reserva de emergência |
 
-`taxonomy.load()` reconstrói o dict `{categoria: [subs]}`.
+`taxonomy.load()` devolve `{categoria: [subs]}`; `load_full()` devolve
+`(taxonomia, tratamentos, meta)` numa leitura só.
+
+As quatro últimas colunas são **opcionais**: uma planilha antiga, com só
+`Category` e `Subcategories`, continua sendo lida (o `Treatment` cai num
+fallback por categoria e cor/ícone caem num neutro). Elas aparecem sozinhas na
+próxima gravação da aba.
+
+Cor e ícone vivem aqui, e não no código, para que o dashboard não precise
+conhecer os nomes das suas categorias — cada pessoa tem as suas.
+
+### Aba `SubcategoryMeta`: apresentação opcional por subcategoria
+
+| coluna | tipo | para que serve |
+|---|---|---|
+| `Category` | str | categoria existente na aba `Taxonomy` |
+| `Subcategory` | str | subcategoria existente dentro da categoria |
+| `Color` | opt | cor hexadecimal própria, por exemplo `#d7a21e` |
+| `Icon` | opt | nome opcional de um ícone `lucide-react` |
+
+Quando não há uma linha configurada, o dashboard deriva uma cor estável sem persistir dados.
+As preferências pessoais continuam somente na planilha. Cores escuras são ajustadas apenas
+na renderização para manter contraste adequado; o valor salvo não é alterado.
+
+### Aba `PluggyMap` — categoria da Pluggy → categoria sua
+
+| `PluggyCategory` (str) | `Category` (str) | `Subcategory` (opt) |
+|---|---|---|
+| Eating out | Alimentação | Restaurante |
+| Groceries | Alimentação | Supermercado |
+
+Semente do `data/seed/pluggy_map.yaml`, usada como **dica**: o `categorize`
+descarta o que não existir na sua taxonomia. Sem a aba, o mapa cai no fixture.
 
 ### Aba `Config` — blobs JSON (chave/valor)
 
@@ -126,7 +168,107 @@ Espelha o que `finance/ledger.py::normalize()` produz. Colunas:
 |---|---|
 | `budgets` | o objeto de orçamento inteiro (income_plan, spending, savings_goals) |
 | `sync_state` | cursores de sincronização por conta |
-| `schema_version` | versão do esquema (atualmente `1`) |
+| `timezone` | fuso IANA usado nas datas locais, por exemplo `America/Sao_Paulo` |
+| `min_transaction_date` | piso opcional (`YYYY-MM-DD`); o sync descarta lançamentos anteriores |
+| `schema_version` | versão do esquema (atualmente `6`) |
+| `invest_monthly_contribution` | aporte mensal usado como padrão no simulador |
+| `invest_contribution_mode` | modo do simulador de aporte: `spread` ou `focus` |
+| `invest_allocation_sim` | rascunho da aba Simulador: `{base, items: [{label, amount}]}` — nunca vira trade |
+
+---
+
+## 3b. Abas de investimento
+
+### Aba `InvestTrades` — uma movimentação por linha
+
+`id` · `date` · `ticker` · `side` · `quantity` (fnum) · `price` (fnum) · `fees` (fnum) ·
+`currency` · `fx_rate` (fnum) · `account` · `note` · `source` · `ledger_id` · `created_at`
+
+É a única entrada de fatos: todo o resto é derivado daqui. `side` cobre `BUY`, `SELL`,
+`DIVIDEND`, `JCP`, `SPLIT`, `ADJUST` e `BALANCE` (saldo informado de ativo sem cotação).
+Compra em moeda estrangeira guarda o preço na moeda de origem e o câmbio do dia, para
+depois separar o resultado do ativo do resultado do câmbio. `ledger_id` liga a operação à
+transação bancária que a pagou.
+
+### Aba `InvestAssets` — o catálogo
+
+`ticker` · `name` · `node` · `account` · `sector` · `currency` · `quote_symbol` ·
+`valuation` · `pluggy_code` · `target_pct` (fnum) · `lot_size` (fnum) · `active` (bool) ·
+`note`
+
+`node` aponta para uma folha da política, `valuation` diz de onde vem o valor (`quote`,
+`balance` ou `pluggy`) e `target_pct` é o alvo do ativo **dentro** da classe. `sector` é
+texto livre: a lista do autocomplete nasce do que já está em uso, sem taxonomia no código.
+
+`pluggy_code` guarda o código do papel na corretora **ou o id de uma conta**: saldo de
+conta corrente é um ativo por saldo como qualquer outro, e é assim que ele se sincroniza.
+Num ativo em moeda estrangeira, todo lançamento é gravado na moeda do ativo (`currency` do
+lançamento vem do ativo quando não é informado) e a conversão para reais acontece na
+leitura, pelo câmbio do momento, nunca pelo do dia em que o saldo foi informado. A linha de
+câmbio (`USDBRL`) é criada sozinha na aba `Quotes`; sem ela o valor em reais fica pendente
+e aparece nos avisos, em vez de o dólar virar real em silêncio.
+
+### Aba `InvestAccounts` — onde o dinheiro está
+
+`id` · `name` · `institution` · `kind` · `pluggy_item_id` · `currency`
+
+`kind` separa `broker`, `wallet` e `bucket` (conta de caixinhas). `pluggy_item_id` amarra a
+conta ao item da Pluggy, que é o que permite comparar o total informado pela instituição
+com a divisão que você fez.
+
+### Aba `InvestPolicy` — a política como árvore
+
+`node` · `name` · `parent` · `target_pct` (fnum) · `in_totals` (bool) · `role` · `color` ·
+`icon`
+
+`node` é id estável e `name` é o rótulo editável, então renomear uma classe não quebra o
+histórico. `target_pct` é a fatia dentro do pai, e o alvo de uma folha é o produto do
+caminho até a raiz. `in_totals=FALSE` tira o nó do denominador dos percentuais e do
+rebalanceamento, sem tirar o dinheiro do patrimônio.
+
+`role` diz o que o nó representa e aceita quatro valores, os únicos fixos no código:
+
+| role | o que é | entra no rebalanceamento |
+|---|---|---|
+| `strategy` (padrão) | a carteira | sim, se `in_totals` |
+| `reserved` | guardado com um destino | não |
+| `to_invest` | saiu da conta, ainda não virou posição | não |
+| `free` | saldo sem compromisso | não |
+
+Quantos nós existem em cada papel, e como se chamam, é escolha do usuário. Um nó
+`strategy` com `in_totals=FALSE` é o caso de cripto: faz parte da carteira e fica fora
+dos alvos.
+
+### Aba `Quotes` — a única com fórmula
+
+`ticker` · `quote_symbol` · `price` (qnum) · `currency` · `kind` · `updated_at` (qnum) ·
+`last_price` (fnum) · `last_price_at`
+
+`price` guarda a chamada do `GOOGLEFINANCE` e a API devolve o resultado já calculado. As
+fórmulas são escritas **sem separador de argumentos**, porque esse caractere segue o locale
+da planilha:
+
+```
+Ação BR / FII     =GOOGLEFINANCE("BVMF:WEGE3")
+Stock / ETF EUA   =GOOGLEFINANCE("VOO")*GOOGLEFINANCE("CURRENCY:USDBRL")
+Cripto            =GOOGLEFINANCE("CURRENCY:BTCUSD")*GOOGLEFINANCE("CURRENCY:USDBRL")
+Câmbio            =GOOGLEFINANCE("CURRENCY:USDBRL")
+```
+
+`updated_at` guarda `=NOW()`, que serve para detectar planilha que parou de recalcular.
+`last_price` guarda o último valor bom: uma falha momentânea da fórmula marca a cotação
+como defasada em vez de zerar a posição.
+
+> Esta aba **não aceita** `write_records()`: reescrever com `RAW` transformaria a fórmula
+> em texto. Use `append_rows()` e `update_fields(..., value_input_option="USER_ENTERED")`.
+> A lista de abas protegidas está em `sheets.FORMULA_TABS`.
+
+### Aba `InvestSnapshots` — o histórico
+
+`date` · `node` · `value` (float) · `cost` (float)
+
+Uma linha por nó por dia, gravada a cada `finance.invest report`. Rodar duas vezes no mesmo
+dia substitui em vez de duplicar. É o histórico de patrimônio que a planilha nunca teve.
 
 ---
 
@@ -141,6 +283,7 @@ Contrato público (todas as funções fazem **1 request** por chamada e têm ret
 | `read_config(key, default)` | lê um blob JSON da aba Config |
 | `write_config(key, value)` | grava/atualiza uma chave na aba Config |
 | `ensure_tabs()` | cria as abas + cabeçalhos que faltam (idempotente) |
+| `ensure_current_schema()` | acrescenta abas e colunas novas sem remover dados |
 | `check()` | valida auth/acesso → `{title, url, tabs}` |
 | `reset_cache()` | descarta handles cacheados (após seed/em testes) |
 
@@ -159,6 +302,13 @@ intacto. Trocamos apenas o backend de arquivo para Sheets:
 Os **relatórios** (`data/reports/*.json`) continuam gerados **localmente** por `finance.report`
 (lendo do Sheets) — o frontend os consome direto, sem custo de quota e com carga rápida. São
 regeneráveis e ficam no `.gitignore`.
+
+Atualizações de schema são aplicadas por `uv run python -m finance.migrate`. O `start.sh`, o
+sync e a categorização também conferem a versão antes de gravar. A migração da versão 3 adiciona
+`Config[timezone]` e recalcula datas importadas da Pluggy a partir do timestamp UTC. A versão 4
+acrescenta a aba opcional `SubcategoryMeta` sem alterar a taxonomia existente. Use
+`uv run python -m finance.migrate --dry-run` para conferir a quantidade de registros antes de
+gravar. Datas de lançamentos manuais são preservadas.
 
 ### Coerção de tipos (o ponto crítico)
 

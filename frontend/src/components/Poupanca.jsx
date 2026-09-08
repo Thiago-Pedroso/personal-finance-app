@@ -2,6 +2,7 @@ import { Card } from './ui/primitives.jsx'
 import { catMeta } from '../lib/categories.jsx'
 import { useDrill } from '../lib/useDrill.jsx'
 import { brl, signedBrl, monthLabel } from '../lib/format.js'
+import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 import { PiggyBank } from 'lucide-react'
 
 // Poupança = balde próprio. "Poupado" = aportes − resgates, EXCLUINDO rendimento
@@ -55,7 +56,9 @@ export function Poupanca({ dash, mdata, month }) {
               `Poupança — ${monthLabel(month)}`, { cats })}
               className={`text-[30px] font-bold tnum hover:opacity-80 ${
                 saved >= 0 ? 'text-violet' : 'text-red'}`}
-              title="Ver lançamentos de poupança">{signedBrl(saved)}</button>
+              title="Ver lançamentos de poupança">
+              <SensitiveAmount>{signedBrl(saved)}</SensitiveAmount>
+            </button>
             {taxa != null && (
               <span className="text-[13px] text-muted">· {taxa}% da renda</span>
             )}
@@ -95,7 +98,7 @@ export function Poupanca({ dash, mdata, month }) {
                 className="mt-2 block text-left hover:opacity-80"
                 title="Ver lançamentos">
                 <span className="text-[22px] font-bold tnum text-violet">
-                  {brl(s.poupado)}</span>
+                  <SensitiveAmount>{brl(s.poupado)}</SensitiveAmount></span>
                 <span className="ml-2 text-[12px] text-faint">aportado</span>
               </button>
               {(s.resgatado > 0 || s.rendimento !== 0) && (
@@ -105,14 +108,18 @@ export function Poupanca({ dash, mdata, month }) {
                     <div className="flex justify-between">
                       <span className="text-muted">Resgatado{' '}
                         <span className="text-faint">(não conta)</span></span>
-                      <span className="tnum text-faint">{brl(s.resgatado)}</span>
+                      <span className="tnum text-faint">
+                        <SensitiveAmount>{brl(s.resgatado)}</SensitiveAmount>
+                      </span>
                     </div>
                   )}
                   {s.rendimento !== 0 && (
                     <div className="flex justify-between">
                       <span className="text-muted">Rendimento{' '}
                         <span className="text-faint">(fora do poupado)</span></span>
-                      <span className="tnum text-green">{signedBrl(s.rendimento)}</span>
+                      <span className="tnum text-green">
+                        <SensitiveAmount>{signedBrl(s.rendimento)}</SensitiveAmount>
+                      </span>
                     </div>
                   )}
                 </div>
@@ -120,7 +127,9 @@ export function Poupanca({ dash, mdata, month }) {
               <div className="mt-3 flex justify-between border-t border-border pt-2
                 text-[12px] text-faint">
                 <span>aportado acum. {dash.months.length}m · {agg[c].count}x</span>
-                <span className="tnum text-violet">{brl(agg[c].poupado)}</span>
+                <span className="tnum text-violet">
+                  <SensitiveAmount>{brl(agg[c].poupado)}</SensitiveAmount>
+                </span>
               </div>
             </Card>
           )

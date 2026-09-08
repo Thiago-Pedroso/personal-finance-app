@@ -1,0 +1,575 @@
+{
+ "allocation": [
+  {
+   "node": "acoes",
+   "name": "Ações",
+   "value": 14891.499999999998,
+   "real_pct": 0.3419639829366012,
+   "target_pct": 0.33599999999999997,
+   "drift": 0.00596398293660122,
+   "in_totals": true
+  },
+  {
+   "node": "stocks",
+   "name": "Stocks",
+   "value": 8967.6748717845,
+   "real_pct": 0.20593102218284945,
+   "target_pct": 0.22400000000000003,
+   "drift": -0.018068977817150583,
+   "in_totals": true
+  },
+  {
+   "node": "rf",
+   "name": "Renda Fixa",
+   "value": 8300.3,
+   "real_pct": 0.1906056238504295,
+   "target_pct": 0.2,
+   "drift": -0.009394376149570505,
+   "in_totals": true
+  },
+  {
+   "node": "fiis",
+   "name": "FIIs",
+   "value": 6858.22,
+   "real_pct": 0.1574901270560694,
+   "target_pct": 0.144,
+   "drift": 0.013490127056069418,
+   "in_totals": true
+  },
+  {
+   "node": "reits",
+   "name": "REITs",
+   "value": 4529.2888547468,
+   "real_pct": 0.1040092439740505,
+   "target_pct": 0.09600000000000002,
+   "drift": 0.008009243974050478,
+   "in_totals": true
+  }
+ ],
+ "assets": [
+  {
+   "ticker": "AC0",
+   "name": "AC0",
+   "node": "acoes",
+   "target_pct": 0.1,
+   "lot_size": 1.0,
+   "valuation": "quote",
+   "account": null,
+   "active": true
+  },
+  {
+   "ticker": "AC1",
+   "name": "AC1",
+   "node": "acoes",
+   "target_pct": 0.1,
+   "lot_size": 1.0,
+   "valuation": "quote",
+   "account": null,
+   "active": true
+  },
+  {
+   "ticker": "AC2",
+   "name": "AC2",
+   "node": "acoes",
+   "target_pct": 0.1,
+   "lot_size": 1.0,
+   "valuation": "quote",
+   "account": null,
+   "active": true
+  },
+  {
+   "ticker": "AC3",
+   "name": "AC3",
+   "node": "acoes",
+   "target_pct": 0.1,
+   "lot_size": 1.0,
+   "valuation": "quote",
+   "account": null,
+   "active": true
+  },
+  {
+   "ticker": "AC4",
+   "name": "AC4",
+   "node": "acoes",
+   "target_pct": 0.1,
+   "lot_size": 1.0,
+   "valuation": "quote",
+   "account": null,
+   "active": true
+  },
+  {
+   "ticker": "AC5",
+   "name": "AC5",
+   "node": "acoes",
+   "target_pct": 0.1,
+   "lot_size": 1.0,
+   "valuation": "quote",
+   "account": null,
+   "active": true
+  },
+  {
+   "ticker": "AC6",
+   "name": "AC6",
+   "node": "acoes",
+   "target_pct": 0.1,
+   "lot_size": 1.0,
+   "valuation": "quote",
+   "account": null,
+   "active": true
+  },
+  {
+   "ticker": "AC7",
+   "name": "AC7",
+   "node": "acoes",
+   "target_pct": 0.1,
+   "lot_size": 1.0,
+   "valuation": "quote",
+   "account": null,
+   "active": true
+  },
+  {
+   "ticker": "AC8",
+   "name": "AC8",
+   "node": "acoes",
+   "target_pct": 0.1,
+   "lot_size": 1.0,
+   "valuation": "quote",
+   "account": null,
+   "active": true
+  },
+  {
+   "ticker": "AC9",
+   "name": "AC9",
+   "node": "acoes",
+   "target_pct": 0.1,
+   "lot_size": 1.0,
+   "valuation": "quote",
+   "account": null,
+   "active": true
+  },
+  {
+   "ticker": "FII1",
+   "name": "FII1",
+   "node": "fiis",
+   "target_pct": 1.0,
+   "lot_size": 1.0,
+   "valuation": "quote",
+   "account": null,
+   "active": true
+  },
+  {
+   "ticker": "RF1",
+   "name": "RF1",
+   "node": "rf",
+   "target_pct": 1.0,
+   "lot_size": 1.0,
+   "valuation": "balance",
+   "account": null,
+   "active": true
+  },
+  {
+   "ticker": "VOO",
+   "name": "VOO",
+   "node": "stocks",
+   "target_pct": 1.0,
+   "lot_size": 0.0001,
+   "valuation": "quote",
+   "account": null,
+   "active": true
+  },
+  {
+   "ticker": "VNQ",
+   "name": "VNQ",
+   "node": "reits",
+   "target_pct": 1.0,
+   "lot_size": 0.0001,
+   "valuation": "quote",
+   "account": null,
+   "active": true
+  }
+ ],
+ "positions": {
+  "AC0": {
+   "value": 1489.15,
+   "price": 29.783
+  },
+  "AC1": {
+   "value": 1489.15,
+   "price": 29.783
+  },
+  "AC2": {
+   "value": 1489.15,
+   "price": 29.783
+  },
+  "AC3": {
+   "value": 1489.15,
+   "price": 29.783
+  },
+  "AC4": {
+   "value": 1489.15,
+   "price": 29.783
+  },
+  "AC5": {
+   "value": 1489.15,
+   "price": 29.783
+  },
+  "AC6": {
+   "value": 1489.15,
+   "price": 29.783
+  },
+  "AC7": {
+   "value": 1489.15,
+   "price": 29.783
+  },
+  "AC8": {
+   "value": 1489.15,
+   "price": 29.783
+  },
+  "AC9": {
+   "value": 1489.15,
+   "price": 29.783
+  },
+  "FII1": {
+   "value": 6858.22,
+   "price": 6858.22
+  },
+  "RF1": {
+   "value": 8300.3,
+   "price": null
+  },
+  "VOO": {
+   "value": 8967.6748717845,
+   "price": 3631.17
+  },
+  "VNQ": {
+   "value": 4529.2888547468,
+   "price": 492.46
+  }
+ },
+ "cases": [
+  {
+   "contribution": 3000,
+   "mode": "spread",
+   "expected": {
+    "allocated": 2987.224983,
+    "leftover": 12.775017,
+    "orders": [
+     {
+      "ticker": "VOO",
+      "quantity": 0.3748,
+      "amount": 1360.962516
+     },
+     {
+      "ticker": "RF1",
+      "quantity": 0.0,
+      "amount": 941.253467
+     },
+     {
+      "ticker": "AC0",
+      "quantity": 3.0,
+      "amount": 89.349
+     },
+     {
+      "ticker": "AC1",
+      "quantity": 3.0,
+      "amount": 89.349
+     },
+     {
+      "ticker": "AC2",
+      "quantity": 3.0,
+      "amount": 89.349
+     },
+     {
+      "ticker": "AC3",
+      "quantity": 2.0,
+      "amount": 59.566
+     },
+     {
+      "ticker": "AC4",
+      "quantity": 2.0,
+      "amount": 59.566
+     },
+     {
+      "ticker": "AC5",
+      "quantity": 2.0,
+      "amount": 59.566
+     },
+     {
+      "ticker": "AC6",
+      "quantity": 2.0,
+      "amount": 59.566
+     },
+     {
+      "ticker": "AC7",
+      "quantity": 2.0,
+      "amount": 59.566
+     },
+     {
+      "ticker": "AC8",
+      "quantity": 2.0,
+      "amount": 59.566
+     },
+     {
+      "ticker": "AC9",
+      "quantity": 2.0,
+      "amount": 59.566
+     }
+    ],
+    "nodes": [
+     {
+      "node": "acoes",
+      "amount": 685.009,
+      "drift_after": -0.00126756
+     },
+     {
+      "node": "stocks",
+      "amount": 1360.962516,
+      "drift_after": -0.00204205
+     },
+     {
+      "node": "rf",
+      "amount": 941.253467,
+      "drift_after": -0.00140302
+     },
+     {
+      "node": "fiis",
+      "amount": 0,
+      "drift_after": 0.00338018
+     },
+     {
+      "node": "reits",
+      "amount": 0,
+      "drift_after": 0.00133246
+     }
+    ]
+   }
+  },
+  {
+   "contribution": 3000,
+   "mode": "focus",
+   "expected": {
+    "allocated": 2999.709537,
+    "leftover": 0.290463,
+    "orders": [
+     {
+      "ticker": "VOO",
+      "quantity": 0.8261,
+      "amount": 2999.709537
+     }
+    ],
+    "nodes": [
+     {
+      "node": "acoes",
+      "amount": 0,
+      "drift_after": -0.01607394
+     },
+     {
+      "node": "stocks",
+      "amount": 2999.709537,
+      "drift_after": 0.03310493
+     },
+     {
+      "node": "rf",
+      "amount": 0,
+      "drift_after": -0.02167799
+     },
+     {
+      "node": "fiis",
+      "amount": 0,
+      "drift_after": 0.00334065
+     },
+     {
+      "node": "reits",
+      "amount": 0,
+      "drift_after": 0.00130635
+     }
+    ]
+   }
+  },
+  {
+   "contribution": 500,
+   "mode": "spread",
+   "expected": {
+    "allocated": 499.973944,
+    "leftover": 0.026056,
+    "orders": [
+     {
+      "ticker": "VOO",
+      "quantity": 0.0879,
+      "amount": 319.179843
+     },
+     {
+      "ticker": "RF1",
+      "quantity": 0.0,
+      "amount": 180.794101
+     }
+    ],
+    "nodes": [
+     {
+      "node": "acoes",
+      "amount": 0,
+      "drift_after": 0.00208237
+     },
+     {
+      "node": "stocks",
+      "amount": 319.179843,
+      "drift_after": -0.01316013
+     },
+     {
+      "node": "rf",
+      "amount": 180.794101,
+      "drift_after": -0.00745335
+     },
+     {
+      "node": "fiis",
+      "amount": 0,
+      "drift_after": 0.01170247
+     },
+     {
+      "node": "reits",
+      "amount": 0,
+      "drift_after": 0.00682864
+     }
+    ]
+   }
+  },
+  {
+   "contribution": 12000,
+   "mode": "spread",
+   "expected": {
+    "allocated": 10959.167941,
+    "leftover": 1040.832059,
+    "orders": [
+     {
+      "ticker": "VOO",
+      "quantity": 0.957,
+      "amount": 3475.02969
+     },
+     {
+      "ticker": "RF1",
+      "quantity": 0.0,
+      "amount": 2809.096745
+     },
+     {
+      "ticker": "VNQ",
+      "quantity": 1.6311,
+      "amount": 803.251506
+     },
+     {
+      "ticker": "AC0",
+      "quantity": 13.0,
+      "amount": 387.179
+     },
+     {
+      "ticker": "AC1",
+      "quantity": 13.0,
+      "amount": 387.179
+     },
+     {
+      "ticker": "AC2",
+      "quantity": 13.0,
+      "amount": 387.179
+     },
+     {
+      "ticker": "AC3",
+      "quantity": 13.0,
+      "amount": 387.179
+     },
+     {
+      "ticker": "AC4",
+      "quantity": 13.0,
+      "amount": 387.179
+     },
+     {
+      "ticker": "AC5",
+      "quantity": 13.0,
+      "amount": 387.179
+     },
+     {
+      "ticker": "AC6",
+      "quantity": 13.0,
+      "amount": 387.179
+     },
+     {
+      "ticker": "AC7",
+      "quantity": 13.0,
+      "amount": 387.179
+     },
+     {
+      "ticker": "AC8",
+      "quantity": 13.0,
+      "amount": 387.179
+     },
+     {
+      "ticker": "AC9",
+      "quantity": 13.0,
+      "amount": 387.179
+     }
+    ],
+    "nodes": [
+     {
+      "node": "acoes",
+      "amount": 3871.79,
+      "drift_after": 0.00824169
+     },
+     {
+      "node": "stocks",
+      "amount": 3475.02969,
+      "drift_after": 0.00428074
+     },
+     {
+      "node": "rf",
+      "amount": 2809.096745,
+      "drift_after": 0.00381914
+     },
+     {
+      "node": "fiis",
+      "amount": 0.0,
+      "drift_after": -0.0181753
+     },
+     {
+      "node": "reits",
+      "amount": 803.251506,
+      "drift_after": 0.00183373
+     }
+    ]
+   }
+  },
+  {
+   "contribution": 0,
+   "mode": "spread",
+   "expected": {
+    "allocated": 0,
+    "leftover": 0.0,
+    "orders": [],
+    "nodes": [
+     {
+      "node": "acoes",
+      "amount": 0,
+      "drift_after": 0.00596398
+     },
+     {
+      "node": "stocks",
+      "amount": 0,
+      "drift_after": -0.01806898
+     },
+     {
+      "node": "rf",
+      "amount": 0,
+      "drift_after": -0.00939438
+     },
+     {
+      "node": "fiis",
+      "amount": 0,
+      "drift_after": 0.01349013
+     },
+     {
+      "node": "reits",
+      "amount": 0,
+      "drift_after": 0.00800924
+     }
+    ]
+   }
+  }
+ ]
+}

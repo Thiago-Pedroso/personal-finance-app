@@ -5,6 +5,9 @@ import {
 import { Receipt } from 'lucide-react'
 import { brl, brl0, monthShortY } from '../lib/format.js'
 import { catColor, catMeta } from '../lib/categories.jsx'
+import { readableAccent } from '../lib/colors.js'
+import { usePrivacy } from '../lib/usePrivacy.jsx'
+import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 
 export const PALETTE = [
   '#36c98b', '#5aa2ff', '#b08cff', '#e0a93b', '#f4685f',
@@ -45,7 +48,9 @@ function TipBox({ rows, label }) {
             <i className="inline-block size-2 rounded-full"
               style={{ background: r.c }} />{r.k}
           </span>
-          <span className="tnum" style={{ color: r.c }}>{brl(r.v)}</span>
+          <span className="tnum" style={{ color: r.c }}>
+            <SensitiveAmount>{brl(r.v)}</SensitiveAmount>
+          </span>
         </div>
       ))}
     </div>
@@ -53,6 +58,7 @@ function TipBox({ rows, label }) {
 }
 
 export function CashflowChart({ months, selected, onSelect, showSaved }) {
+  const { valuesHidden } = usePrivacy()
   const data = months.map((m) => ({ ...m, lbl: monthShortY(m.month) }))
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -62,7 +68,7 @@ export function CashflowChart({ months, selected, onSelect, showSaved }) {
         <CartesianGrid stroke="#2c313a" strokeDasharray="3 5" vertical={false} />
         <XAxis dataKey="lbl" tick={{ fill: '#8a97a6', fontSize: 11 }}
           axisLine={{ stroke: '#2c313a' }} tickLine={false} />
-        <YAxis tickFormatter={brl0} width={64}
+        <YAxis tickFormatter={valuesHidden ? () => '' : brl0} width={64}
           tick={{ fill: '#5d6b7a', fontSize: 11 }} axisLine={false}
           tickLine={false} />
         <Tooltip cursor={{ fill: '#ffffff08' }}
@@ -98,10 +104,25 @@ export function CashflowChart({ months, selected, onSelect, showSaved }) {
   )
 }
 
+// Além de ~8 fatias ninguém casa cor com legenda, então o excedente vira uma
+// fatia "Outras". Clicar nela não filtra (não é categoria de verdade).
+const MAX_SLICES = 7
+const REST_LABEL = 'Outras categorias'
+
 export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
-  const colorOf = (label, i) =>
-    palette ? PALETTE[i % PALETTE.length] : catColor(label)
-  const data = slices.filter((s) => s.value > 0)
+  const { valuesHidden } = usePrivacy()
+  const colorOf = (slice, index) =>
+    slice.label === REST_LABEL ? '#8a97a6'
+      : slice.color || (palette ? PALETTE[index % PALETTE.length]
+        : catColor(slice.label))
+  const visible = slices.filter((s) => s.value > 0)
+    .sort((a, b) => b.value - a.value)
+  const rest = visible.slice(MAX_SLICES)
+  const data = rest.length > 1
+    ? [...visible.slice(0, MAX_SLICES),
+       { label: REST_LABEL, value: rest.reduce((a, s) => a + s.value, 0),
+         rest: rest.length }]
+    : visible
   const total = data.reduce((a, s) => a + s.value, 0)
   if (!total) return <p className="py-10 text-center text-[13px] text-faint">
     Sem gastos neste mês.</p>
@@ -111,36 +132,47 @@ export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
         <PieChart>
           <Pie data={data} dataKey="value" nameKey="label" innerRadius={58}
             outerRadius={90} paddingAngle={1.5} stroke="none"
-            onClick={(d) => onSelect?.(d.label)}>
+            onClick={(d) => d.label !== REST_LABEL && onSelect?.(d.label)}>
             {data.map((d, i) => <Cell key={d.label} className="cursor-pointer"
-              fill={colorOf(d.label, i)} />)}
+              fill={colorOf(d, i)} />)}
           </Pie>
           <Tooltip content={({ active, payload }) => active && payload?.length ? (
             <div className="rounded-xl border border-border bg-surface2/95
               px-3 py-2 text-[12.5px] shadow-xl">
-              <b>{payload[0].name}</b> · {brl(payload[0].value)} ·{' '}
-              {((payload[0].value / total) * 100).toFixed(0)}%
+              <b>{payload[0].name}</b> ·{' '}
+              {valuesHidden ? (
+                `${((payload[0].value / total) * 100).toFixed(0)}%`
+              ) : (
+                <>{brl(payload[0].value)} ·{' '}
+                  {((payload[0].value / total) * 100).toFixed(0)}%</>
+              )}
             </div>) : null} />
         </PieChart>
       </ResponsiveContainer>
       <div className="flex min-w-[210px] flex-1 flex-col gap-1.5">
         {data.map((s, i) => {
-          const M = palette ? null : catMeta(s.label)
+          const isRest = s.label === REST_LABEL
+          const M = palette || isRest ? null : catMeta(s.label)
           return (
           <div key={s.label}
             className="group flex items-center gap-2 rounded-lg px-2 py-1
               text-[13px] hover:bg-white/5">
-            <button onClick={() => onSelect?.(s.label)}
+            <button onClick={() => !isRest && onSelect?.(s.label)}
               className="flex flex-1 items-center justify-between gap-3
                 text-left">
               <span className="flex items-center gap-2">
                 {M ? <M.Icon className="size-3.5" style={{ color: M.color }} />
                   : <i className="size-2.5 rounded-[3px]"
-                      style={{ background: colorOf(s.label, i) }} />}
-                {s.label}
+                      style={{ background: colorOf(s, i) }} />}
+                {isRest ? `${s.label} (${s.rest})` : s.label}
               </span>
-              <span className="tnum text-muted">{brl(s.value)} ·{' '}
-                {((s.value / total) * 100).toFixed(0)}%</span>
+              <span className="tnum text-muted">
+                {valuesHidden ? (
+                  `${((s.value / total) * 100).toFixed(0)}%`
+                ) : (
+                  <>{brl(s.value)} · {((s.value / total) * 100).toFixed(0)}%</>
+                )}
+              </span>
             </button>
             {onOpen && (
               <button onClick={(e) => { e.stopPropagation(); onOpen(s.label) }}
@@ -159,29 +191,38 @@ export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
   )
 }
 
-export function HBars({ items, color = '#f4685f', onClick, onOpen, byCat }) {
+export function HBars({ items, color = '#f4685f', onClick, onOpen, byCat,
+  totalValue }) {
+  const { valuesHidden } = usePrivacy()
   if (!items.length) return <p className="py-8 text-center text-[13px]
     text-faint">Nada aqui.</p>
   const max = Math.max(...items.map((i) => i.value), 1)
+  const total = totalValue ?? items.reduce((sum, item) => sum + item.value, 0)
   return (
     <div className="flex flex-col gap-2.5">
       {items.map((it) => {
         const M = byCat ? catMeta(it.label) : null
-        const bar = byCat ? M.color : color
+        const bar = byCat ? M.color : it.color || color
         return (
         <div key={it.key ?? it.label} className="group">
           <div className="mb-1 flex items-center justify-between gap-2
             text-[13px]">
             <button onClick={() => onClick?.(it.label)}
               className={`flex flex-1 items-center gap-1.5 font-medium
-                text-left ${onClick ? 'cursor-pointer hover:text-green'
-                  : 'cursor-default'}`}>
-              {M && <M.Icon className="size-3.5" style={{ color: M.color }} />}
+                text-left ${onClick ? 'cursor-pointer hover:brightness-125'
+                  : 'cursor-default'}`}
+              style={it.color ? { color: readableAccent(it.color) } : undefined}>
+              {M && <M.Icon className="size-3.5"
+                style={{ color: readableAccent(M.color) }} />}
               {it.label}
               {it.count != null && <span className="ml-1 text-[11px]
                 text-faint">{it.count}x</span>}
             </button>
-            <span className="tnum text-muted">{brl(it.value)}</span>
+            <span className="tnum text-muted">
+              {valuesHidden
+                ? `${total ? Math.round((it.value / total) * 100) : 0}%`
+                : brl(it.value)}
+            </span>
             {onOpen && (
               <button onClick={() => onOpen(it.label)}
                 title={`Ver lançamentos · ${it.label}`}
@@ -206,6 +247,7 @@ export function HBars({ items, color = '#f4685f', onClick, onOpen, byCat }) {
 
 // evolução de patrimônio: área empilhada aportado (azul) + juros (verde), amostra anual
 export function WealthChart({ series }) {
+  const { valuesHidden } = usePrivacy()
   const data = series.filter((s) => s.m % 12 === 0).map((s) => ({
     yr: s.m / 12, aportado: s.contributed, juros: s.interest,
   }))
@@ -226,7 +268,7 @@ export function WealthChart({ series }) {
         <XAxis dataKey="yr" tickFormatter={(y) => `${y}a`}
           tick={{ fill: '#7e8a97', fontSize: 11 }}
           axisLine={{ stroke: '#2c313a' }} tickLine={false} />
-        <YAxis tickFormatter={brl0} width={64}
+        <YAxis tickFormatter={valuesHidden ? () => '' : brl0} width={64}
           tick={{ fill: '#7e8a97', fontSize: 11 }} axisLine={false} tickLine={false} />
         <Tooltip cursor={{ stroke: '#3a4450' }}
           content={({ active, payload, label }) => active && payload?.length ? (
@@ -245,20 +287,22 @@ export function WealthChart({ series }) {
 }
 
 export function TrendBars({ data, color = '#f4685f' }) {
+  const { valuesHidden } = usePrivacy()
   return (
     <ResponsiveContainer width="100%" height={210}>
       <BarChart data={data} margin={{ top: 6, right: 6, left: 4, bottom: 0 }}>
         <CartesianGrid stroke="#2c313a" strokeDasharray="3 5" vertical={false} />
         <XAxis dataKey="lbl" tick={{ fill: '#8a97a6', fontSize: 10 }}
           axisLine={{ stroke: '#28323f' }} tickLine={false} interval={0} />
-        <YAxis tickFormatter={brl0} width={58}
+        <YAxis tickFormatter={valuesHidden ? () => '' : brl0} width={58}
           tick={{ fill: '#5d6b7a', fontSize: 10 }} axisLine={false}
           tickLine={false} />
         <Tooltip cursor={{ fill: '#ffffff08' }}
           content={({ active, payload, label }) => active && payload?.length ? (
             <div className="rounded-xl border border-border bg-surface2/95
               px-3 py-2 text-[12.5px] shadow-xl">
-              <b>{label}</b> · {brl(payload[0].value)}
+              <b>{label}</b> ·{' '}
+              <SensitiveAmount>{brl(payload[0].value)}</SensitiveAmount>
             </div>) : null} />
         <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={26} fill={color} />
       </BarChart>

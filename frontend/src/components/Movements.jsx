@@ -1,7 +1,8 @@
 import { Card } from './ui/primitives.jsx'
-import { catMeta } from '../lib/categories.jsx'
+import { catMeta, SubcategoryTag } from '../lib/categories.jsx'
 import { useDrill } from '../lib/useDrill.jsx'
 import { brl, signedBrl, monthLabel } from '../lib/format.js'
+import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 
 export function Movements({ dash, mdata, month }) {
   const drill = useDrill()
@@ -51,10 +52,12 @@ export function Movements({ dash, mdata, month }) {
                 `${c} — ${monthLabel(month)}`, { cats: [c] })}
                 className={`mt-2 block text-[22px] font-bold tnum
                   hover:opacity-80 ${net >= 0 ? 'text-green' : 'text-red'}`}>
-                {signedBrl(net)}</button>
+                <SensitiveAmount>{signedBrl(net)}</SensitiveAmount></button>
               <div className="mt-1 flex gap-4 text-[12.5px] text-muted">
-                <span className="text-green">entrou {brl(cm.in)}</span>
-                <span className="text-red">saiu {brl(cm.out)}</span>
+                <span className="text-green">entrou{' '}
+                  <SensitiveAmount>{brl(cm.in)}</SensitiveAmount></span>
+                <span className="text-red">saiu{' '}
+                  <SensitiveAmount>{brl(cm.out)}</SensitiveAmount></span>
               </div>
               {subs.length > 0 && (
                 <div className="mt-3 flex flex-col gap-1 border-t border-dashed
@@ -64,9 +67,11 @@ export function Movements({ dash, mdata, month }) {
                       `${c} / ${x.s} — ${monthLabel(month)}`,
                       { cats: [c], sub: x.s })}
                       className="flex justify-between hover:text-text">
-                      <span>{x.s}</span>
+                      <SubcategoryTag category={c} subcategory={x.s} size="xs" />
                       <span className={`tnum ${x.net >= 0 ? 'text-green'
-                        : 'text-red'}`}>{signedBrl(x.net)}</span>
+                        : 'text-red'}`}>
+                        <SensitiveAmount>{signedBrl(x.net)}</SensitiveAmount>
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -75,7 +80,9 @@ export function Movements({ dash, mdata, month }) {
                 pt-2 text-[12px] text-faint">
                 <span>acumulado {dash.months.length}m · {ca.count}x</span>
                 <span className={`tnum ${ca.in - ca.out >= 0 ? 'text-green'
-                  : 'text-red'}`}>{signedBrl(ca.in - ca.out)}</span>
+                  : 'text-red'}`}>
+                  <SensitiveAmount>{signedBrl(ca.in - ca.out)}</SensitiveAmount>
+                </span>
               </div>
             </Card>
           )

@@ -6,6 +6,18 @@ const NUM = new Intl.NumberFormat('pt-BR')
 const MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun',
              'jul', 'ago', 'set', 'out', 'nov', 'dez']
 
+const FOREIGN = new Map()
+// saldo em moeda estrangeira aparece na moeda dele ao lado do valor em reais
+export const money = (n, currency = 'BRL') => {
+  if (!currency || currency === 'BRL') return BRL.format(n || 0)
+  if (!FOREIGN.has(currency)) {
+    FOREIGN.set(currency, new Intl.NumberFormat('pt-BR', {
+      style: 'currency', currency, currencyDisplay: 'narrowSymbol',
+    }))
+  }
+  return FOREIGN.get(currency).format(n || 0)
+}
+
 export const brl = (n) => BRL.format(n || 0)
 export const brl0 = (n) => BRL0.format(n || 0)
 export const num = (n) => NUM.format(n || 0)

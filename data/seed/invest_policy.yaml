@@ -1,0 +1,61 @@
+# Política de alocação de demonstração (dados SINTÉTICOS).
+#
+# Cada nó é uma fatia do pai, então o alvo de uma folha é o produto do caminho até a raiz:
+# Ações = 80% x 60% x 70% = 33,6% da carteira. Mudar a estratégia é mexer aqui, e a forma
+# é livre: dá para tirar o nível de país, trocar EUA por "Global" ou acrescentar um
+# terceiro país sem tocar em código.
+#
+# in_totals: false tira o nó da conta de percentuais e do rebalanceamento, mas o dinheiro
+# continua aparecendo no patrimônio. Serve para cripto, reserva e qualquer valor com
+# destino já definido.
+
+- node: renda_fixa
+  name: Renda Fixa
+  parent: ""
+  target_pct: 0.20
+  in_totals: true
+- node: renda_variavel
+  name: Renda Variável
+  parent: ""
+  target_pct: 0.80
+  in_totals: true
+- node: brasil
+  name: Brasil
+  parent: renda_variavel
+  target_pct: 0.60
+  in_totals: true
+- node: exterior
+  name: Exterior
+  parent: renda_variavel
+  target_pct: 0.40
+  in_totals: true
+- node: acoes
+  name: Ações
+  parent: brasil
+  target_pct: 0.70
+  in_totals: true
+- node: fiis
+  name: FIIs
+  parent: brasil
+  target_pct: 0.30
+  in_totals: true
+- node: stocks
+  name: Stocks
+  parent: exterior
+  target_pct: 0.70
+  in_totals: true
+- node: reits
+  name: REITs
+  parent: exterior
+  target_pct: 0.30
+  in_totals: true
+- node: cripto
+  name: Cripto
+  parent: ""
+  target_pct: 0.0
+  in_totals: false
+- node: reservas
+  name: Reservas
+  parent: ""
+  target_pct: 0.0
+  in_totals: false
