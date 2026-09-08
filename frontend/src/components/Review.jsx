@@ -106,7 +106,7 @@ function QueueItem({ q, taxonomy, onUpdate, onRemove }) {
 }
 
 export function Review({ dash, queue, queuedIds, onRemoveQueue,
-  onUpdateQueue, openEdit }) {
+  onUpdateQueue, openEdit, saveEdit }) {
   // todo o histórico que precisa de ação (não só o mês selecionado)
   const pend = dash.review || []
   const total = dash.pending ?? pend.length
@@ -147,8 +147,8 @@ export function Review({ dash, queue, queuedIds, onRemoveQueue,
         </Card>
       )}
 
-      <TransactionsTable txns={pend} openEdit={openEdit} pageSize={50}
-        queuedIds={queuedIds} treatments={dash.treatments}
+      <TransactionsTable txns={pend} openEdit={openEdit} saveEdit={saveEdit}
+        pageSize={50} queuedIds={queuedIds} treatments={dash.treatments}
         excludedCount={dash.excluded_count}
         title={`Pendências — todo o histórico (${pend.length})`} />
     </div>

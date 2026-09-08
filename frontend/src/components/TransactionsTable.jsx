@@ -22,14 +22,14 @@ function effLabels(t) {
 import {
   Search, Pencil, ChevronLeft, ChevronRight, X, ArrowUpDown,
   ArrowUp, ArrowDown, SlidersHorizontal, StickyNote, MessageSquare,
-  PiggyBank, ArrowLeftRight, EyeOff,
+  PiggyBank, ArrowLeftRight, EyeOff, Wand2, Check,
 } from 'lucide-react'
 
 const EMPTY = { q: '', cats: [], tags: [], accs: [], flow: '', rev: false,
   d0: '', d1: '', a0: '', a1: '', sub: '', queued: false, excl: false,
   hiddenCats: [], hiddenSubs: [] }
 
-export function TransactionsTable({ txns, openEdit, title, presetCat,
+export function TransactionsTable({ txns, openEdit, saveEdit, title, presetCat,
   initialFilter, compact, pageSize = 25, queuedIds, treatments,
   excludedCount = 0 }) {
   const qids = queuedIds || new Set()
@@ -193,6 +193,16 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
             <EyeOff className="size-3" />rasurado
           </span>
         ) : null
+        // palpite do mapa da Pluggy, ainda não confirmado por ninguém
+        const pluggyGuess = t.category_source === 'pluggy-map' && !t.reviewed
+        const pm = pluggyGuess ? (
+          <span title="Categoria sugerida pelo mapa da Pluggy — ainda não confirmada"
+            className="inline-flex items-center gap-1 rounded-full border
+              border-blue/40 bg-blue/10 px-1.5 py-0.5 text-[11px] font-semibold
+              text-blue cursor-help">
+            <Wand2 className="size-3" />Pluggy
+          </span>
+        ) : null
         if (e.kind === 'split') {
           return (
             <div className="flex flex-wrap items-center gap-1.5">
@@ -213,7 +223,7 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
               <CategoryTag uncategorized hint={e.hint}
                 onClick={() => pick('Sem categoria')} />
               {t.needs_review && <Badge tone="amber">revisar</Badge>}
-              {tb}{qb}{xb}
+              {tb}{qb}{xb}{pm}
             </span>
           )
         }
@@ -221,7 +231,7 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
           <span className="flex flex-wrap items-center gap-2">
             <CategoryTag category={e.label} onClick={() => pick(e.label)} />
             {t.needs_review && <Badge tone="amber">revisar</Badge>}
-            {tb}{qb}{xb}
+            {tb}{qb}{xb}{pm}
           </span>
         )
       },
@@ -251,15 +261,30 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
     },
     {
       id: 'act', header: '', enableSorting: false,
-      cell: ({ row }) => (
-        <button onClick={() => openEdit([row.original])}
-          className="rounded-lg p-1.5 text-muted hover:bg-surface2
-            hover:text-text" title="Editar">
-          <Pencil className="size-3.5" />
-        </button>
-      ),
+      cell: ({ row }) => {
+        const t = row.original
+        const canConfirm = saveEdit
+          && t.category_source === 'pluggy-map' && !t.reviewed
+        return (
+          <div className="flex items-center justify-end gap-1">
+            {canConfirm && (
+              <button onClick={() => saveEdit({ mode: 'value', ids: [t.id],
+                category: t.category, subcategory: t.subcategory })}
+                className="rounded-lg p-1.5 text-muted hover:bg-surface2
+                  hover:text-green" title="Confirmar — concordo com o palpite da Pluggy">
+                <Check className="size-3.5" />
+              </button>
+            )}
+            <button onClick={() => openEdit([t])}
+              className="rounded-lg p-1.5 text-muted hover:bg-surface2
+                hover:text-text" title="Editar">
+              <Pencil className="size-3.5" />
+            </button>
+          </div>
+        )
+      },
     },
-  ], [openEdit, queuedIds, treatments])  // eslint-disable-line react-hooks/exhaustive-deps
+  ], [openEdit, saveEdit, queuedIds, treatments])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // agrupa por dia quando ordenado por data (padrão) — some a coluna Data
   const grouped = (sorting[0]?.id || 'date') === 'date'

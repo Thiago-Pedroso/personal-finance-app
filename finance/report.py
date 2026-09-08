@@ -42,13 +42,9 @@ _TXN_FIELDS = ("id", "date", "description", "counterparty", "signed_amount",
                "category_source", "reviewed", "needs_review", "note",
                "amount_override", "excluded", "tags")
 
-# Subcategorias que são tipo de transação (palpite da Pluggy), não categoria real.
-_TYPE_SUBS = {"PIX recebido", "PIX enviado", "TED/DOC"}
-
-
 def _is_pending(r: dict) -> bool:
     """Precisa de ação do usuário: sem categoria, anomalia, ou palpite da
-    Pluggy não confirmado (tipo de transação ≠ categoria de verdade)."""
+    Pluggy ainda não confirmado (categoria certa ou não, quem decide é o usuário)."""
     if r.get("excluded"):        # rasurado sai de tudo, inclusive das pendências
         return False
     if r.get("splits"):
@@ -57,8 +53,7 @@ def _is_pending(r: dict) -> bool:
         return True
     if r.get("needs_review"):
         return True
-    if (r.get("category_source") == "pluggy-map" and not r.get("reviewed")
-            and (r.get("subcategory") in _TYPE_SUBS)):
+    if r.get("category_source") == "pluggy-map" and not r.get("reviewed"):
         return True
     return False
 

@@ -251,7 +251,7 @@ function Shell() {
         )}
         {space.space === 'financas' && tab === 'txns' && (
           <TransactionsTable txns={mdata.transactions || []} openEdit={openEdit}
-            presetCat={txnPreset} queuedIds={queuedIds}
+            saveEdit={d.saveEdit} presetCat={txnPreset} queuedIds={queuedIds}
             treatments={dash.treatments} excludedCount={dash.excluded_count}
             title={`Transações — ${monthLabel(month)}`} />
         )}
@@ -282,13 +282,13 @@ function Shell() {
         {space.space === 'financas' && tab === 'review' && (
           <Review dash={dash} queue={d.queue} queuedIds={queuedIds}
             onRemoveQueue={onRemoveQueue} onUpdateQueue={onUpdateQueue}
-            openEdit={openEdit} />
+            openEdit={openEdit} saveEdit={d.saveEdit} />
         )}
       </main>
 
       {dash && (
         <DrillDrawer txns={mdata.transactions || []} openEdit={openEdit}
-          queuedIds={queuedIds} treatments={dash.treatments} />
+          saveEdit={d.saveEdit} queuedIds={queuedIds} treatments={dash.treatments} />
       )}
 
       {dash && edit.open && (
