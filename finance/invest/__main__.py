@@ -15,7 +15,6 @@ from pathlib import Path
 
 from .. import ledger as L
 from .. import sheets
-from .. import taxonomy as TAX
 from ..config import INVEST_DECISIONS_FILE, INVEST_PENDING_FILE
 from . import accounts as ACC
 from . import assets as A
@@ -59,6 +58,11 @@ def cmd_apply(args) -> int:
     if result["trades"]:
         T.append(result["trades"])
         print(f"Movimentações gravadas: {len(result['trades'])}")
+    if result["contribution_settings"]:
+        settings = result["contribution_settings"]
+        sheets.write_config(R.CONTRIBUTION_KEY, settings["amount"])
+        sheets.write_config(R.CONTRIBUTION_MODE_KEY, settings["mode"])
+        print(f"Próximo aporte: {_money(settings['amount'])}")
     pending = Q.missing(Q.load(), result["assets"])
     if pending:
         Q.ensure(pending)
@@ -89,24 +93,18 @@ def cmd_sync(args) -> int:
         if account["kind"] != "bucket" or not account["pluggy_item_id"]:
             continue
         total = PS.account_total(investments, account["pluggy_item_id"])
-        held = {ticker: positions[ticker]["value"] for ticker, asset in assets.items()
-                if asset["account"] == account["id"] and ticker in positions}
+        held = PS.bucket_balances(positions, assets, account["id"])
         report = PS.bucket_report(total, held)
         buckets_report[account["id"]] = report
         print(f"\n{account['name']}: total {_money(report['total'])} · "
               f"registrado {_money(report['registered'])} · "
               f"a alocar {_money(report['unallocated'])}")
 
-    print("\nLendo o extrato para proventos e aportes...")
+    print("\nLendo o extrato para proventos...")
     records = list(L.load_ledger().values())
-    treatments = TAX.load_treatments()
     income, income_pending = LL.income_from_ledger(records, assets, positions, trades)
-    rules = sheets.read_config("invest_allocation_rules", []) or []
-    waiting = LL.apply_rules(LL.unallocated(records, trades, treatments), rules)
     pending.extend(income_pending)
-    pending.extend(waiting)
-    print(f"  {len(income)} provento(s) reconhecido(s), "
-          f"{len(waiting)} aporte(s) sem destino")
+    print(f"  {len(income)} provento(s) reconhecido(s)")
 
     updates = PS.suggested_trades(pending)
     for report in buckets_report.values():

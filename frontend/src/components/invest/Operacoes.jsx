@@ -3,8 +3,9 @@ import { Plus, RefreshCcw } from 'lucide-react'
 
 import { brl, fullDate } from '../../lib/format.js'
 import { Modal } from '../ui/Modal.jsx'
-import { Badge, Button, Card, CardHead, Empty } from '../ui/primitives.jsx'
+import { Badge, Button, Card, Empty } from '../ui/primitives.jsx'
 import { SensitiveAmount } from '../ui/SensitiveValue.jsx'
+import { InvestmentCardHeader, InvestmentPageHeader } from './shared.jsx'
 
 const SIDES = [
   ['BUY', 'Compra'], ['SELL', 'Venda'], ['DIVIDEND', 'Provento'],
@@ -25,8 +26,8 @@ function NewTradeModal({ tickers, accounts, onClose, onConfirm, busy }) {
 
   return (
     <Modal open onOpenChange={(next) => !next && onClose()} title="Nova movimentação"
-      sub="ticker que ainda não existe é cadastrado junto">
-      <div className="flex flex-col gap-3 text-[13px]">
+      sub="Registre compras, vendas, proventos e atualizações de saldo.">
+      <div className="flex flex-col gap-3 text-[14px]">
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1">
             <span className="text-muted">Data</span>
@@ -116,13 +117,16 @@ export function Operacoes({ data, onApply, onSync, busy }) {
   const realized = data.totals?.realized || 0
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
+      <InvestmentPageHeader eyebrow="Movimentações" title="Histórico da carteira"
+        description="Consulte os lançamentos que formam suas posições e registre novas operações." />
+
       <Card>
-        <CardHead title="Movimentações"
-          sub={`${trades.length} lançamentos${realized
-            ? ` · resultado realizado ${brl(realized)}` : ''}`}
+        <InvestmentCardHeader title="Lançamentos"
+          description={`${trades.length} movimentações registradas${realized
+            ? `. Resultado realizado de ${brl(realized)}.` : '.'}`}
           right={
-            <span className="flex gap-2">
+            <span className="flex flex-wrap gap-2">
               <Button variant="ghost" onClick={onSync} disabled={busy}>
                 <RefreshCcw className="size-4" /> Conferir com as corretoras
               </Button>
@@ -131,23 +135,25 @@ export function Operacoes({ data, onApply, onSync, busy }) {
               </Button>
             </span>
           } />
-        <div className="px-5 pb-3">
+        <div className="px-5 pb-4 sm:px-6">
+          <label htmlFor="trade-filter" className="mb-2 block text-[14px]
+            font-semibold text-secondary">Filtrar por ativo</label>
           <input value={filter} onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filtrar por ativo"
-            className="w-full rounded-xl border border-border bg-surface2 px-3 py-2
-              text-[13px] sm:w-[240px]" />
+            id="trade-filter" placeholder="Exemplo: VOO"
+            className="min-h-11 w-full rounded-xl border border-border bg-surface2
+              px-3 text-[14px] sm:w-[280px]" />
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="text-[11px] uppercase tracking-wider text-faint">
-                <th className="px-5 py-2 text-left font-medium">Data</th>
-                <th className="px-3 py-2 text-left font-medium">Ativo</th>
-                <th className="px-3 py-2 text-left font-medium">Operação</th>
-                <th className="px-3 py-2 text-right font-medium">Qtd</th>
-                <th className="px-3 py-2 text-right font-medium">Preço</th>
-                <th className="px-3 py-2 text-right font-medium">Total</th>
-                <th className="px-5 py-2 text-left font-medium">Conta</th>
+          <table className="invest-table invest-responsive-table w-full text-[15px]">
+            <thead className="bg-table-head text-[14px] text-strong">
+              <tr className="h-16 border-b border-white/15">
+                <th className="px-5 text-left font-bold">Data</th>
+                <th className="px-3 text-left font-bold">Ativo</th>
+                <th className="px-3 text-left font-bold">Operação</th>
+                <th className="px-3 text-right font-bold">Quantidade</th>
+                <th className="px-3 text-right font-bold">Preço</th>
+                <th className="px-3 text-right font-bold">Total</th>
+                <th className="px-5 text-left font-bold">Conta</th>
               </tr>
             </thead>
             <tbody>
@@ -156,30 +162,38 @@ export function Operacoes({ data, onApply, onSync, busy }) {
                   ? trade.price
                   : trade.quantity * trade.price * (trade.fx_rate || 1)
                 return (
-                  <tr key={trade.id} className="border-t border-border/40">
-                    <td className="tnum px-5 py-2 text-muted">{fullDate(trade.date)}</td>
-                    <td className="px-3 py-2 font-semibold">{trade.ticker}</td>
-                    <td className="px-3 py-2">
+                  <tr key={trade.id} className="min-h-[72px] border-b border-border/60
+                    last:border-0">
+                    <td data-label="Data" className="tnum px-5 py-4 text-secondary">
+                      {fullDate(trade.date)}</td>
+                    <td data-primary="true" data-label="Ativo"
+                      className="px-3 py-4 font-bold text-strong">{trade.ticker}</td>
+                    <td data-label="Operação" className="px-3 py-4">
                       <Badge tone={TONE[trade.side] || 'muted'}>{label(trade.side)}</Badge>
                     </td>
-                    <td className="tnum px-3 py-2 text-right text-muted">
+                    <td data-label="Quantidade" className="tnum px-3 py-4 text-right
+                      text-secondary">
                       {trade.quantity
                         ? trade.quantity.toLocaleString('pt-BR',
                           { maximumFractionDigits: 8 }) : '—'}</td>
-                    <td className="tnum px-3 py-2 text-right text-muted">
+                    <td data-label="Preço" className="tnum px-3 py-4 text-right
+                      text-secondary">
                       {trade.side === 'BALANCE' ? '—' : brl(trade.price)}
                       {trade.currency && trade.currency !== 'BRL' && (
-                        <span className="ml-1 text-[11px] text-faint">
+                        <span className="ml-1 text-[12px] text-subtle">
                           {trade.currency}</span>
                       )}</td>
-                    <td className="tnum px-3 py-2 text-right">
+                    <td data-label="Total" className="tnum px-3 py-4 text-right
+                      font-semibold text-brand-soft">
                       <SensitiveAmount>{brl(total)}</SensitiveAmount></td>
-                    <td className="px-5 py-2 text-muted">{trade.account || '—'}</td>
+                    <td data-label="Conta" className="px-5 py-4 text-secondary">
+                      {trade.account || '—'}</td>
                   </tr>
                 )
               })}
               {rows.length === 0 && (
-                <tr><td colSpan="7"><Empty>Nenhuma movimentação registrada.</Empty></td></tr>
+                <tr><td colSpan="7" data-empty="true">
+                  <Empty>Nenhuma movimentação registrada.</Empty></td></tr>
               )}
             </tbody>
           </table>

@@ -2,28 +2,86 @@ import { useMemo, useState } from 'react'
 
 import { brl } from '../../lib/format.js'
 import { buildPlan } from '../../lib/investPlan.js'
+import { groupPolicyNodes, updateGroupTargets } from '../../lib/investPolicy.js'
 import { Modal } from '../ui/Modal.jsx'
-import { Button, Card, CardHead } from '../ui/primitives.jsx'
-import { Money, pct, signedPct } from './shared.jsx'
+import { Button, Card } from '../ui/primitives.jsx'
+import { Slider } from '../ui/Slider.jsx'
+import { InvestmentCardHeader, InvestmentPageHeader, Money, pct,
+  signedPct } from './shared.jsx'
 
-const MODES = [['spread', 'Distribuir'], ['focus', 'Concentrar']]
+const MODES = [
+  ['spread', 'Distribuir', 'Divide o aporte entre as classes abaixo do objetivo.'],
+  ['focus', 'Concentrar', 'Direciona o aporte para a classe mais distante do objetivo.'],
+]
 
-// Grupos de irmãos da árvore: cada grupo é uma decisão que soma 100% entre si, que é
-// como a política foi pensada desde a planilha.
-function groupsOf(policy) {
-  const groups = new Map()
-  policy.filter((node) => node.counts).forEach((node) => {
-    const key = node.parent || ''
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key).push(node)
-  })
-  return [...groups.entries()]
-    .map(([parent, nodes]) => ({
-      parent,
-      name: policy.find((node) => node.node === parent)?.name || 'Carteira',
-      nodes,
-    }))
-    .filter((group) => group.nodes.length > 1)
+function BinaryPolicyGroup({ group, values, onChange }) {
+  const [firstNode, secondNode] = group.nodes
+  const firstValue = values[firstNode.node] ?? firstNode.target_pct
+  const secondValue = values[secondNode.node] ?? secondNode.target_pct
+
+  return (
+    <div className="rounded-2xl border border-border bg-surface2/45 p-5">
+      <p className="mb-5 text-[14px] font-bold text-secondary">{group.name}</p>
+      <div className="mb-4 flex items-start justify-between gap-6">
+        <div>
+          <p className="text-[15px] font-semibold text-strong">{firstNode.name}</p>
+          <p className="tnum mt-1 text-[24px] font-bold text-brand-soft">
+            {pct(firstValue, 0)}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[15px] font-semibold text-strong">{secondNode.name}</p>
+          <p className="tnum mt-1 text-[24px] font-bold text-brand-soft">
+            {pct(secondValue, 0)}</p>
+        </div>
+      </div>
+      <Slider min={0} max={100} step={1} size="large"
+        value={Math.round(firstValue * 100)}
+        onChange={(value) => onChange(group, firstNode, value / 100)} />
+      <p className="mt-4 text-[13px] text-subtle">
+        As duas partes permanecem em 100%.</p>
+    </div>
+  )
+}
+
+function MultiplePolicyGroup({ group, values, onChange }) {
+  const total = group.nodes.reduce((sum, node) =>
+    sum + (values[node.node] ?? node.target_pct), 0)
+
+  return (
+    <div className="rounded-2xl border border-border bg-surface2/45 p-5">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <p className="text-[14px] font-bold text-secondary">{group.name}</p>
+        <span className="tnum text-[13px] font-semibold text-projected">
+          Soma {pct(total, 0)}</span>
+      </div>
+      <div className="flex flex-col gap-5">
+        {group.nodes.map((node) => {
+          const value = values[node.node] ?? node.target_pct
+          return (
+            <label key={node.node} className="block">
+              <span className="mb-2 flex items-baseline justify-between gap-4">
+                <span className="text-[15px] font-semibold text-strong">
+                  {node.name}</span>
+                <span className="tnum text-[18px] font-bold text-brand-soft">
+                  {pct(value, 0)}</span>
+              </span>
+              <Slider min={0} max={100} step={1} size="large"
+                value={Math.round(value * 100)}
+                onChange={(nextValue) => onChange(group, node, nextValue / 100)} />
+            </label>
+          )
+        })}
+      </div>
+      <p className="mt-4 text-[13px] text-subtle">
+        As demais opções se ajustam proporcionalmente.</p>
+    </div>
+  )
+}
+
+function PolicyGroup(props) {
+  return props.group.nodes.length === 2
+    ? <BinaryPolicyGroup {...props} />
+    : <MultiplePolicyGroup {...props} />
 }
 
 function RegisterModal({ orders, onClose, onConfirm, busy }) {
@@ -82,13 +140,21 @@ function RegisterModal({ orders, onClose, onConfirm, busy }) {
 }
 
 export function Aporte({ data, onApply, busy }) {
-  const [amount, setAmount] = useState(() => String(data.contribution || 1000))
-  const [mode, setMode] = useState('spread')
+  const savedMode = data.contribution_mode || data.plan?.mode || 'spread'
+  const [amount, setAmount] = useState(() => String(data.contribution ?? 0))
+  const [mode, setMode] = useState(() => savedMode)
   const [policy, setPolicy] = useState(() => Object.fromEntries(
     data.policy.map((node) => [node.node, node.target_pct])))
   const [registering, setRegistering] = useState(false)
 
-  const groups = useMemo(() => groupsOf(data.policy), [data.policy])
+  const parsedAmount = Number(String(amount).replace(',', '.'))
+  const validAmount = String(amount).trim() !== ''
+    && Number.isFinite(parsedAmount) && parsedAmount >= 0
+  const contributionAmount = validAmount ? parsedAmount : 0
+  const contributionDirty = validAmount && (
+    Math.abs(contributionAmount - (data.contribution ?? 0)) > 0.005
+    || mode !== savedMode)
+  const groups = useMemo(() => groupPolicyNodes(data.policy), [data.policy])
   const dirty = data.policy.some((node) =>
     Math.abs((policy[node.node] ?? 0) - node.target_pct) > 1e-9)
 
@@ -125,11 +191,16 @@ export function Aporte({ data, onApply, busy }) {
 
   const plan = useMemo(() => buildPlan({
     allocation, assets, positions,
-    contribution: Number(String(amount).replace(',', '.')) || 0, mode,
-  }), [allocation, assets, positions, amount, mode])
+    contribution: contributionAmount, mode,
+  }), [allocation, assets, positions, contributionAmount, mode])
 
   const savePolicy = () => onApply({
     policy: data.policy.map((node) => ({ ...node, target_pct: policy[node.node] })),
+  })
+  const changePolicyGroup = (group, node, value) => setPolicy((current) =>
+    updateGroupTargets(current, group.nodes, node.node, value))
+  const saveContribution = () => onApply({
+    contribution: contributionAmount, contribution_mode: mode,
   })
   const register = async (trades) => {
     await onApply({ trades })
@@ -137,123 +208,169 @@ export function Aporte({ data, onApply, busy }) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <CardHead title="Aporte"
-          sub="nada aqui é gravado: a simulação vive na tela até você registrar" />
-        <div className="flex flex-wrap items-center gap-3 px-5 pb-5">
-          <div className="flex items-center gap-2 rounded-xl border border-border
-            bg-surface2 px-3 py-2">
-            <span className="text-[13px] text-muted">R$</span>
-            <input value={amount} inputMode="decimal"
-              onChange={(e) => setAmount(e.target.value)}
-              className="tnum w-[120px] bg-transparent text-[15px] font-semibold
-                outline-none" />
-          </div>
-          <div className="flex gap-1 rounded-xl border border-border bg-surface2/70 p-1">
-            {MODES.map(([key, label]) => (
-              <button key={key} onClick={() => setMode(key)}
-                className={`rounded-lg px-3 py-1.5 text-[12.5px] font-semibold transition
-                  ${mode === key ? 'bg-brand text-white' : 'text-muted hover:text-text'}`}>
-                {label}
-              </button>
-            ))}
-          </div>
-          <span className="text-[12px] text-faint">
-            {mode === 'spread'
-              ? 'proporcional ao que falta em cada classe'
-              : 'tudo no maior buraco'}
-          </span>
-        </div>
-      </Card>
+    <div className="flex flex-col gap-6">
+      <InvestmentPageHeader eyebrow="Planejamento mensal"
+        title="Simule seu próximo aporte"
+        description="Ajuste o valor e a política para visualizar como o dinheiro pode ser distribuído entre os ativos."
+        status={!validAmount
+          ? 'Valor de aporte inválido'
+          : contributionDirty
+            ? 'Alterações ainda não salvas'
+            : contributionAmount > 0
+              ? 'Próximo aporte salvo'
+              : 'Sem aporte definido'} />
 
-      <Card>
-        <CardHead title="Política de alocação"
-          sub="cada grupo é uma decisão que soma 100% entre si"
-          right={dirty ? (
-            <span className="flex gap-2">
-              <Button variant="ghost" onClick={() => setPolicy(Object.fromEntries(
-                data.policy.map((node) => [node.node, node.target_pct])))}>
-                Descartar</Button>
-              <Button variant="primary" onClick={savePolicy} disabled={busy}>
-                Salvar política</Button>
-            </span>
-          ) : null} />
-        <div className="grid gap-5 px-5 pb-5 sm:grid-cols-2">
-          {groups.map((group) => (
-            <div key={group.parent} className="flex flex-col gap-2">
-              <p className="text-[12px] font-semibold text-faint">{group.name}</p>
-              {group.nodes.map((node) => (
-                <label key={node.node} className="flex items-center gap-3">
-                  <span className="w-[110px] text-[13px]">{node.name}</span>
-                  <input type="range" min="0" max="100" step="1"
-                    value={Math.round((policy[node.node] ?? 0) * 100)}
-                    onChange={(e) => setPolicy((current) => ({
-                      ...current, [node.node]: Number(e.target.value) / 100 }))}
-                    className="h-1 flex-1 cursor-pointer appearance-none rounded-full
-                      bg-surface2 accent-brand" />
-                  <span className="tnum w-[46px] text-right text-[12px] text-muted">
-                    {pct(policy[node.node] ?? 0, 0)}</span>
-                </label>
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,.7fr)]">
+        <Card>
+          <InvestmentCardHeader title="Política de alocação"
+            description="Cada card representa uma decisão da sua própria estratégia."
+            info="Os percentuais de cada grupo permanecem em 100%."
+            right={dirty ? (
+              <span className="flex flex-wrap gap-2">
+                <Button variant="ghost" onClick={() => setPolicy(Object.fromEntries(
+                  data.policy.map((node) => [node.node, node.target_pct])))}>
+                  Descartar</Button>
+                <Button variant="primary" onClick={savePolicy} disabled={busy}>
+                  Salvar política</Button>
+              </span>
+            ) : null} />
+          <div className="grid gap-4 px-5 pb-5 lg:grid-cols-2 sm:px-6 sm:pb-6">
+            {groups.map((group) => (
+              <PolicyGroup key={group.parent} group={group} values={policy}
+                onChange={changePolicyGroup} />
+            ))}
+            {groups.length === 0 && (
+              <p className="col-span-full py-8 text-center text-[14px] text-subtle">
+                Sua política não possui grupos com mais de uma opção.</p>
+            )}
+          </div>
+        </Card>
+
+        <Card className="order-first xl:order-none">
+          <InvestmentCardHeader title="Valor do aporte"
+            info="O plano muda imediatamente. O registro só acontece ao confirmar as movimentações." />
+          <div className="px-5 pb-6 sm:px-6">
+            <label htmlFor="contribution-amount"
+              className="mb-2 block text-[14px] text-secondary">
+              Quanto você quer investir?
+            </label>
+            <div className="flex min-h-16 items-center gap-2 rounded-2xl border
+              border-border bg-surface2 px-4">
+              <span className="text-[16px] text-secondary">R$</span>
+              <input id="contribution-amount" value={amount} inputMode="decimal"
+                onChange={(event) => setAmount(event.target.value)}
+                className="tnum min-w-0 flex-1 bg-transparent text-[25px] font-bold
+                  outline-none" />
+            </div>
+            <p className="mb-3 mt-6 text-[14px] text-secondary">
+              Estratégia da simulação</p>
+            <div className="grid grid-cols-2 gap-2">
+              {MODES.map(([key, label]) => (
+                <button key={key} onClick={() => setMode(key)} aria-pressed={mode === key}
+                  className={`min-h-11 rounded-xl border px-3 text-[14px] font-bold
+                    transition ${mode === key
+                      ? 'border-brand bg-brand text-white shadow-[0_8px_24px_-12px_#5b9dff]'
+                      : 'border-border bg-surface2 text-secondary hover:text-strong'}`}>
+                  {label}
+                </button>
               ))}
             </div>
-          ))}
-        </div>
-      </Card>
+            <p className="mt-3 min-h-10 text-[14px] leading-5 text-secondary">
+              {MODES.find(([key]) => key === mode)?.[2]}
+            </p>
+            <Button variant="primary" onClick={saveContribution}
+              disabled={!validAmount || !contributionDirty || busy}
+              className="mt-4 min-h-11 w-full justify-center text-[14px]">
+              {!validAmount || contributionAmount === 0
+                ? 'Defina um valor para salvar'
+                : contributionDirty
+                  ? 'Salvar como próximo aporte'
+                  : 'Próximo aporte salvo'}
+            </Button>
+          </div>
+        </Card>
+      </div>
 
-      <Card>
-        <CardHead title="Plano"
-          sub={`aloca ${brl(plan.allocated)} de ${brl(plan.contribution)}`}
-          right={plan.orders.length > 0 && (
-            <Button variant="primary" onClick={() => setRegistering(true)}>
-              Registrar como movimentações</Button>
-          )} />
-        <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="text-[11px] uppercase tracking-wider text-faint">
-                <th className="px-5 py-2 text-left font-medium">Ativo</th>
-                <th className="px-3 py-2 text-right font-medium">Qtd</th>
-                <th className="px-3 py-2 text-right font-medium">Preço</th>
-                <th className="px-3 py-2 text-right font-medium">Valor</th>
-                <th className="px-5 py-2 text-right font-medium">Desvio da classe</th>
-              </tr>
-            </thead>
-            <tbody>
-              {plan.orders.map((order) => {
-                const node = plan.nodes.find((item) => item.node === order.node)
-                return (
-                  <tr key={order.ticker} className="border-t border-border/40">
-                    <td className="px-5 py-2 font-semibold">{order.ticker}
-                      <span className="ml-2 text-[11px] font-normal text-faint">
-                        {node?.name}</span></td>
-                    <td className="tnum px-3 py-2 text-right text-muted">
-                      {order.quantity ? order.quantity.toLocaleString('pt-BR',
-                        { maximumFractionDigits: 8 }) : '—'}</td>
-                    <td className="tnum px-3 py-2 text-right text-muted">
-                      {order.price ? brl(order.price) : '—'}</td>
-                    <td className="tnum px-3 py-2 text-right">
-                      <Money value={order.amount} /></td>
-                    <td className="tnum px-5 py-2 text-right text-[12px]">
-                      <span className="text-muted">{signedPct(node?.drift_before)}</span>
-                      <span className="mx-1.5 text-faint">→</span>
-                      <span className="text-brand-soft">{signedPct(node?.drift_after)}</span>
-                    </td>
-                  </tr>
-                )
-              })}
-              {plan.orders.length === 0 && (
-                <tr><td colSpan="5" className="px-5 py-8 text-center text-[13px]
-                  text-faint">Informe um valor de aporte para ver o plano.</td></tr>
-              )}
-            </tbody>
-          </table>
+      <Card className="overflow-hidden">
+        <div className="flex flex-col justify-between gap-5 border-b border-border
+          bg-gradient-to-r from-brand/[0.07] to-transparent px-5 py-6
+          sm:px-6 lg:flex-row lg:items-center">
+          <div>
+            <h3 className="text-[24px] font-bold tracking-[-0.025em] text-strong">
+              Plano sugerido</h3>
+            <p className="mt-1.5 text-[15px] text-secondary">
+              Distribuição estimada para o aporte informado.</p>
+          </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="sm:text-right">
+              <p className="text-[13px] font-semibold text-secondary">
+                Valor que será alocado</p>
+              <p className="tnum mt-1 text-[22px] font-bold text-strong">
+                <Money value={plan.allocated} />{' '}
+                <span className="text-[14px] font-medium text-secondary">
+                  de <Money value={plan.contribution} /></span>
+              </p>
+            </div>
+            {plan.orders.length > 0 && (
+              <Button variant="primary" className="min-h-11 justify-center text-[14px]"
+                onClick={() => setRegistering(true)}>
+                Registrar movimentações</Button>
+            )}
+          </div>
         </div>
+        <table className="invest-table invest-responsive-table w-full text-[16px]">
+          <thead className="bg-table-head text-[14px] font-bold text-strong">
+            <tr className="h-16 border-b border-white/15">
+              <th className="px-6 text-left font-bold">Ativo</th>
+              <th className="px-3 text-right font-bold">Quantidade</th>
+              <th className="px-3 text-right font-bold">Cotação</th>
+              <th className="px-3 text-right font-bold">Valor do aporte</th>
+              <th className="px-3 text-right font-bold">Desvio atual</th>
+              <th className="px-6 text-right font-bold">Após aporte</th>
+            </tr>
+          </thead>
+          <tbody>
+            {plan.orders.map((order) => {
+              const node = plan.nodes.find((item) => item.node === order.node)
+              return (
+                <tr key={order.ticker} className="min-h-[76px] border-b border-border/60
+                  last:border-0">
+                  <td data-primary="true" className="px-6" data-label="Ativo">
+                    <p className="font-bold text-strong">{order.ticker}</p>
+                    <p className="mt-0.5 text-[14px] text-subtle">{node?.name}</p>
+                  </td>
+                  <td data-label="Quantidade"
+                    className="tnum px-3 text-right font-semibold text-strong">
+                    {order.quantity ? order.quantity.toLocaleString('pt-BR',
+                      { maximumFractionDigits: 8 }) : '—'}</td>
+                  <td data-label="Cotação"
+                    className="tnum px-3 text-right font-semibold text-secondary">
+                    {order.price ? brl(order.price) : '—'}</td>
+                  <td data-label="Valor do aporte"
+                    className="tnum px-3 text-right font-semibold text-brand-soft">
+                    <Money value={order.amount} /></td>
+                  <td data-label="Desvio atual"
+                    className="tnum px-3 text-right font-semibold text-attention">
+                    {signedPct(node?.drift_before)}</td>
+                  <td data-label="Após aporte"
+                    className="tnum px-6 text-right font-semibold text-projected">
+                    {signedPct(node?.drift_after)}</td>
+                </tr>
+              )
+            })}
+            {plan.orders.length === 0 && (
+              <tr><td colSpan="6" data-empty="true"
+                className="px-6 py-12 text-center text-[14px] text-subtle">
+                Informe um valor de aporte para ver o plano.</td></tr>
+            )}
+          </tbody>
+        </table>
         {plan.leftover > 0.01 && (
-          <p className="border-t border-border/60 px-5 py-3 text-[12px] text-faint">
-            Sobra {brl(plan.leftover)}
+          <p className="border-t border-border/60 px-5 py-4 text-[14px]
+            text-secondary sm:px-6">
+            Restam {brl(plan.leftover)} livres
             {plan.blocked_nodes.length > 0
-              && `: o que falta em ${plan.blocked_nodes.join(', ')} não cabe num lote inteiro.`}
+              && ` porque o valor de ${plan.blocked_nodes.join(', ')} não completa um lote.`}
           </p>
         )}
       </Card>

@@ -1,16 +1,13 @@
-"""Ligação entre o extrato e a carteira.
+"""Proventos reconhecidos no extrato.
 
-Dois caminhos, os dois partindo de transações que já estão no Ledger:
-
-**Provento.** A descrição bancária de um rendimento traz o ticker e a quantidade de cotas
+A descrição bancária de um rendimento traz o ticker e a quantidade de cotas
 (`RENDIMENTOS DE CLIENTES VISC11 S/ 10`). Daí saem o ativo e o valor por cota sem ninguém
 digitar. Quando a quantidade da descrição bate com a que a carteira tem, o lançamento é
 confiável; quando não bate, além de virar revisão ele também denuncia uma compra que
 ficou sem registro.
 
-**Aporte a alocar.** Uma transferência categorizada como poupança é a contraparte
-bancária de uma ou mais movimentações. O ledger continua genérico, sem saber para qual
-ativo o dinheiro foi, e é aqui que o destino aparece.
+Quanto ainda há para aportar não sai do extrato: é o saldo das contas cujo nó tem papel
+`to_invest`, que a conferência com a Pluggy mantém sozinha.
 """
 
 import re
@@ -93,40 +90,3 @@ def income_from_ledger(records: list[dict], assets: dict, positions: dict,
             continue
         suggested.append(T.normalize(trade))
     return suggested, pending
-
-
-def unallocated(records: list[dict], trades: list[dict], treatments: dict,
-                minimum: float = 0.01) -> list[dict]:
-    """Saídas para poupança que ainda não viraram posição.
-
-    É o dinheiro que saiu da conta e não chegou em lugar nenhum, que hoje some entre os
-    dois lados do app."""
-    linked = {trade.get("ledger_id") for trade in trades if trade.get("ledger_id")}
-    out = []
-    for record in records:
-        category = record.get("category")
-        if not category or treatments.get(category) != "poupança":
-            continue
-        amount = float(record.get("signed_amount") or 0.0)
-        if amount >= -minimum or record["id"] in linked:
-            continue
-        out.append({
-            "kind": "unallocated_contribution", "ledger_id": record["id"],
-            "date": record.get("date"), "amount": -amount,
-            "description": record.get("description"),
-            "category": f"{category}/{record.get('subcategory') or ''}".rstrip("/"),
-            "message": f"R$ {-amount:,.2f} saíram em {record.get('date')} "
-                       f"({record.get('description')}) e ainda não foram alocados."})
-    return out
-
-
-def apply_rules(items: list[dict], rules: list[dict]) -> list[dict]:
-    """Preenche o destino dos aportes recorrentes. Regra é só um par texto → ativo,
-    e o que não casa continua pedindo decisão."""
-    for item in items:
-        text = norm(item.get("description"))
-        for rule in rules or []:
-            if norm(rule.get("match")) and norm(rule.get("match")) in text:
-                item["suggested_ticker"] = rule.get("ticker")
-                break
-    return items

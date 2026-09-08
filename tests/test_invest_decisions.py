@@ -106,3 +106,28 @@ def test_new_node_keeps_the_role_it_was_given():
                                  "role": "to_invest"}]})
     assert result["policy"]["a_aportar"]["role"] == "to_invest"
     assert result["policy"]["a_aportar"]["in_totals"] is False
+
+
+def test_next_contribution_keeps_amount_and_mode():
+    result = _apply({"contribution": 2500, "contribution_mode": "focus"})
+
+    assert result["contribution_settings"] == {"amount": 2500.0, "mode": "focus"}
+
+
+def test_invalid_next_contribution_is_not_applied():
+    result = _apply({"contribution": -1, "contribution_mode": "spread"})
+
+    assert result["contribution_settings"] is None
+    assert "não pode ser negativo" in result["problems"][0]
+
+
+def test_balance_of_a_dollar_asset_is_recorded_in_dollars():
+    """Saldo informado sem moeda herda a do ativo: dólar não vira real na entrada."""
+    assets = A.load([{"ticker": "INTER-GLOBAL", "node": "livre", "currency": "USD",
+                      "valuation": "balance"}])
+    result = D.plan_changes(
+        {"balances": [{"ticker": "INTER-GLOBAL", "date": "2026-09-07", "value": 15.70}]},
+        assets, ACCOUNTS, TREE, [])
+
+    assert result["trades"][0]["currency"] == "USD"
+    assert result["trades"][0]["price"] == 15.70

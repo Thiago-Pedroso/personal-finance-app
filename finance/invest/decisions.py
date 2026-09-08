@@ -20,10 +20,12 @@ deduzido do formato, e ganha linha na aba de cotações.
 """
 
 import json
+import math
 from datetime import date
 
 from . import accounts as ACC
 from . import assets as A
+from . import plan as PL
 from . import policy as P
 from . import quotes as Q
 from . import trades as T
@@ -37,6 +39,21 @@ def _valid_date(value: str) -> bool:
         return False
 
 
+def contribution_settings(data: dict) -> tuple[dict | None, list[str]]:
+    if "contribution" not in data and "contribution_mode" not in data:
+        return None, []
+    try:
+        amount = float(data.get("contribution"))
+    except (TypeError, ValueError):
+        return None, ["O próximo aporte precisa ser um valor válido."]
+    if not math.isfinite(amount) or amount < 0:
+        return None, ["O próximo aporte não pode ser negativo."]
+    mode = str(data.get("contribution_mode") or "spread")
+    if mode not in PL.MODES:
+        return None, ["O modo do próximo aporte é inválido."]
+    return {"amount": amount, "mode": mode}, []
+
+
 def plan_changes(data: dict, assets: dict, accounts: dict, tree: dict,
                  existing: list[dict]) -> dict:
     """Calcula o que muda, sem tocar em rede. Devolve o estado novo e os problemas."""
@@ -44,6 +61,8 @@ def plan_changes(data: dict, assets: dict, accounts: dict, tree: dict,
     accounts = {key: dict(value) for key, value in accounts.items()}
     tree = {node: dict(value) for node, value in tree.items()}
     problems: list[str] = []
+    contribution, contribution_problems = contribution_settings(data)
+    problems.extend(contribution_problems)
 
     for row in data.get("accounts") or []:
         account = ACC.normalize(row)
@@ -77,6 +96,10 @@ def plan_changes(data: dict, assets: dict, accounts: dict, tree: dict,
         if not trade["ticker"]:
             problems.append("Movimentação sem ticker foi ignorada.")
             continue
+        # sem moeda declarada, o lançamento é na moeda do ativo: saldo em dólar fica
+        # gravado como dólar, e a conversão é sempre da tela para dentro
+        if not (row.get("currency") or "").strip() and trade["ticker"] in assets:
+            trade["currency"] = assets[trade["ticker"]]["currency"]
         if not _valid_date(trade["date"]):
             problems.append(f"Movimentação de {trade['ticker']} com data inválida "
                             f"({trade['date'] or 'vazia'}).")
@@ -100,7 +123,8 @@ def plan_changes(data: dict, assets: dict, accounts: dict, tree: dict,
     quotes = [{"ticker": t["ticker"]} for t in new_trades
               if assets[t["ticker"]]["valuation"] == "quote"]
     return {"assets": assets, "accounts": accounts, "policy": tree,
-            "trades": new_trades, "quotes": quotes, "problems": problems}
+            "trades": new_trades, "quotes": quotes, "problems": problems,
+            "contribution_settings": contribution}
 
 
 def _balances_as_trades(data: dict) -> list[dict]:
@@ -108,6 +132,7 @@ def _balances_as_trades(data: dict) -> list[dict]:
     return [{"date": row.get("date") or date.today().isoformat(),
              "ticker": row.get("ticker"), "side": "BALANCE",
              "price": row.get("value"), "note": row.get("note"),
+             "currency": row.get("currency"), "fx_rate": row.get("fx_rate"),
              "account": row.get("account"), "source": row.get("source") or "manual"}
             for row in (data.get("balances") or [])]
 

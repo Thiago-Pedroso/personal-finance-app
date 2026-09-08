@@ -187,6 +187,7 @@ def main() -> None:
     if invest:
         _seed_invest(invest)
         sheets.write_config("invest_monthly_contribution", 1000)
+        sheets.write_config("invest_contribution_mode", "spread")
 
     info = sheets.check()
     print(f"\nPronto! Banco de demonstração criado em '{info['title']}'.")

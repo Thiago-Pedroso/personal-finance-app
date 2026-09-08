@@ -61,11 +61,15 @@ Ambos `credentials.json` e `.env` estão no `.gitignore` — **nunca commite**.
 
 ---
 
-## 3. Esquema do banco (6 abas)
+## 3. Esquema do banco (12 abas)
+
+Seis abas do controle de gastos e seis do controle de investimentos. As de investimento
+só são criadas para quem usa a carteira.
 
 A linha 1 de cada aba é o cabeçalho. Tipos entre parênteses referem-se à coerção em
 `finance/sheets.py` (`str` texto; `opt` texto opcional/vazio=None; `float` número; `fnum`
-número opcional; `bool` TRUE/FALSE; `json` serializado como JSON).
+número opcional; `bool` TRUE/FALSE; `json` serializado como JSON; `qnum` número vindo de
+fórmula, tolerante a `#N/A`).
 
 ### Aba `Ledger` — uma transação por linha
 
@@ -166,7 +170,103 @@ descarta o que não existir na sua taxonomia. Sem a aba, o mapa cai no fixture.
 | `sync_state` | cursores de sincronização por conta |
 | `timezone` | fuso IANA usado nas datas locais, por exemplo `America/Sao_Paulo` |
 | `min_transaction_date` | piso opcional (`YYYY-MM-DD`); o sync descarta lançamentos anteriores |
-| `schema_version` | versão do esquema (atualmente `4`) |
+| `schema_version` | versão do esquema (atualmente `6`) |
+| `invest_monthly_contribution` | aporte mensal usado como padrão no simulador |
+
+---
+
+## 3b. Abas de investimento
+
+### Aba `InvestTrades` — uma movimentação por linha
+
+`id` · `date` · `ticker` · `side` · `quantity` (fnum) · `price` (fnum) · `fees` (fnum) ·
+`currency` · `fx_rate` (fnum) · `account` · `note` · `source` · `ledger_id` · `created_at`
+
+É a única entrada de fatos: todo o resto é derivado daqui. `side` cobre `BUY`, `SELL`,
+`DIVIDEND`, `JCP`, `SPLIT`, `ADJUST` e `BALANCE` (saldo informado de ativo sem cotação).
+Compra em moeda estrangeira guarda o preço na moeda de origem e o câmbio do dia, para
+depois separar o resultado do ativo do resultado do câmbio. `ledger_id` liga a operação à
+transação bancária que a pagou.
+
+### Aba `InvestAssets` — o catálogo
+
+`ticker` · `name` · `node` · `account` · `sector` · `currency` · `quote_symbol` ·
+`valuation` · `pluggy_code` · `target_pct` (fnum) · `lot_size` (fnum) · `active` (bool) ·
+`note`
+
+`node` aponta para uma folha da política, `valuation` diz de onde vem o valor (`quote`,
+`balance` ou `pluggy`) e `target_pct` é o alvo do ativo **dentro** da classe. `sector` é
+texto livre: a lista do autocomplete nasce do que já está em uso, sem taxonomia no código.
+
+`pluggy_code` guarda o código do papel na corretora **ou o id de uma conta**: saldo de
+conta corrente é um ativo por saldo como qualquer outro, e é assim que ele se sincroniza.
+Num ativo em moeda estrangeira, todo lançamento é gravado na moeda do ativo (`currency` do
+lançamento vem do ativo quando não é informado) e a conversão para reais acontece na
+leitura, pelo câmbio do momento, nunca pelo do dia em que o saldo foi informado. A linha de
+câmbio (`USDBRL`) é criada sozinha na aba `Quotes`; sem ela o valor em reais fica pendente
+e aparece nos avisos, em vez de o dólar virar real em silêncio.
+
+### Aba `InvestAccounts` — onde o dinheiro está
+
+`id` · `name` · `institution` · `kind` · `pluggy_item_id` · `currency`
+
+`kind` separa `broker`, `wallet` e `bucket` (conta de caixinhas). `pluggy_item_id` amarra a
+conta ao item da Pluggy, que é o que permite comparar o total informado pela instituição
+com a divisão que você fez.
+
+### Aba `InvestPolicy` — a política como árvore
+
+`node` · `name` · `parent` · `target_pct` (fnum) · `in_totals` (bool) · `role` · `color` ·
+`icon`
+
+`node` é id estável e `name` é o rótulo editável, então renomear uma classe não quebra o
+histórico. `target_pct` é a fatia dentro do pai, e o alvo de uma folha é o produto do
+caminho até a raiz. `in_totals=FALSE` tira o nó do denominador dos percentuais e do
+rebalanceamento, sem tirar o dinheiro do patrimônio.
+
+`role` diz o que o nó representa e aceita quatro valores, os únicos fixos no código:
+
+| role | o que é | entra no rebalanceamento |
+|---|---|---|
+| `strategy` (padrão) | a carteira | sim, se `in_totals` |
+| `reserved` | guardado com um destino | não |
+| `to_invest` | saiu da conta, ainda não virou posição | não |
+| `free` | saldo sem compromisso | não |
+
+Quantos nós existem em cada papel, e como se chamam, é escolha do usuário. Um nó
+`strategy` com `in_totals=FALSE` é o caso de cripto: faz parte da carteira e fica fora
+dos alvos.
+
+### Aba `Quotes` — a única com fórmula
+
+`ticker` · `quote_symbol` · `price` (qnum) · `currency` · `kind` · `updated_at` (qnum) ·
+`last_price` (fnum) · `last_price_at`
+
+`price` guarda a chamada do `GOOGLEFINANCE` e a API devolve o resultado já calculado. As
+fórmulas são escritas **sem separador de argumentos**, porque esse caractere segue o locale
+da planilha:
+
+```
+Ação BR / FII     =GOOGLEFINANCE("BVMF:WEGE3")
+Stock / ETF EUA   =GOOGLEFINANCE("VOO")*GOOGLEFINANCE("CURRENCY:USDBRL")
+Cripto            =GOOGLEFINANCE("CURRENCY:BTCUSD")*GOOGLEFINANCE("CURRENCY:USDBRL")
+Câmbio            =GOOGLEFINANCE("CURRENCY:USDBRL")
+```
+
+`updated_at` guarda `=NOW()`, que serve para detectar planilha que parou de recalcular.
+`last_price` guarda o último valor bom: uma falha momentânea da fórmula marca a cotação
+como defasada em vez de zerar a posição.
+
+> Esta aba **não aceita** `write_records()`: reescrever com `RAW` transformaria a fórmula
+> em texto. Use `append_rows()` e `update_fields(..., value_input_option="USER_ENTERED")`.
+> A lista de abas protegidas está em `sheets.FORMULA_TABS`.
+
+### Aba `InvestSnapshots` — o histórico
+
+`date` · `node` · `value` (float) · `cost` (float)
+
+Uma linha por nó por dia, gravada a cada `finance.invest report`. Rodar duas vezes no mesmo
+dia substitui em vez de duplicar. É o histórico de patrimônio que a planilha nunca teve.
 
 ---
 

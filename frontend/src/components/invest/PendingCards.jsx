@@ -1,19 +1,16 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, TrendingUp } from 'lucide-react'
+import { TrendingUp } from 'lucide-react'
 
 import { getInvestPending } from '../../lib/api.js'
-import { brl } from '../../lib/format.js'
 import { Card, CardHead } from '../ui/primitives.jsx'
 
 const TONE = {
-  unallocated_contribution: 'border-blue/30 bg-blue/[0.06]',
   income_quantity_mismatch: 'border-amber/30 bg-amber/[0.07]',
   quantity_mismatch: 'border-amber/30 bg-amber/[0.07]',
   balance_update: 'border-border bg-surface2/50',
   unknown_asset: 'border-violet/30 bg-violet/[0.07]',
 }
 const LABEL = {
-  unallocated_contribution: 'Aporte sem destino',
   income_quantity_mismatch: 'Provento não confere',
   quantity_mismatch: 'Posição diverge da corretora',
   balance_update: 'Saldo novo na corretora',
@@ -45,14 +42,6 @@ export function InvestPendingCards() {
             <p className="text-[11px] font-semibold uppercase tracking-wider text-faint">
               {LABEL[item.kind] || item.kind}</p>
             <p className="mt-1 text-[13px] text-muted">{item.message}</p>
-            {item.suggested_ticker && (
-              <p className="mt-1 flex items-center gap-1.5 text-[12px] text-brand-soft">
-                <ArrowRight className="size-3" /> sugestão: {item.suggested_ticker}
-              </p>
-            )}
-            {item.amount != null && (
-              <p className="tnum mt-1 text-[12px] text-faint">{brl(item.amount)}</p>
-            )}
           </div>
         ))}
         <a href="#/investimentos/operacoes"

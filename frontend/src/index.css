@@ -24,6 +24,12 @@
   --color-brand-soft: #8fbcff; /* brilho/hover do azul */
   --color-brand-ink: #ffffff;  /* texto sobre o azul */
   --color-accent: #5b9dff;     /* anel de foco = marca */
+  --color-strong: #f7f9fc;
+  --color-secondary: #aeb8c5;
+  --color-subtle: #929eac;
+  --color-table-head: #252d3a;
+  --color-attention: #f3b477;
+  --color-projected: #68d9a2;
 
   --radius-xl: 16px;
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
@@ -81,6 +87,72 @@ input, select, button, textarea { font: inherit; color: inherit; }
   letter-spacing: -0.01em;
 }
 .fade-in { animation: slideup .18s ease-out; }
+
+.invest-table tbody tr {
+  transition: background-color .15s ease;
+}
+
+.invest-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, .018);
+}
+
+.invest-table tbody tr:hover {
+  background: rgba(91, 157, 255, .055);
+}
+
+@media (max-width: 1023px) {
+  .invest-responsive-table thead {
+    display: none;
+  }
+
+  .invest-responsive-table tbody {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .invest-responsive-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    height: auto;
+    min-height: 0;
+    gap: 16px 24px;
+    padding: 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    background: rgba(35, 43, 54, .45);
+  }
+
+  .invest-responsive-table tbody td {
+    display: block;
+    padding: 0;
+    text-align: left;
+  }
+
+  .invest-responsive-table tbody td::before {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--color-subtle);
+    content: attr(data-label);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 650;
+  }
+
+  .invest-responsive-table tbody td[data-primary="true"] {
+    grid-column: 1 / -1;
+    order: -1;
+  }
+
+  .invest-responsive-table tbody td[data-primary="true"]::before,
+  .invest-responsive-table tbody td[data-empty="true"]::before {
+    display: none;
+  }
+
+  .invest-responsive-table tbody td[data-empty="true"] {
+    grid-column: 1 / -1;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

@@ -27,6 +27,25 @@ def test_report_carries_what_the_screen_needs():
     assert report["problems"] == []
 
 
+def test_report_uses_the_saved_contribution_mode():
+    report = _report(contribution_mode="focus")
+
+    assert report["contribution_mode"] == "focus"
+    assert report["plan"]["mode"] == "focus"
+
+
+def test_balance_without_the_exchange_rate_shows_up_as_a_problem():
+    assets = A.load(ROWS + [{"ticker": "INTER-GLOBAL", "node": "acoes",
+                             "valuation": "balance", "currency": "USD"}])
+    quotes = {t: {"price": q["price"], "stale": False, "fell_back": False}
+              for t, q in QUOTES.items()}
+
+    problems = R.problems(P.load(TEMPLATE), assets,
+                          PF.build(assets, TRADES, quotes), quotes)
+
+    assert any("Sem câmbio USD/BRL" in problem for problem in problems)
+
+
 def test_stale_quote_shows_up_as_a_problem():
     assets = A.load(ROWS)
     quotes = {t: {"price": q["price"], "stale": t == "VOO", "fell_back": False}

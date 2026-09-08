@@ -98,6 +98,22 @@ def test_account_total_sums_only_that_item():
     assert PS.account_total(investments, "a") == 100.0
 
 
+def test_bucket_balances_exclude_the_synced_account_balance():
+    assets = A.load([
+        {"ticker": "RESERVA", "account": "picpay", "valuation": "balance"},
+        {"ticker": "CONTA-PICPAY", "account": "picpay", "valuation": "pluggy"},
+    ])
+    positions = {
+        "RESERVA": {"value": 70573.36},
+        "CONTA-PICPAY": {"value": 30902.71},
+    }
+
+    balances = PS.bucket_balances(positions, assets, "picpay")
+
+    assert balances == {"RESERVA": 70573.36}
+    assert PS.bucket_report(70573.36, balances)["unallocated"] == 0.0
+
+
 def test_position_without_value_is_noise():
     """HGRE12 é direito de subscrição: vem com cotas e saldo zero."""
     assert PS.is_noise(_investment(code="HGRE12", quantity=5.0, balance=0.0)) is True
@@ -131,6 +147,23 @@ def test_account_balance_becomes_a_balance_update():
                                     assets, TODAY)
     assert pending[0]["kind"] == "balance_update"
     assert PS.suggested_trades(pending)[0]["price"] == 8000.60
+
+
+def test_dollar_account_is_compared_in_dollars():
+    """A conta informa 15,70 dólares e a posição vale R$ 80,48: o que se compara é o
+    saldo em dólar, senão a conciliação pediria correção todo dia."""
+    assets = A.load([{"ticker": "INTER-GLOBAL", "name": "Conta global", "node": "livre",
+                      "valuation": "pluggy", "currency": "USD", "pluggy_code": "acc-2"}])
+    accounts_data = [{"item_id": "i", "account_id": "acc-2", "name": "Inter",
+                      "type": "BANK", "balance": 15.70, "currency": "USD"}]
+    positions = {"INTER-GLOBAL": {"value": 80.48, "native_value": 15.70}}
+
+    assert PS.reconcile_accounts(accounts_data, positions, assets, TODAY) == []
+
+    positions["INTER-GLOBAL"]["native_value"] = 12.0
+    pending = PS.reconcile_accounts(accounts_data, positions, assets, TODAY)
+    assert "US$ 15.70" in pending[0]["message"]
+    assert PS.suggested_trades(pending)[0]["currency"] == "USD"
 
 
 def test_account_already_in_sync_says_nothing():

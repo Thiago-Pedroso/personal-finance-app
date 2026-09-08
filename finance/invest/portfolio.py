@@ -23,7 +23,8 @@ def _blank(asset: dict) -> dict:
         "currency": asset["currency"], "valuation": asset["valuation"],
         "target_pct": asset["target_pct"], "lot_size": asset["lot_size"],
         "quantity": 0.0, "avg_price": 0.0, "avg_price_brl": 0.0, "cost": 0.0,
-        "price": None, "value": 0.0, "profit": 0.0, "profit_pct": None,
+        "price": None, "value": 0.0, "native_value": 0.0, "fx_rate": None,
+        "profit": 0.0, "profit_pct": None,
         "realized": 0.0, "income": 0.0, "fees": 0.0,
         "price_source": None, "stale": False, "last_balance_date": None,
     }
@@ -80,14 +81,15 @@ def _last_balance_per_day(trades: list[dict]) -> list[dict]:
 
 
 def _by_balance(position: dict, trades: list[dict], fx: float | None = None) -> dict:
+    """Num ativo em moeda estrangeira todo lançamento está na moeda dele, e o câmbio
+    de hoje entra uma vez só, no fim."""
     balance = 0.0
     contributed = 0.0
+    income = 0.0
     opened = False
     for trade in _last_balance_per_day(trades):
         side = trade["side"]
-        # com câmbio de hoje, o saldo em dólar deixa de ficar congelado na taxa do dia
-        # em que foi informado
-        total = (trade["price"] * fx) if fx else T.total_brl(trade)
+        total = T.total_native(trade) if fx else T.total_brl(trade)
         if side == "BALANCE":
             if not opened:
                 # saldo antes de qualquer movimento é abertura: dinheiro que já era seu.
@@ -96,7 +98,7 @@ def _by_balance(position: dict, trades: list[dict], fx: float | None = None) -> 
                 opened = True
             else:
                 # daí em diante, a diferença entre o informado e o esperado é rendimento
-                position["income"] += total - balance
+                income += total - balance
             balance = total
             position["last_balance_date"] = trade["date"]
         elif side in ("BUY", "ADJUST"):
@@ -109,10 +111,14 @@ def _by_balance(position: dict, trades: list[dict], fx: float | None = None) -> 
             opened = True
         elif side in T.INCOME_SIDES:
             balance += total
-            position["income"] += total
+            income += total
+    rate = fx or 1.0
     position["quantity"] = 0.0
-    position["cost"] = contributed
-    position["value"] = balance
+    position["native_value"] = balance
+    position["fx_rate"] = fx
+    position["cost"] = contributed * rate
+    position["value"] = balance * rate
+    position["income"] += income * rate
     position["price_source"] = "balance"
     return position
 
@@ -125,13 +131,23 @@ def _price_of(asset: dict, quotes: dict) -> tuple[float | None, bool]:
     return float(price), bool(quote.get("stale"))
 
 
+def currency_of(asset: dict) -> str:
+    return (asset.get("currency") or "BRL").upper()
+
+
 def _fx_for(asset: dict, quotes: dict) -> float | None:
     """Cotação de hoje da moeda do ativo, quando ele não é em reais."""
-    currency = (asset.get("currency") or "BRL").upper()
+    currency = currency_of(asset)
     if currency == "BRL":
         return None
     quote = quotes.get(f"{currency}BRL") or quotes.get(currency)
     return quote.get("price") if quote else None
+
+
+def _needs_fx(asset: dict, fx: float | None) -> bool:
+    """Saldo em moeda estrangeira sem câmbio não pode ser convertido, e não vira real
+    em silêncio: a posição fica marcada."""
+    return fx is None and currency_of(asset) != "BRL"
 
 
 def build(assets: dict, trades: list[dict], quotes: dict | None = None,
@@ -156,14 +172,19 @@ def build(assets: dict, trades: list[dict], quotes: dict | None = None,
         elif asset["valuation"] == "pluggy":
             # sincronizado é o mesmo ativo por saldo: o que muda é quem escreve o
             # lançamento. `balances` só entra quando o valor chega ao vivo, sem gravar.
-            _by_balance(position, rows, _fx_for(asset, quotes))
+            fx = _fx_for(asset, quotes)
+            _by_balance(position, rows, fx)
             informed = balances.get(ticker)
             if informed is not None:
-                position["value"] = float(informed)
-            position["stale"] = informed is None and not position["last_balance_date"]
+                position["native_value"] = float(informed)
+                position["value"] = float(informed) * (fx or 1.0)
+            position["stale"] = (informed is None and not position["last_balance_date"]) \
+                or _needs_fx(asset, fx)
             position["price_source"] = "pluggy"
         else:
-            _by_balance(position, rows, _fx_for(asset, quotes))
+            fx = _fx_for(asset, quotes)
+            _by_balance(position, rows, fx)
+            position["stale"] = _needs_fx(asset, fx)
         position["profit"] = position["value"] - position["cost"]
         position["profit_pct"] = (position["profit"] / position["cost"]
                                   if position["cost"] else None)

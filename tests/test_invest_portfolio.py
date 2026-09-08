@@ -259,12 +259,52 @@ def test_wealth_sums_by_the_role_of_each_node():
                      "free": 300.0, "total": 1100.0}
 
 
-def test_balance_in_dollars_follows_todays_rate():
-    """15,70 dólares valem o câmbio de hoje, não o do dia em que foram informados."""
+def _dollar_account(*trades):
     assets = _assets({"ticker": "INTER-GLOBAL", "node": "stocks", "currency": "USD",
                       "valuation": "balance", "target_pct": 1.0})
-    trades = [{"date": "2026-09-07", "ticker": "INTER-GLOBAL", "side": "BALANCE",
-               "price": 15.70, "currency": "USD", "fx_rate": 5.0}]
+    return assets, list(trades)
+
+
+def test_balance_in_dollars_follows_todays_rate():
+    """15,70 dólares valem o câmbio de hoje, não o do dia em que foram informados."""
+    assets, trades = _dollar_account(
+        {"date": "2026-09-07", "ticker": "INTER-GLOBAL", "side": "BALANCE",
+         "price": 15.70, "currency": "USD", "fx_rate": 5.0})
     quotes = {"USDBRL": {"price": 5.4321}}
     position = PF.build(assets, trades, quotes)["INTER-GLOBAL"]
     assert round(position["value"], 2) == round(15.70 * 5.4321, 2)
+
+
+def test_dollar_balance_keeps_the_amount_in_dollars():
+    """A tela mostra reais, o saldo continua sendo 15,70 dólares."""
+    assets, trades = _dollar_account(
+        {"date": "2026-09-07", "ticker": "INTER-GLOBAL", "side": "BALANCE",
+         "price": 15.70, "currency": "USD"})
+    position = PF.build(assets, trades, {"USDBRL": {"price": 5.1262}})["INTER-GLOBAL"]
+    assert position["native_value"] == 15.70
+    assert position["currency"] == "USD"
+    assert position["fx_rate"] == 5.1262
+    assert round(position["value"], 2) == 80.48
+
+
+def test_dollar_yield_is_converted_once():
+    """Rende 10 dólares em cima de 100: o rendimento é convertido pelo câmbio de hoje."""
+    assets, trades = _dollar_account(
+        {"date": "2026-08-01", "ticker": "INTER-GLOBAL", "side": "BALANCE",
+         "price": 100.0},
+        {"date": "2026-09-07", "ticker": "INTER-GLOBAL", "side": "BALANCE",
+         "price": 110.0})
+    position = PF.build(assets, trades, {"USDBRL": {"price": 5.0}})["INTER-GLOBAL"]
+    assert position["cost"] == 500.0
+    assert position["value"] == 550.0
+    assert position["income"] == 50.0
+
+
+def test_dollar_balance_without_the_rate_is_flagged():
+    """Sem câmbio, o saldo não vira real em silêncio: a posição sai marcada."""
+    assets, trades = _dollar_account(
+        {"date": "2026-09-07", "ticker": "INTER-GLOBAL", "side": "BALANCE",
+         "price": 15.70})
+    position = PF.build(assets, trades, {})["INTER-GLOBAL"]
+    assert position["stale"] is True
+    assert position["fx_rate"] is None

@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react'
 import { ChevronRight, Lock, LockOpen, RefreshCw } from 'lucide-react'
 
 import { brl } from '../../lib/format.js'
-import { Button, Card, CardHead, Empty } from '../ui/primitives.jsx'
-import { SensitiveAmount } from '../ui/SensitiveValue.jsx'
-import { DriftChip, Money, pct, Profit, signedPct } from './shared.jsx'
+import { orderPortfolioNodes } from '../../lib/investPolicy.js'
+import { Button, Card, Empty } from '../ui/primitives.jsx'
+import { DriftChip, InvestmentPageHeader, Money, pct, Profit } from './shared.jsx'
 
 const number = (value, places = 2) =>
   (value ?? 0).toLocaleString('pt-BR', { maximumFractionDigits: places })
@@ -58,37 +58,40 @@ function ClassBlock({ node, rows, editor, open, onToggle }) {
   const value = rows.reduce((sum, row) => sum + row.value, 0)
   const cost = rows.reduce((sum, row) => sum + row.cost, 0)
   const profit = value - cost
-  const off = Math.abs(editor.sum - 1) > 0.005
+  const off = node.in_totals && Math.abs(editor.sum - 1) > 0.005
 
   return (
     <Card>
       <button onClick={onToggle}
-        className="flex w-full items-center gap-3 px-5 py-4 text-left">
-        <ChevronRight className={`size-4 text-muted transition ${open ? 'rotate-90' : ''}`} />
-        <span className="flex-1 text-[14px] font-bold">{node.name}</span>
-        <span className="tnum text-[13px]"><Money value={value} /></span>
-        <span className="hidden sm:block"><Profit value={profit}
+        className="flex min-h-[76px] w-full items-center gap-4 px-5 py-4 text-left
+          hover:bg-surface2/35 sm:px-6">
+        <ChevronRight className={`size-5 text-secondary transition ${open ? 'rotate-90' : ''}`} />
+        <span className="flex-1 text-[18px] font-bold text-strong">{node.name}</span>
+        <span className="tnum text-[16px] font-semibold text-strong">
+          <Money value={value} /></span>
+        <span className="hidden md:block"><Profit value={profit}
           pctValue={cost ? profit / cost : null} /></span>
         {node.in_totals
           ? <DriftChip drift={node.drift} />
-          : <span className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-faint">
-              fora dos alvos</span>}
+          : <span className="rounded-full border border-border bg-white/5 px-2.5
+              py-1 text-[12px] font-semibold text-secondary">
+              Fora da estratégia</span>}
       </button>
 
       {open && (
         <div className="overflow-x-auto border-t border-border/60">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="text-[11px] uppercase tracking-wider text-faint">
-                <th className="px-5 py-2 text-left font-medium">Ativo</th>
-                <th className="px-3 py-2 text-left font-medium">Setor</th>
-                <th className="px-3 py-2 text-right font-medium">Posição</th>
-                <th className="px-3 py-2 text-right font-medium">Qtd</th>
-                <th className="px-3 py-2 text-right font-medium">Preço médio</th>
-                <th className="px-3 py-2 text-right font-medium">Cotação</th>
-                <th className="px-3 py-2 text-right font-medium">Rentab.</th>
-                <th className="px-3 py-2 text-right font-medium">% real</th>
-                <th className="px-3 py-2 text-right font-medium">% obj</th>
+          <table className="invest-table invest-responsive-table w-full text-[15px]">
+            <thead className="bg-table-head text-[14px] text-strong">
+              <tr className="h-16 border-b border-white/15">
+                <th className="px-5 text-left font-bold">Ativo</th>
+                <th className="px-3 text-left font-bold">Setor</th>
+                <th className="px-3 text-right font-bold">Posição</th>
+                <th className="px-3 text-right font-bold">Quantidade</th>
+                <th className="px-3 text-right font-bold">Preço médio</th>
+                <th className="px-3 text-right font-bold">Cotação</th>
+                <th className="px-3 text-right font-bold">Rentabilidade</th>
+                <th className="px-3 text-right font-bold">Atual</th>
+                <th className="px-3 text-right font-bold">Objetivo</th>
                 <th className="px-2 py-2" />
               </tr>
             </thead>
@@ -97,40 +100,52 @@ function ClassBlock({ node, rows, editor, open, onToggle }) {
                 const real = value ? row.value / value : 0
                 const target = editor.targets[row.ticker] ?? row.target_pct
                 return (
-                  <tr key={row.ticker} className="border-t border-border/40">
-                    <td className="px-5 py-2">
-                      <span className="font-semibold">{row.ticker}</span>
-                      {row.stale && <span className="ml-2 text-[11px] text-amber"
+                  <tr key={row.ticker} className="min-h-[72px] border-b border-border/60
+                    last:border-0">
+                    <td data-primary="true" data-label="Ativo" className="px-5 py-4">
+                      <span className="font-bold text-strong">{row.ticker}</span>
+                      {row.stale && <span className="ml-2 text-[12px] text-attention"
                         title="Cotação defasada ou indisponível">defasada</span>}
                     </td>
-                    <td className="px-3 py-2 text-muted">{row.sector || '—'}</td>
-                    <td className="tnum px-3 py-2 text-right"><Money value={row.value} /></td>
-                    <td className="tnum px-3 py-2 text-right text-muted">
+                    <td data-label="Setor" className="px-3 py-4 text-secondary">
+                      {row.sector || '—'}</td>
+                    <td data-label="Posição" className="tnum px-3 py-4 text-right
+                      font-semibold text-brand-soft"><Money value={row.value} /></td>
+                    <td data-label="Quantidade" className="tnum px-3 py-4 text-right
+                      text-secondary">
                       {row.quantity ? number(row.quantity, 8) : '—'}</td>
-                    <td className="tnum px-3 py-2 text-right text-muted">
+                    <td data-label="Preço médio" className="tnum px-3 py-4 text-right
+                      text-secondary">
                       {row.avg_price ? brl(row.avg_price) : '—'}</td>
-                    <td className="tnum px-3 py-2 text-right text-muted">
+                    <td data-label="Cotação" className="tnum px-3 py-4 text-right
+                      text-secondary">
                       {row.price ? brl(row.price) : '—'}</td>
-                    <td className="px-3 py-2 text-right">
+                    <td data-label="Rentabilidade" className="px-3 py-4 text-right">
                       <Profit value={row.profit} pctValue={row.profit_pct} /></td>
-                    <td className="tnum px-3 py-2 text-right text-muted">{pct(real)}</td>
-                    <td className="px-3 py-2 text-right">
-                      <input value={(target * 100).toFixed(1)}
-                        onChange={(e) => editor.change(row.ticker, e.target.value)}
-                        inputMode="decimal"
-                        className="tnum w-[64px] rounded-lg border border-border
-                          bg-surface2 px-2 py-1 text-right focus:border-brand" />
+                    <td data-label="Atual" className="tnum px-3 py-4 text-right
+                      text-secondary">{pct(real)}</td>
+                    <td data-label="Objetivo" className="px-3 py-4 text-right">
+                      {node.in_totals ? (
+                        <input value={(target * 100).toFixed(1)}
+                          onChange={(e) => editor.change(row.ticker, e.target.value)}
+                          inputMode="decimal"
+                          className="tnum w-[72px] rounded-lg border border-border
+                            bg-surface2 px-2 py-2 text-right text-[15px]
+                            focus:border-brand" />
+                      ) : <span className="text-subtle">Não se aplica</span>}
                     </td>
-                    <td className="px-2 py-2">
-                      <button onClick={() => editor.toggleLock(row.ticker)}
-                        title={editor.locked.has(row.ticker)
-                          ? 'Alvo travado' : 'Travar alvo'}
-                        className={`rounded-lg p-1.5 ${editor.locked.has(row.ticker)
-                          ? 'text-brand' : 'text-faint hover:text-muted'}`}>
-                        {editor.locked.has(row.ticker)
-                          ? <Lock className="size-3.5" />
-                          : <LockOpen className="size-3.5" />}
-                      </button>
+                    <td data-label="Travar objetivo" className="px-2 py-4">
+                      {node.in_totals && (
+                        <button onClick={() => editor.toggleLock(row.ticker)}
+                          title={editor.locked.has(row.ticker)
+                            ? 'Alvo travado' : 'Travar alvo'}
+                          className={`rounded-lg p-2 ${editor.locked.has(row.ticker)
+                            ? 'text-brand' : 'text-subtle hover:text-secondary'}`}>
+                          {editor.locked.has(row.ticker)
+                            ? <Lock className="size-3.5" />
+                            : <LockOpen className="size-3.5" />}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )
@@ -138,20 +153,23 @@ function ClassBlock({ node, rows, editor, open, onToggle }) {
             </tbody>
           </table>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t
-            border-border/60 px-5 py-3">
-            <span className={`tnum text-[12px] ${off ? 'text-amber' : 'text-green'}`}>
-              Soma dos alvos: {pct(editor.sum)}
-              {off && ' — normalize antes de salvar ou deixe assim e o app avisa'}
-            </span>
-            {editor.dirty && (
-              <span className="flex gap-2">
-                <Button variant="ghost" onClick={editor.reset}>Descartar</Button>
-                <Button variant="primary" onClick={editor.save} disabled={editor.busy}>
-                  Salvar alvos</Button>
+          {node.in_totals && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t
+              border-border/60 px-5 py-4">
+              <span className={`tnum text-[14px]
+                ${off ? 'text-attention' : 'text-projected'}`}>
+                Soma dos objetivos: {pct(editor.sum)}
+                {off && '. Ajuste antes de salvar.'}
               </span>
-            )}
-          </div>
+              {editor.dirty && (
+                <span className="flex gap-2">
+                  <Button variant="ghost" onClick={editor.reset}>Descartar</Button>
+                  <Button variant="primary" onClick={editor.save} disabled={editor.busy}>
+                    Salvar objetivos</Button>
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
     </Card>
@@ -159,7 +177,13 @@ function ClassBlock({ node, rows, editor, open, onToggle }) {
 }
 
 export function Carteira({ data, onSaveTargets, onRefresh, busy }) {
-  const [open, setOpen] = useState(() => new Set([data.allocation[0]?.node]))
+  const orderedAllocation = useMemo(
+    () => orderPortfolioNodes(data.allocation, data.policy || []),
+    [data.allocation, data.policy],
+  )
+  const [open, setOpen] = useState(() => new Set([
+    orderedAllocation.find((node) => node.in_totals)?.node || orderedAllocation[0]?.node,
+  ]))
   const byNode = useMemo(() => {
     const out = {}
     data.positions.forEach((position) => {
@@ -179,22 +203,35 @@ export function Carteira({ data, onSaveTargets, onRefresh, busy }) {
   const stale = quotes.filter((quote) => quote.stale).length
   const updated = quotes.map((quote) => quote.updated_at).filter(Boolean).sort().pop()
 
-  if (!data.positions.length) return <Empty>Nenhum ativo cadastrado ainda.</Empty>
+  if (!data.positions.length) {
+    return (
+      <div className="flex flex-col gap-6">
+        <InvestmentPageHeader eyebrow="Carteira" title="Posições e objetivos"
+          description="Consulte cada classe, acompanhe o desempenho e ajuste os objetivos dos ativos." />
+        <Card><Empty>Nenhum ativo cadastrado ainda.</Empty></Card>
+      </div>
+    )
+  }
 
   return (
-    <div className="flex flex-col gap-3">
-      {data.allocation.filter((node) => (byNode[node.node] || []).length).map((node) => (
-        <ClassBlock key={node.node} node={node} rows={byNode[node.node]}
-          editor={editors[node.node]} open={open.has(node.node)}
-          onToggle={() => setOpen((current) => {
-            const next = new Set(current)
-            next.has(node.node) ? next.delete(node.node) : next.add(node.node)
-            return next
-          })} />
-      ))}
+    <div className="flex flex-col gap-6">
+      <InvestmentPageHeader eyebrow="Carteira" title="Posições e objetivos"
+        description="Consulte cada classe, acompanhe o desempenho e ajuste os objetivos dos ativos." />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 px-1 text-[12px]
-        text-faint">
+      <div className="flex flex-col gap-4">
+        {orderedAllocation.filter((node) => (byNode[node.node] || []).length).map((node) => (
+          <ClassBlock key={node.node} node={node} rows={byNode[node.node]}
+            editor={editors[node.node]} open={open.has(node.node)}
+            onToggle={() => setOpen((current) => {
+              const next = new Set(current)
+              next.has(node.node) ? next.delete(node.node) : next.add(node.node)
+              return next
+            })} />
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 px-1 text-[14px]
+        text-subtle">
         <span>
           {updated ? `Cotações de ${updated.replace('T', ' ').slice(0, 16)}` : 'Sem cotações'}
           {stale > 0 && <span className="ml-2 text-amber">{stale} defasada(s)</span>}

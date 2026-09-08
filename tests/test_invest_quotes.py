@@ -76,6 +76,24 @@ def test_missing_lists_only_quote_priced_assets():
     assert [entry["ticker"] for entry in pending] == ["VOO"]
 
 
+def test_foreign_balance_ensures_the_exchange_rate():
+    assets = A.load([
+        {"ticker": "INTER-GLOBAL", "node": "livre", "valuation": "balance",
+         "currency": "USD"},
+        {"ticker": "EURO-CASH", "node": "livre", "valuation": "balance",
+         "currency": "EUR"},
+    ])
+
+    pending = Q.missing({}, assets)
+
+    assert pending == [
+        {"ticker": "EURBRL", "kind": "fx", "quote_symbol": "CURRENCY:EURBRL"},
+        {"ticker": "USDBRL", "kind": "fx", "quote_symbol": "CURRENCY:USDBRL"},
+    ]
+    assert Q.rows_for(pending)[0]["price"] == \
+        '=GOOGLEFINANCE("CURRENCY:EURBRL")'
+
+
 def test_rows_for_carry_the_formula_and_the_timestamp():
     row = Q.rows_for([{"ticker": "WEGE3", "kind": "stock_br"}])[0]
     assert row["price"] == '=GOOGLEFINANCE("BVMF:WEGE3")'

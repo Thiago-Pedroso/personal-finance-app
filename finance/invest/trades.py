@@ -73,12 +73,15 @@ def by_ticker(trades: list[dict]) -> dict:
     return out
 
 
+def total_native(trade: dict) -> float:
+    """Valor da operação na moeda de origem. Provento com cotas usa valor por cota;
+    sem cotas, `price` já é o total."""
+    if trade["side"] == "BALANCE" or (trade["side"] in INCOME_SIDES
+                                      and trade["quantity"] <= 0):
+        return trade["price"]
+    return (trade["quantity"] or 1.0) * trade["price"]
+
+
 def total_brl(trade: dict) -> float:
-    """Valor da operação em reais. Provento com cotas usa valor por cota; sem cotas,
-    `price` já é o total."""
-    if trade["side"] in INCOME_SIDES and trade["quantity"] <= 0:
-        return trade["price"] * trade["fx_rate"]
-    if trade["side"] == "BALANCE":
-        return trade["price"] * trade["fx_rate"]
-    quantity = trade["quantity"] or 1.0
-    return quantity * trade["price"] * trade["fx_rate"]
+    """Valor da operação em reais, pelo câmbio gravado no próprio lançamento."""
+    return total_native(trade) * trade["fx_rate"]

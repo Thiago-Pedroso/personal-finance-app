@@ -22,16 +22,11 @@ export function InvestSpace({ tab, setTab, onError }) {
   if (invest.error && !invest.data) {
     return (
       <div className="mx-auto max-w-md py-20 text-center">
-        <p className="text-[14px] text-muted">
+        <p className="text-[18px] font-bold text-strong">
           Ainda não há carteira para mostrar.
         </p>
-        <p className="mt-3 text-[13px] text-faint">
-          Gere o relatório com{' '}
-          <code className="rounded bg-white/10 px-1.5 py-0.5">
-            uv run python -m finance.invest report</code>{' '}
-          ou popule uma carteira de demonstração com{' '}
-          <code className="rounded bg-white/10 px-1.5 py-0.5">
-            uv run python -m finance.seed --invest</code>.
+        <p className="mt-3 text-[14px] leading-6 text-secondary">
+          Configure seus investimentos para acompanhar posições, reservas e aportes.
         </p>
         <Button className="mt-5" onClick={invest.load}>Tentar de novo</Button>
       </div>
@@ -59,12 +54,15 @@ export function InvestSpace({ tab, setTab, onError }) {
   return (
     <>
       {invest.busy && (
-        <div className="mb-3 flex items-center gap-2 text-[12px] text-muted">
-          <RefreshCw className="size-3.5 animate-[spin_.8s_linear_infinite]" />
-          atualizando a carteira…
+        <div className="mb-4 flex items-center gap-2 text-[14px] text-secondary">
+          <RefreshCw className="size-4 animate-[spin_.8s_linear_infinite]" />
+          Atualizando a carteira…
         </div>
       )}
-      {tab === 'visao' && <Visao data={invest.data} goTab={setTab} />}
+      {tab === 'visao' && (
+        <Visao data={invest.data} goTab={setTab} onRefresh={invest.refresh}
+          busy={invest.busy} />
+      )}
       {tab === 'carteira' && (
         <Carteira data={invest.data} onSaveTargets={saveTargets}
           onRefresh={invest.refresh} busy={invest.busy} />

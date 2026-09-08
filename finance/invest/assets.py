@@ -33,6 +33,15 @@ def normalize(rec: dict) -> dict:
     }
 
 
+def foreign_balances(assets: dict) -> dict:
+    """{ticker: moeda} dos ativos por saldo que não estão em reais, que são os que
+    dependem de câmbio para virar patrimônio."""
+    return {ticker: (asset["currency"] or "BRL").upper()
+            for ticker, asset in assets.items()
+            if asset["active"] and asset["valuation"] in ("balance", "pluggy")
+            and (asset["currency"] or "BRL").upper() != "BRL"}
+
+
 def load(records=None) -> dict:
     rows = records if records is not None else io.read(TAB)
     return {a["ticker"]: a for a in map(normalize, rows) if a["ticker"]}

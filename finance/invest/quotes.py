@@ -13,6 +13,7 @@ zerar a carteira.
 from datetime import datetime, timedelta
 
 from .. import sheets
+from . import assets as A
 from . import sheets_io as io
 
 TAB = "Quotes"
@@ -57,7 +58,10 @@ def symbol_for(ticker: str, kind: str) -> str | None:
     if kind == "crypto":
         return f"CURRENCY:{code}USD"
     if kind == "fx":
-        return "CURRENCY:USDBRL"
+        pair = code.replace("/", "")
+        if len(pair) == 3:
+            pair += "BRL"
+        return f"CURRENCY:{pair}"
     return None
 
 
@@ -69,7 +73,7 @@ def formula_for(symbol: str | None, kind: str) -> str | None:
     if kind in ("stock_br", "fii_br"):
         return f'=GOOGLEFINANCE("{symbol}")'
     if kind == "fx":
-        return '=GOOGLEFINANCE("CURRENCY:USDBRL")'
+        return f'=GOOGLEFINANCE("{symbol}")'
     if kind in ("stock_us", "crypto"):
         return f'=GOOGLEFINANCE("{symbol}")*GOOGLEFINANCE("CURRENCY:USDBRL")'
     return None
@@ -132,6 +136,14 @@ def missing(quotes: dict, assets: dict) -> list[dict]:
         kind = asset.get("quote_kind") or guess_kind(ticker)
         out.append({"ticker": ticker, "kind": kind,
                     "quote_symbol": asset.get("quote_symbol") or symbol_for(ticker, kind)})
+    needed_fx = {f"{currency}BRL"
+                 for currency in A.foreign_balances(assets).values()}
+    pending_tickers = {entry["ticker"] for entry in out}
+    for ticker in sorted(needed_fx):
+        if ticker in quotes or ticker in pending_tickers:
+            continue
+        out.append({"ticker": ticker, "kind": "fx",
+                    "quote_symbol": symbol_for(ticker, "fx")})
     return out
 
 

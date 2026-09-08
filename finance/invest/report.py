@@ -23,6 +23,7 @@ from . import trades as T
 
 SNAPSHOT_TAB = "InvestSnapshots"
 CONTRIBUTION_KEY = "invest_monthly_contribution"
+CONTRIBUTION_MODE_KEY = "invest_contribution_mode"
 
 
 def problems(tree: dict, assets: dict, positions: dict, quote_map: dict) -> list[str]:
@@ -37,6 +38,11 @@ def problems(tree: dict, assets: dict, positions: dict, quote_map: dict) -> list
     for ticker in sorted(assets):
         if assets[ticker]["node"] not in tree:
             out.append(f"O ativo {ticker} aponta para um nó que não existe na política.")
+    for ticker, currency in sorted(A.foreign_balances(assets).items()):
+        quote = quote_map.get(f"{currency}BRL") or {}
+        if quote.get("price") is None:
+            out.append(f"Sem câmbio {currency}/BRL: o saldo de {ticker} está em "
+                       f"{currency} e não foi convertido para reais.")
     stale = sorted(t for t, q in quote_map.items() if q["stale"])
     if stale:
         out.append("Cotação defasada ou indisponível: " + ", ".join(stale) + ".")
@@ -55,13 +61,17 @@ def load_pending() -> dict:
 
 def build(assets: dict, trades: list, quote_map: dict, tree: dict, accounts: dict,
           contribution: float, history: list | None = None,
-          balances: dict | None = None, pending: dict | None = None) -> dict:
+          balances: dict | None = None, pending: dict | None = None,
+          contribution_mode: str = "spread") -> dict:
+    contribution_mode = (contribution_mode if contribution_mode in PL.MODES
+                         else "spread")
     positions = PF.build(assets, trades, quote_map, balances)
     totals = PF.totals(positions, tree)
     spread = PF.allocation(positions, tree)
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "contribution": contribution,
+        "contribution_mode": contribution_mode,
         "totals": totals,
         "wealth": PF.wealth(positions, tree),
         "policy": [{**tree[node], "weight": P.weight(tree, node),
@@ -75,7 +85,7 @@ def build(assets: dict, trades: list, quote_map: dict, tree: dict, accounts: dic
         "nodes": PF.by_node(positions),
         "accounts": [accounts[key] for key in sorted(accounts)],
         "sectors": A.sectors(assets),
-        "plan": PL.build(positions, assets, tree, contribution),
+        "plan": PL.build(positions, assets, tree, contribution, contribution_mode),
         "quotes": {ticker: quote_map[ticker] for ticker in sorted(quote_map)},
         "history": history or [],
         "pending": pending or {},
@@ -126,6 +136,8 @@ def generate(write_snapshot: bool = True) -> dict:
     today = date.today().isoformat()
     snapshots = sheets.read_records(SNAPSHOT_TAB)
     contribution = float(sheets.read_config(CONTRIBUTION_KEY, 0) or 0)
+    contribution_mode = str(sheets.read_config(CONTRIBUTION_MODE_KEY, "spread")
+                            or "spread")
     positions = PF.build(assets, trades, quote_map)
 
     if write_snapshot:
@@ -137,7 +149,8 @@ def generate(write_snapshot: bool = True) -> dict:
             sheets.update_fields(Q.TAB, changes)
 
     report = build(assets, trades, quote_map, tree, accounts, contribution,
-                   history_from(snapshots), pending=load_pending())
+                   history_from(snapshots), pending=load_pending(),
+                   contribution_mode=contribution_mode)
     path = REPORTS_DIR / "invest.json"
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     total = report["totals"]

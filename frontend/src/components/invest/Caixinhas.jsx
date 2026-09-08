@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { PiggyBank, Plus } from 'lucide-react'
+import { CheckCircle2, PiggyBank, Plus, TriangleAlert } from 'lucide-react'
 
-import { brl } from '../../lib/format.js'
+import { brl, money } from '../../lib/format.js'
+import { buildBucketReconciliations } from '../../lib/investBuckets.js'
 import { Modal } from '../ui/Modal.jsx'
-import { Button, Card, CardHead, Empty } from '../ui/primitives.jsx'
-import { Money, pct } from './shared.jsx'
+import { Button, Card, Empty } from '../ui/primitives.jsx'
+import { InvestmentCardHeader, InvestmentPageHeader, Money } from './shared.jsx'
 
 // Tudo que não é posição de mercado: reserva com destino, dinheiro esperando aporte e
 // saldo sem compromisso. Cada linha é um saldo com nome, e o papel vem do nó da política.
@@ -35,42 +36,64 @@ function groupsOf(data) {
   return out
 }
 
+// Num saldo em moeda estrangeira quem se informa é a moeda de origem: o câmbio é do app,
+// nunca do usuário.
 function UpdateModal({ bucket, onClose, onConfirm, busy }) {
-  const [value, setValue] = useState(String(bucket.value.toFixed(2)))
+  const currency = bucket.currency || 'BRL'
+  const rate = currency === 'BRL' ? 1 : (bucket.fx_rate || null)
+  const current = currency === 'BRL' ? bucket.value : (bucket.native_value || 0)
+  const [value, setValue] = useState(String(current.toFixed(2)))
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const parsed = Number(String(value).replace(',', '.')) || 0
-  const difference = parsed - bucket.value
+  const difference = parsed - current
 
   return (
     <Modal open onOpenChange={(next) => !next && onClose()}
       title={`Atualizar ${bucket.name}`}
-      sub="o saldo informado vira lançamento, e a diferença entra como rendimento">
+      sub={currency === 'BRL'
+        ? 'Informe o saldo atual para registrar a variação.'
+        : `Informe o saldo atual em ${currency}. A conversão para reais é do app.`}>
       <div className="flex flex-col gap-3">
-        <label className="flex items-center gap-3 text-[13px]">
-          <span className="w-[70px] text-muted">Data</span>
+        <label className="flex items-center gap-3 text-[14px]">
+          <span className="w-[70px] text-secondary">Data</span>
           <input value={date} onChange={(e) => setDate(e.target.value)}
             className="rounded-lg border border-border bg-surface2 px-3 py-2" />
         </label>
-        <label className="flex items-center gap-3 text-[13px]">
-          <span className="w-[70px] text-muted">Saldo</span>
+        <label className="flex items-center gap-3 text-[14px]">
+          <span className="w-[70px] text-secondary">
+            Saldo{currency !== 'BRL' && (
+              <span className="ml-1 text-[12px] text-faint">{currency}</span>)}
+          </span>
           <input value={value} inputMode="decimal"
             onChange={(e) => setValue(e.target.value)}
             className="tnum flex-1 rounded-lg border border-border bg-surface2 px-3
               py-2 text-right" />
         </label>
-        <p className="text-[12px] text-faint">
-          Saldo atual {brl(bucket.value)}.{' '}
+        <p className="text-[14px] text-subtle">
+          Saldo atual {money(current, currency)}.{' '}
           {Math.abs(difference) > 0.005 && (
             <span className={difference > 0 ? 'text-green' : 'text-red'}>
               {difference > 0 ? 'Rendimento' : 'Retirada'} de{' '}
-              {brl(Math.abs(difference))}.
+              {money(Math.abs(difference), currency)}.
+            </span>
+          )}
+          {currency !== 'BRL' && rate && (
+            <span className="block text-[13px] text-faint">
+              {brl(parsed * rate)} pelo câmbio de hoje,
+              {' '}{rate.toFixed(4).replace('.', ',')} por {currency}.
+            </span>
+          )}
+          {currency !== 'BRL' && !rate && (
+            <span className="block text-[13px] text-amber">
+              Sem cotação {currency}/BRL: o valor em reais fica pendente.
             </span>
           )}
         </p>
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
           <Button variant="primary" disabled={busy}
-            onClick={() => onConfirm({ ticker: bucket.ticker, date, value: parsed })}>
+            onClick={() => onConfirm({ ticker: bucket.ticker, date, value: parsed,
+              currency })}>
             Gravar saldo</Button>
         </div>
       </div>
@@ -85,22 +108,22 @@ function NewBucketModal({ accountId, node, onClose, onConfirm, busy }) {
 
   return (
     <Modal open onOpenChange={(next) => !next && onClose()} title="Nova caixinha"
-      sub="uma caixinha é um saldo com nome: sem meta, sem prazo">
+      sub="Crie um saldo identificado dentro das suas reservas.">
       <div className="flex flex-col gap-3">
-        <label className="flex items-center gap-3 text-[13px]">
-          <span className="w-[70px] text-muted">Nome</span>
+        <label className="flex items-center gap-3 text-[14px]">
+          <span className="w-[70px] text-secondary">Nome</span>
           <input value={name} onChange={(e) => setName(e.target.value)}
             placeholder="Viagem"
             className="flex-1 rounded-lg border border-border bg-surface2 px-3 py-2" />
         </label>
-        <label className="flex items-center gap-3 text-[13px]">
-          <span className="w-[70px] text-muted">Saldo</span>
+        <label className="flex items-center gap-3 text-[14px]">
+          <span className="w-[70px] text-secondary">Saldo</span>
           <input value={value} inputMode="decimal"
             onChange={(e) => setValue(e.target.value)} placeholder="0,00"
             className="tnum flex-1 rounded-lg border border-border bg-surface2 px-3
               py-2 text-right" />
         </label>
-        {ticker && <p className="text-[12px] text-faint">Identificador: {ticker}</p>}
+        {ticker && <p className="text-[13px] text-subtle">Identificador: {ticker}</p>}
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
           <Button variant="primary" disabled={!ticker || busy}
@@ -120,20 +143,23 @@ export function Caixinhas({ data, onApply, busy }) {
   const [creating, setCreating] = useState(null)
   const groups = groupsOf(data)
   const pending = (data.pending?.buckets) || {}
-  const bucketNode = (data.policy || []).find((node) => node.role === 'reserved')
+  const reconciliations = buildBucketReconciliations({
+    accounts: data.accounts, positions: data.positions, reports: pending,
+  })
 
   if (!groups.length) {
     return (
-      <Empty>
-        Nada por aqui ainda. Crie um nó com papel <b>reserved</b>, <b>to_invest</b> ou
-        <b> free</b> na política e um ativo por saldo dentro dele para acompanhar
-        reserva, dinheiro a caminho da corretora e saldo livre.
-      </Empty>
+      <div className="flex flex-col gap-6">
+        <InvestmentPageHeader eyebrow="Reservas e saldo"
+          title="Dinheiro fora da estratégia"
+          description="Acompanhe valores reservados, saldos livres e recursos que ainda serão transformados em posições." />
+        <Card><Empty>Nenhuma reserva ou saldo separado da estratégia.</Empty></Card>
+      </div>
     )
   }
 
-  const updateBalance = async ({ ticker, date, value }) => {
-    await onApply({ balances: [{ ticker, date, value }] })
+  const updateBalance = async ({ ticker, date, value, currency }) => {
+    await onApply({ balances: [{ ticker, date, value, currency }] })
     setUpdating(null)
   }
   const createBucket = async ({ asset, balance }) => {
@@ -142,34 +168,42 @@ export function Caixinhas({ data, onApply, busy }) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
+      <InvestmentPageHeader eyebrow="Reservas e saldo"
+        title="Dinheiro fora da estratégia"
+        description="Acompanhe valores reservados, saldos livres e recursos que ainda serão transformados em posições." />
+
       {groups.map(({ role, title, hint, rows, accounts }) => {
         const total = rows.reduce((sum, row) => sum + row.value, 0)
-        const bucketAccount = rows.map((row) => accounts[row.account])
-          .find((account) => account?.kind === 'bucket')
-        const report = bucketAccount ? pending[bucketAccount.id] : null
-        const unallocated = report?.unallocated ?? 0
         return (
           <Card key={role}>
-            <CardHead title={title}
-              sub={report
-                ? `${hint} · a instituição informa ${brl(report.total)}`
-                : hint}
-              right={role === 'reserved' ? (
-                <Button variant="ghost"
-                  onClick={() => setCreating({ accountId: rows[0]?.account,
-                    node: rows[0]?.node })}>
-                  <Plus className="size-4" /> Caixinha
-                </Button>
-              ) : null} />
-            <div className="flex flex-col gap-2 px-5 pb-4">
+            <InvestmentCardHeader title={title} description={hint}
+              right={(
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-[13px] text-subtle">Total</p>
+                    <p className="tnum mt-1 text-[20px] font-bold text-strong">
+                      <Money value={total} /></p>
+                  </div>
+                  {role === 'reserved' && (
+                    <Button variant="ghost"
+                      onClick={() => setCreating({ accountId: rows[0]?.account,
+                        node: rows[0]?.node })}>
+                      <Plus className="size-4" /> Nova caixinha
+                    </Button>
+                  )}
+                </div>
+              )} />
+            <div className="grid gap-3 px-5 pb-5 sm:grid-cols-2 sm:px-6
+              sm:pb-6 xl:grid-cols-3">
               {rows.map((row) => (
                 <button key={row.ticker} onClick={() => setUpdating(row)}
-                  className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-xl
-                    px-3 py-2 text-left hover:bg-surface2/60 sm:grid-cols-[1fr_120px_auto]">
+                  className="flex min-h-[112px] flex-col justify-between rounded-2xl
+                    border border-border bg-surface2/40 p-4 text-left
+                    transition hover:border-brand/40 hover:bg-surface2/70">
                   <div>
-                    <p className="text-[13.5px] font-semibold">{row.name}</p>
-                    <p className="text-[11px] text-faint">
+                    <p className="text-[16px] font-bold text-strong">{row.name}</p>
+                    <p className="mt-1 text-[13px] text-subtle">
                       {row.price_source === 'pluggy' ? 'sincronizado' : (
                         row.last_balance_date
                           ? `atualizado em ${row.last_balance_date}`
@@ -178,39 +212,77 @@ export function Caixinhas({ data, onApply, busy }) {
                       {accounts[row.account] && ` · ${accounts[row.account].name}`}
                     </p>
                   </div>
-                  <div className="hidden h-1.5 overflow-hidden rounded-full bg-surface2
-                    sm:block">
-                    <div className="h-full rounded-full bg-brand/70"
-                      style={{ width: `${total ? (row.value / total) * 100 : 0}%` }} />
-                  </div>
-                  <span className="tnum text-[13.5px]"><Money value={row.value} /></span>
+                  <span className="tnum mt-5 text-[19px] font-bold text-brand-soft">
+                    <Money value={row.value} />
+                    {row.currency && row.currency !== 'BRL' && (
+                      <span className="ml-2 text-[13px] font-semibold text-faint">
+                        {money(row.native_value, row.currency)}</span>
+                    )}</span>
                 </button>
               ))}
-              <div className="flex items-center justify-between border-t border-border/60
-                px-3 pt-3 text-[13px]">
-                <span className="text-muted">Soma</span>
-                <span className="tnum font-semibold"><Money value={total} /></span>
-              </div>
-              {report && Math.abs(unallocated) > 0.01 && (
-                <p className={`px-3 text-[12px] ${unallocated > 0 ? 'text-amber' : 'text-red'}`}>
-                  {unallocated > 0
-                    ? `${brl(unallocated)} na instituição ainda não estão em nenhuma caixinha.`
-                    : `As caixinhas somam ${brl(-unallocated)} a mais que a instituição informa.`}
-                </p>
-              )}
-              {report && Math.abs(unallocated) <= 0.01 && (
-                <p className="px-3 text-[12px] text-green">Confere com a instituição.</p>
-              )}
             </div>
           </Card>
         )
       })}
 
-      <p className="flex items-center gap-2 px-1 text-[12px] text-faint">
-        <PiggyBank className="size-3.5" />
-        Nada aqui entra no rebalanceamento: aparece no patrimônio e não recebe aporte
-        automático.
-      </p>
+      {reconciliations.length > 0 && (
+        <Card>
+          <InvestmentCardHeader title="Conciliação com instituições"
+            description="Compara o total informado pela instituição com os saldos que você separou dentro dela." />
+          <div className="grid gap-3 px-5 pb-5 sm:px-6 sm:pb-6">
+            {reconciliations.map((reconciliation) => {
+              const matched = Math.abs(reconciliation.difference) <= 0.01
+              return (
+                <div key={reconciliation.accountId}
+                  className="rounded-2xl border border-border bg-surface2/40 p-4">
+                  <div className="flex flex-col justify-between gap-4 sm:flex-row
+                    sm:items-center">
+                    <div>
+                      <p className="text-[16px] font-bold text-strong">
+                        {reconciliation.accountName}</p>
+                      <div className="mt-3 flex flex-wrap gap-x-8 gap-y-3">
+                        <div>
+                          <p className="text-[13px] text-subtle">Na instituição</p>
+                          <p className="tnum mt-1 text-[16px] font-semibold text-strong">
+                            <Money value={reconciliation.total} /></p>
+                        </div>
+                        <div>
+                          <p className="text-[13px] text-subtle">Saldos separados</p>
+                          <p className="tnum mt-1 text-[16px] font-semibold text-strong">
+                            <Money value={reconciliation.registered} /></p>
+                        </div>
+                      </div>
+                    </div>
+                    {matched ? (
+                      <p className="flex items-center gap-2 text-[14px] font-semibold
+                        text-projected">
+                        <CheckCircle2 className="size-5 shrink-0" />
+                        Valores conferidos
+                      </p>
+                    ) : (
+                      <p className={`flex max-w-sm items-start gap-2 text-[14px]
+                        font-semibold ${reconciliation.difference > 0
+                          ? 'text-attention' : 'text-red'}`}>
+                        <TriangleAlert className="mt-0.5 size-5 shrink-0" />
+                        {reconciliation.difference > 0
+                          ? `${brl(reconciliation.difference)} ainda não foram distribuídos entre os saldos.`
+                          : `Os saldos separados excedem o total em ${brl(-reconciliation.difference)}.`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      )}
+
+      <div className="flex items-start gap-3 rounded-2xl border border-border
+        bg-surface2/35 px-5 py-4 text-[14px] leading-5 text-secondary">
+        <PiggyBank className="mt-0.5 size-5 shrink-0 text-brand" />
+        <p>Esses valores aparecem no patrimônio, mas ficam separados das sugestões
+          automáticas de aporte.</p>
+      </div>
 
       {updating && (
         <UpdateModal bucket={updating} busy={busy}

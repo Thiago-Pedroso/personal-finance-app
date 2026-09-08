@@ -15,6 +15,9 @@ if [ "${1:-}" = "--sync" ]; then
   uv run python -m finance.sync --days 30
   echo "==> Aplicando regras de categorizacao nas transacoes novas..."
   uv run python -m finance.categorize
+  echo "==> Atualizando saldos das contas e corretoras..."
+  uv run python -m finance.invest sync --apply-balances \
+    || echo "==> Sem carteira de investimentos: saldos nao atualizados."
 fi
 
 echo "==> Atualizando relatorios a partir do Google Sheets..."

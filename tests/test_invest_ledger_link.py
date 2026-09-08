@@ -1,4 +1,4 @@
-"""Proventos e aportes a alocar, a partir do que já está no Ledger."""
+"""Proventos reconhecidos a partir do que já está no Ledger."""
 
 from finance.invest import assets as A
 from finance.invest import ledger_link as LL
@@ -10,8 +10,6 @@ ASSETS = A.load([
 ])
 POSITIONS = {"VISC11": {"quantity": 10.0}, "HGLG11": {"quantity": 12.0},
              "BBAS3": {"quantity": 25.0}}
-TREATMENTS = {"Investimentos": "poupança", "Reserva": "poupança",
-              "Alimentação": "fluxo"}
 
 
 def _record(**kwargs):
@@ -68,58 +66,3 @@ def test_outgoing_transaction_is_never_read_as_income():
                        signed_amount=-8.40)]
     trades, _ = LL.income_from_ledger(records, ASSETS, POSITIONS, [])
     assert trades == []
-
-
-def test_savings_transfer_without_a_trade_shows_up_as_unallocated():
-    records = [
-        _record(id="tx-9", description="TED CORRETORA", signed_amount=-3000.0,
-                category="Investimentos", subcategory="Aporte"),
-        _record(id="tx-10", description="Mercado", signed_amount=-120.0,
-                category="Alimentação"),
-    ]
-    pending = LL.unallocated(records, [], TREATMENTS)
-    assert len(pending) == 1
-    assert pending[0]["ledger_id"] == "tx-9"
-    assert pending[0]["amount"] == 3000.0
-
-
-def test_transfer_already_linked_disappears_from_the_list():
-    records = [_record(id="tx-9", description="TED CORRETORA", signed_amount=-3000.0,
-                       category="Investimentos")]
-    assert LL.unallocated(records, [{"ledger_id": "tx-9"}], TREATMENTS) == []
-
-
-def test_rules_fill_in_the_recurring_destination():
-    items = [{"description": "PIX PICPAY CAIXINHA", "amount": 500.0},
-             {"description": "TED DESCONHECIDA", "amount": 100.0}]
-    out = LL.apply_rules(items, [{"match": "picpay", "ticker": "RESERVA-EMERGENCIA"}])
-    assert out[0]["suggested_ticker"] == "RESERVA-EMERGENCIA"
-    assert "suggested_ticker" not in out[1]
-
-
-def test_savings_goal_reads_the_bucket_balance(tmp_path, monkeypatch):
-    """A meta para de pedir saldo digitado e passa a ler a caixinha de mesmo nome."""
-    import json
-
-    from finance import report as R
-
-    reports = tmp_path / "reports"
-    reports.mkdir()
-    (reports / "invest.json").write_text(json.dumps({"positions": [
-        {"ticker": "RESERVA-EMERGENCIA", "name": "Reserva de emergência",
-         "valuation": "balance", "value": 19240.0},
-        {"ticker": "BBAS3", "name": "BBAS3", "valuation": "quote", "value": 563.0},
-    ]}), encoding="utf-8")
-    monkeypatch.setattr(R, "REPORTS_DIR", reports)
-
-    budgets = {"savings_goals": [
-        {"name": "Reserva de emergência", "target": 40000, "current": 12000},
-        {"name": "Trocar o carro", "target": 30000, "current": 6420},
-    ]}
-    savings = R._savings(budgets, 0, 0, 0, 0)
-    goals = {goal["name"]: goal for goal in savings["goals"]}
-    assert goals["Reserva de emergência"]["current"] == 19240.0
-    assert goals["Reserva de emergência"]["source"] == "carteira"
-    # meta sem caixinha correspondente continua com o valor informado
-    assert goals["Trocar o carro"]["current"] == 6420.0
-    assert goals["Trocar o carro"]["source"] == "informado"

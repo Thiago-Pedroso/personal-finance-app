@@ -121,14 +121,16 @@ function Shell() {
             Finance Control
           </h1>
           <p className="mt-1 text-[12px] text-faint">
-            {dash
+            {investOnly
+              ? 'controle de investimentos'
+              : dash
               ? `${dash.total_transactions} transações · atualizado ${
                 new Date(dash.generated_at).toLocaleString('pt-BR')}`
-              : 'controle de investimentos'}
+              : 'controle financeiro'}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {dash && d.queue.length > 0 && (
+          {dash && !investOnly && d.queue.length > 0 && (
             <button onClick={() => setTab('review')}
               className="flex items-center gap-2 rounded-xl border border-blue/40
                 bg-blue/10 px-3 py-2 text-[13px] text-blue hover:bg-blue/20"
@@ -139,7 +141,7 @@ function Shell() {
                 font-bold">{d.queue.length}</span>
             </button>
           )}
-          {dash && <div className="flex gap-1 rounded-xl border border-border
+          {dash && !investOnly && <div className="flex gap-1 rounded-xl border border-border
             bg-surface2/70 p-1 text-[12.5px]">
             {['month', 'year'].map((mo) => (
               <button key={mo} onClick={() => d.setMode(mo)}
@@ -151,7 +153,7 @@ function Shell() {
               </button>
             ))}
           </div>}
-          {dash && (d.mode === 'month' ? (
+          {dash && !investOnly && (d.mode === 'month' ? (
             <select value={d.month || ''}
               onChange={(e) => d.setMonth(e.target.value)}
               className="rounded-xl border border-border bg-surface2 px-3 py-2
@@ -180,17 +182,20 @@ function Shell() {
               ? <EyeOff className="size-4" />
               : <Eye className="size-4" />}
           </Button>
-          {d.pendingSaves > 0 && (
+          {!investOnly && d.pendingSaves > 0 && (
             <span className="flex items-center gap-1.5 text-[12px] text-muted"
               title="As alterações já estão na tela e estão sendo gravadas.">
               <RefreshCw className="size-3.5 animate-[spin_.8s_linear_infinite]" />
               salvando {d.pendingSaves}
             </span>
           )}
-          <Button variant="ghost" onClick={d.refresh} disabled={d.busy}>
-            <RefreshCw className={`size-4 ${d.busy ? 'animate-[spin_.8s_linear_infinite]' : ''}`} />
-            Atualizar
-          </Button>
+          {!investOnly && (
+            <Button variant="ghost" onClick={d.refresh} disabled={d.busy}>
+              <RefreshCw className={`size-4 ${d.busy
+                ? 'animate-[spin_.8s_linear_infinite]' : ''}`} />
+              Atualizar
+            </Button>
+          )}
         </div>
       </header>
 
@@ -211,11 +216,12 @@ function Shell() {
         ))}
       </nav>
 
-      <nav className="sticky top-0 z-20 -mx-5 mt-3 flex flex-wrap gap-1 border-b
-        border-border px-5 pt-2 backdrop-blur-md">
+      <nav className={`sticky top-0 z-20 -mx-5 mt-3 flex gap-1 border-b
+        border-border px-5 pt-2 backdrop-blur-md ${investOnly
+          ? 'flex-nowrap overflow-x-auto' : 'flex-wrap'}`}>
         {(space.space === 'investimentos' ? INVEST_TABS : TABS).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
-            className={`relative px-4 py-2.5 text-[14px] font-semibold
+            className={`relative min-h-11 shrink-0 px-4 py-2.5 text-[14px] font-semibold
               transition ${tab === k
                 ? 'text-text' : 'text-muted hover:text-text'}`}>
             {label}

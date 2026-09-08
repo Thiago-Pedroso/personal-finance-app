@@ -20,6 +20,7 @@ from . import trades as T
 
 # Papel temporário e posição encerrada não são carteira: entram zerados e só fazem ruído.
 NOISE_TOLERANCE = 1e-9
+SYMBOLS = {"BRL": "R$", "USD": "US$", "EUR": "€", "GBP": "£"}
 
 
 def normalize_investment(raw, item_id: str) -> dict:
@@ -88,9 +89,14 @@ def fetch_accounts(item_ids=None) -> list[dict]:
     return out
 
 
+def money(value: float, currency: str = "BRL") -> str:
+    return f"{SYMBOLS.get(currency, currency)} {value:,.2f}"
+
+
 def reconcile_accounts(accounts_data: list[dict], positions: dict, assets: dict,
                        today: str) -> list[dict]:
-    """Saldo de conta é ativo por saldo: o ativo aponta para a conta em `pluggy_code`."""
+    """Saldo de conta é ativo por saldo: o ativo aponta para a conta em `pluggy_code`.
+    A comparação é na moeda da conta, então dólar nunca é confrontado com real."""
     by_id = {account["account_id"]: account for account in accounts_data}
     pending = []
     for ticker, asset in assets.items():
@@ -98,16 +104,19 @@ def reconcile_accounts(accounts_data: list[dict], positions: dict, assets: dict,
         account = by_id.get(code)
         if not account:
             continue
-        current = positions.get(ticker, {}).get("value", 0.0)
+        currency = (account["currency"] or asset["currency"] or "BRL").upper()
+        position = positions.get(ticker) or {}
+        current = position.get("native_value", position.get("value", 0.0))
         if abs(account["balance"] - current) <= 0.01:
             continue
         pending.append({
-            "kind": "balance_update", "ticker": ticker,
+            "kind": "balance_update", "ticker": ticker, "currency": currency,
             "difference": account["balance"] - current, "value": account["balance"],
             "message": f"{asset['name']}: saldo em conta é "
-                       f"R$ {account['balance']:,.2f}.",
+                       f"{money(account['balance'], currency)}.",
             "trade": {"date": today, "ticker": ticker, "side": "BALANCE",
-                      "price": account["balance"], "source": "pluggy",
+                      "price": account["balance"], "currency": currency,
+                      "source": "pluggy",
                       "note": "saldo informado pela instituição"}})
     return pending
 
@@ -219,6 +228,16 @@ def bucket_updates(report: dict, today: str, tolerance: float = 0.01) -> list[di
 def account_total(investments: list[dict], item_id: str) -> float:
     return sum(inv["balance"] for inv in investments
                if inv["item_id"] == str(item_id))
+
+
+def bucket_balances(positions: dict, assets: dict, account_id: str) -> dict:
+    return {
+        ticker: positions[ticker]["value"]
+        for ticker, asset in assets.items()
+        if asset["account"] == account_id
+        and asset["valuation"] == "balance"
+        and ticker in positions
+    }
 
 
 def suggested_trades(pending: list[dict]) -> list[dict]:
