@@ -121,6 +121,32 @@ def test_invalid_next_contribution_is_not_applied():
     assert "não pode ser negativo" in result["problems"][0]
 
 
+def test_allocation_sim_keeps_labels_and_amounts_in_order():
+    result = _apply({"allocation_sim": {"base": 8000, "items": [
+        {"label": "Reserva de Emergência", "amount": 3500},
+        {"label": "Viagem", "amount": 1200},
+    ]}})
+
+    assert result["allocation_sim"] == {"base": 8000.0, "items": [
+        {"label": "Reserva de Emergência", "amount": 3500.0},
+        {"label": "Viagem", "amount": 1200.0},
+    ]}
+
+
+def test_allocation_sim_drops_rows_without_a_label():
+    result = _apply({"allocation_sim": {"items": [
+        {"label": "", "amount": 100}, {"label": "Carro", "amount": 600}]}})
+
+    assert result["allocation_sim"] == {"base": None,
+                                        "items": [{"label": "Carro", "amount": 600.0}]}
+
+
+def test_allocation_sim_absent_leaves_it_untouched():
+    result = _apply({})
+
+    assert result["allocation_sim"] is None
+
+
 def test_balance_of_a_dollar_asset_is_recorded_in_dollars():
     """Saldo informado sem moeda herda a do ativo: dólar não vira real na entrada."""
     assets = A.load([{"ticker": "INTER-GLOBAL", "node": "livre", "currency": "USD",

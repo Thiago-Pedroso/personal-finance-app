@@ -24,6 +24,9 @@ from . import trades as T
 SNAPSHOT_TAB = "InvestSnapshots"
 CONTRIBUTION_KEY = "invest_monthly_contribution"
 CONTRIBUTION_MODE_KEY = "invest_contribution_mode"
+# Simulador livre de alocação (aba própria): rascunho puro, nunca vira trade nem
+# InvestPolicy. {"base": float | None, "items": [{"label", "amount"}]}.
+ALLOCATION_SIM_KEY = "invest_allocation_sim"
 
 
 def problems(tree: dict, assets: dict, positions: dict, quote_map: dict) -> list[str]:
@@ -62,7 +65,8 @@ def load_pending() -> dict:
 def build(assets: dict, trades: list, quote_map: dict, tree: dict, accounts: dict,
           contribution: float, history: list | None = None,
           balances: dict | None = None, pending: dict | None = None,
-          contribution_mode: str = "spread") -> dict:
+          contribution_mode: str = "spread",
+          allocation_sim: dict | None = None) -> dict:
     contribution_mode = (contribution_mode if contribution_mode in PL.MODES
                          else "spread")
     positions = PF.build(assets, trades, quote_map, balances)
@@ -90,6 +94,7 @@ def build(assets: dict, trades: list, quote_map: dict, tree: dict, accounts: dic
         "history": history or [],
         "pending": pending or {},
         "problems": problems(tree, assets, positions, quote_map),
+        "allocation_sim": allocation_sim or {"base": None, "items": []},
     }
 
 
@@ -138,6 +143,7 @@ def generate(write_snapshot: bool = True) -> dict:
     contribution = float(sheets.read_config(CONTRIBUTION_KEY, 0) or 0)
     contribution_mode = str(sheets.read_config(CONTRIBUTION_MODE_KEY, "spread")
                             or "spread")
+    allocation_sim = sheets.read_config(ALLOCATION_SIM_KEY, None)
     positions = PF.build(assets, trades, quote_map)
 
     if write_snapshot:
@@ -150,7 +156,7 @@ def generate(write_snapshot: bool = True) -> dict:
 
     report = build(assets, trades, quote_map, tree, accounts, contribution,
                    history_from(snapshots), pending=load_pending(),
-                   contribution_mode=contribution_mode)
+                   contribution_mode=contribution_mode, allocation_sim=allocation_sim)
     path = REPORTS_DIR / "invest.json"
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     total = report["totals"]

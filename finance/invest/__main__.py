@@ -63,6 +63,9 @@ def cmd_apply(args) -> int:
         sheets.write_config(R.CONTRIBUTION_KEY, settings["amount"])
         sheets.write_config(R.CONTRIBUTION_MODE_KEY, settings["mode"])
         print(f"Próximo aporte: {_money(settings['amount'])}")
+    if result["allocation_sim"] is not None:
+        sheets.write_config(R.ALLOCATION_SIM_KEY, result["allocation_sim"])
+        print(f"Simulador de alocação: {len(result['allocation_sim']['items'])} linha(s)")
     pending = Q.missing(Q.load(), result["assets"])
     if pending:
         Q.ensure(pending)

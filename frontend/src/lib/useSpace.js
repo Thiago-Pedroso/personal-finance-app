@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react'
 export const SPACES = {
   financas: ['overview', 'txns', 'cats', 'tags', 'plan', 'tools', 'poup', 'movs',
              'review'],
-  investimentos: ['visao', 'carteira', 'aporte', 'caixinhas', 'operacoes'],
+  investimentos: ['visao', 'carteira', 'aporte', 'caixinhas', 'operacoes',
+                  'simulador'],
 }
 
 function parse() {

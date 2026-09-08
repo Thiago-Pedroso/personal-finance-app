@@ -6,6 +6,7 @@ import { Aporte } from './Aporte.jsx'
 import { Caixinhas } from './Caixinhas.jsx'
 import { Carteira } from './Carteira.jsx'
 import { Operacoes } from './Operacoes.jsx'
+import { Simulador } from './Simulador.jsx'
 import { Visao } from './Visao.jsx'
 
 export const INVEST_TABS = [
@@ -14,6 +15,7 @@ export const INVEST_TABS = [
   ['aporte', 'Aporte'],
   ['caixinhas', 'Reservas e saldo'],
   ['operacoes', 'Movimentações'],
+  ['simulador', 'Simulador'],
 ]
 
 export function InvestSpace({ tab, setTab, onError }) {
@@ -76,6 +78,9 @@ export function InvestSpace({ tab, setTab, onError }) {
       {tab === 'operacoes' && (
         <Operacoes data={invest.data} onApply={apply} busy={invest.busy}
           onSync={() => invest.sync({})} />
+      )}
+      {tab === 'simulador' && (
+        <Simulador data={invest.data} onApply={apply} busy={invest.busy} />
       )}
     </>
   )

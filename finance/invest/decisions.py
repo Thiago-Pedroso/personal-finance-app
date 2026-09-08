@@ -54,6 +54,36 @@ def contribution_settings(data: dict) -> tuple[dict | None, list[str]]:
     return {"amount": amount, "mode": mode}, []
 
 
+def allocation_sim_settings(data: dict) -> tuple[dict | None, list[str]]:
+    """Simulador livre de alocação (aba própria): rascunho puro, nunca vira trade.
+
+    `base` é opcional — quando ausente, a tela usa o `to_invest` ao vivo. `items` é
+    uma lista de rótulo livre + valor, sem relação com `InvestPolicy`/`InvestAssets`."""
+    if "allocation_sim" not in data:
+        return None, []
+    raw = data.get("allocation_sim")
+    if not isinstance(raw, dict):
+        return None, ["A simulação de alocação precisa ser um objeto."]
+    problems: list[str] = []
+    base = None
+    if raw.get("base") not in (None, ""):
+        try:
+            base = float(raw["base"])
+        except (TypeError, ValueError):
+            problems.append("A base do simulador de alocação precisa ser um número.")
+    items = []
+    for row in raw.get("items") or []:
+        label = str((row or {}).get("label") or "").strip()
+        if not label:
+            continue
+        try:
+            amount = float(row.get("amount") or 0)
+        except (TypeError, ValueError):
+            amount = 0.0
+        items.append({"label": label, "amount": amount})
+    return {"base": base, "items": items}, problems
+
+
 def plan_changes(data: dict, assets: dict, accounts: dict, tree: dict,
                  existing: list[dict]) -> dict:
     """Calcula o que muda, sem tocar em rede. Devolve o estado novo e os problemas."""
@@ -63,6 +93,8 @@ def plan_changes(data: dict, assets: dict, accounts: dict, tree: dict,
     problems: list[str] = []
     contribution, contribution_problems = contribution_settings(data)
     problems.extend(contribution_problems)
+    allocation_sim, allocation_sim_problems = allocation_sim_settings(data)
+    problems.extend(allocation_sim_problems)
 
     for row in data.get("accounts") or []:
         account = ACC.normalize(row)
@@ -124,7 +156,7 @@ def plan_changes(data: dict, assets: dict, accounts: dict, tree: dict,
               if assets[t["ticker"]]["valuation"] == "quote"]
     return {"assets": assets, "accounts": accounts, "policy": tree,
             "trades": new_trades, "quotes": quotes, "problems": problems,
-            "contribution_settings": contribution}
+            "contribution_settings": contribution, "allocation_sim": allocation_sim}
 
 
 def _balances_as_trades(data: dict) -> list[dict]:
