@@ -38,14 +38,11 @@ function rowsFromServer(items) {
 
 export function Simulador({ data, onApply, busy }) {
   const sim = data.allocation_sim || { base: null, items: [] }
-  const liveBase = data.wealth?.to_invest || 0
 
   const [rows, setRows] = useState(() => rowsFromServer(sim.items))
-  const [followLive, setFollowLive] = useState(sim.base == null)
-  const [baseInput, setBaseInput] = useState(
-    () => String(sim.base ?? liveBase))
+  const [baseInput, setBaseInput] = useState(() => String(sim.base ?? ''))
 
-  const baseNumber = followLive ? liveBase : parseNum(baseInput)
+  const baseNumber = parseNum(baseInput)
   const labelOptions = useMemo(() => [...new Set(
     (data.positions || []).map((p) => p.name).filter(Boolean))].sort(), [data.positions])
 
@@ -86,7 +83,7 @@ export function Simulador({ data, onApply, busy }) {
     items: (sim.items || []).map((it) => ({ label: it.label, amount: it.amount })),
   }), [sim])
   const currentSnapshot = JSON.stringify({
-    base: followLive ? null : baseNumber,
+    base: baseInput.trim() === '' ? null : baseNumber,
     items: parsed.filter((r) => r.label.trim())
       .map((r) => ({ label: r.label.trim(), amount: r.amount })),
   })
@@ -94,8 +91,7 @@ export function Simulador({ data, onApply, busy }) {
 
   const reset = () => {
     setRows(rowsFromServer(sim.items))
-    setFollowLive(sim.base == null)
-    setBaseInput(String(sim.base ?? liveBase))
+    setBaseInput(String(sim.base ?? ''))
   }
   const save = () => onApply({ allocation_sim: JSON.parse(currentSnapshot) })
 
@@ -122,27 +118,13 @@ export function Simulador({ data, onApply, busy }) {
 
           <div className="px-5 pb-3 sm:px-6">
             <label className="mb-2 block text-[13px] text-secondary">Base a distribuir</label>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex min-h-12 items-center gap-2 rounded-2xl border
-                border-border bg-surface2 px-4">
-                <span className="text-[14px] text-secondary">R$</span>
-                <input value={followLive ? String(liveBase) : baseInput} inputMode="decimal"
-                  disabled={followLive}
-                  onChange={(e) => { setFollowLive(false); setBaseInput(e.target.value) }}
-                  className="tnum min-w-0 w-40 bg-transparent text-[20px]
-                    font-bold outline-none disabled:text-secondary" />
-              </div>
-              {!followLive && (
-                <button onClick={() => setFollowLive(true)}
-                  className="text-[12px] font-semibold text-brand-soft hover:underline">
-                  usar o valor a aportar ao vivo (<Money value={liveBase} />)
-                </button>
-              )}
-              {followLive && (
-                <span className="text-[12px] text-subtle">
-                  acompanhando o "a aportar" da carteira
-                </span>
-              )}
+            <div className="flex min-h-12 w-fit items-center gap-2 rounded-2xl border
+              border-border bg-surface2 px-4">
+              <span className="text-[14px] text-secondary">R$</span>
+              <input value={baseInput} inputMode="decimal" placeholder="0"
+                onChange={(e) => setBaseInput(e.target.value)}
+                className="tnum min-w-0 w-40 bg-transparent text-[20px]
+                  font-bold outline-none" />
             </div>
           </div>
 
