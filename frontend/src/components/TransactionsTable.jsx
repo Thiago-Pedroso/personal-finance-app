@@ -344,8 +344,8 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
             onChange={(visible) =>
               set('hiddenCats', catOpts.filter((c) => !visible.includes(c)))}
             actions={[
-              { label: 'marcar todos', onClick: () => set('hiddenCats', []) },
-              { label: 'desmarcar todos', onClick: () => set('hiddenCats', catOpts) },
+              { label: 'Marcar Todas', onClick: () => set('hiddenCats', []) },
+              { label: 'Desmarcar Todas', onClick: () => set('hiddenCats', catOpts) },
             ]} />
           <select value={f.sub} onChange={(e) => set('sub', e.target.value)}
             className={inputCls()}>
