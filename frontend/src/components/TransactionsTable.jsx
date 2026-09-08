@@ -26,7 +26,8 @@ import {
 } from 'lucide-react'
 
 const EMPTY = { q: '', cats: [], tags: [], accs: [], flow: '', rev: false,
-  d0: '', d1: '', a0: '', a1: '', sub: '', queued: false, excl: false }
+  d0: '', d1: '', a0: '', a1: '', sub: '', queued: false, excl: false,
+  hiddenCats: [] }
 
 export function TransactionsTable({ txns, openEdit, title, presetCat,
   initialFilter, compact, pageSize = 25, queuedIds, treatments,
@@ -59,15 +60,18 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
   const tagOpts = useMemo(
     () => [...new Set(txns.flatMap((transaction) => transaction.tags || []))].sort(),
     [txns])
-  // opções de subcategoria: restringe às categorias selecionadas (todas, se nenhuma)
+  // opções de subcategoria: restringe às categorias selecionadas e tira as ocultas
   const subOpts = useMemo(() => {
-    const inScope = f.cats.length
-      ? txns.filter((t) => effLabels(t).some((c) => f.cats.includes(c)))
-      : txns
+    const inScope = txns.filter((t) => {
+      const tcats = effLabels(t)
+      if (f.cats.length && !tcats.some((c) => f.cats.includes(c))) return false
+      if (f.hiddenCats.length && tcats.every((c) => f.hiddenCats.includes(c))) return false
+      return true
+    })
     const subs = inScope.flatMap((t) =>
       t.splits?.length ? t.splits.map((s) => s.subcategory) : [t.subcategory])
     return [...new Set(subs.filter(Boolean))].sort()
-  }, [txns, f.cats])
+  }, [txns, f.cats, f.hiddenCats])
 
   const rows = useMemo(() => {
     const q = f.q.trim().toLowerCase()
@@ -80,6 +84,7 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
         ? t.splits.map((s) => s.subcategory || '')
         : [t.subcategory || '']
       if (f.cats.length && !tcats.some((c) => f.cats.includes(c))) return false
+      if (f.hiddenCats.length && tcats.every((c) => f.hiddenCats.includes(c))) return false
       if (f.sub && !tsubs.includes(f.sub)) return false
       if (f.tags.length && !f.tags.every(
         (tag) => (t.tags || []).includes(tag))) return false
@@ -333,8 +338,15 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
 
       {showFilters && (
         <div className="flex flex-wrap items-center gap-2 px-5 pb-3 pt-3">
-          <MultiSelect label="Categoria" options={catOpts} value={f.cats}
-            onChange={(v) => set('cats', v)} />
+          <MultiSelect label="Ocultar" options={catOpts}
+            value={catOpts.filter((c) => !f.hiddenCats.includes(c))}
+            count={f.hiddenCats.length}
+            onChange={(visible) =>
+              set('hiddenCats', catOpts.filter((c) => !visible.includes(c)))}
+            actions={[
+              { label: 'marcar todos', onClick: () => set('hiddenCats', []) },
+              { label: 'desmarcar todos', onClick: () => set('hiddenCats', catOpts) },
+            ]} />
           <select value={f.sub} onChange={(e) => set('sub', e.target.value)}
             className={inputCls()}>
             <option value="">Subcategoria (todas)</option>
