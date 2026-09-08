@@ -339,7 +339,7 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
 
       {showFilters && (
         <div className="flex flex-wrap items-center gap-2 px-5 pb-3 pt-3">
-          <MultiSelect label="Ocultar" options={catOpts}
+          <MultiSelect label="Categoria" options={catOpts}
             value={catOpts.filter((c) => !f.hiddenCats.includes(c))}
             count={f.hiddenCats.length}
             onChange={(visible) =>
@@ -348,7 +348,7 @@ export function TransactionsTable({ txns, openEdit, title, presetCat,
               { label: 'Marcar Todas', onClick: () => set('hiddenCats', []) },
               { label: 'Desmarcar Todas', onClick: () => set('hiddenCats', catOpts) },
             ]} />
-          <MultiSelect label="Ocultar Sub" options={subOpts}
+          <MultiSelect label="Subcategoria" options={subOpts}
             value={subOpts.filter((s) => !f.hiddenSubs.includes(s))}
             count={f.hiddenSubs.length}
             onChange={(visible) =>
