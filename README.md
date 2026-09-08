@@ -139,6 +139,94 @@ uv run python -m finance.show queue
 uv run python -m finance.show find "texto"
 ```
 
+## Guia prático: o que dá para fazer, e onde
+
+O app tem duas metades, e elas não fazem a mesma coisa.
+
+**O dashboard decide sobre o que já existe.** Ele categoriza, cria regra, marca tag, divide
+lançamento, edita orçamento e registra ordens da carteira. Tudo que ele grava passa pelo
+mesmo pipeline Python da conversa, então não existe um segundo caminho para escrever na
+planilha.
+
+**O Claude Code muda a estrutura.** Categoria nova, tratamento, mapa da Pluggy, correção de
+valor, lançamento que o banco não trouxe, regra que precisa ser reescrita. Nada disso tem
+tela, e é de propósito: são decisões que valem para o histórico inteiro, e sai mais rápido
+pedir em uma frase do que preencher formulário.
+
+### O ciclo de um mês
+
+**1. Puxar as transações.** `./start.sh --sync` busca na Pluggy, aplica as regras, atualiza
+os saldos da carteira e sobe o dashboard. Sem `--sync` ele só relê a planilha, que basta na
+maioria dos dias.
+
+**2. As regras fazem a parte repetida.** Toda transação passa pela aba `Rules` antes de
+chegar até você, e o que casa já aparece categorizado (`category_source: rule`). Depois vem
+o palpite da Pluggy, pela aba `PluggyMap`. Quando esse palpite é só o tipo da transação
+(PIX recebido, PIX enviado, TED/DOC), ele não vale como categoria e o lançamento volta para
+a revisão.
+
+**3. O que sobrou vira a tela de Revisão.** Ela junta o histórico inteiro, não só o mês
+aberto: lançamento sem categoria, palpite não confirmado e valor atípico para a categoria.
+
+**4. Você decide, lançamento a lançamento.** Clicar em qualquer linha abre a caixa de
+edição, com os cinco caminhos da tabela abaixo. Dá para selecionar vários e agir de uma vez.
+
+**5. Pronto.** Cada gravação regera os relatórios sozinha, e os dados já estão na planilha.
+Não existe passo de salvar, e nada de financeiro vai para o git.
+
+### Os cinco caminhos da caixa de edição
+
+| ação | o que acontece na prática |
+|---|---|
+| **Só este(s)** | grava categoria e subcategoria nesses lançamentos, como decisão manual. Não cria regra e não toca em mais nada. É o caminho do caso único, do gasto que não vai se repetir. |
+| **Editar + criar regra** | grava a categoria **e** cria uma regra na aba `Rules`. Você escolhe o campo (lojista, contraparte ou descrição) e como ele casa (contém, igual a, começa com, regex), e a tela mostra quantos lançamentos do mês bateriam antes de você salvar. A regra vale para trás, reclassificando o que já estava no histórico, e é ela que faz o mês seguinte chegar quase pronto. |
+| **Tags** | adiciona ou remove etiquetas em vários lançamentos de uma vez, sem tocar na categoria. Tag é um corte paralelo ("Viagem Recife", "Trabalho") e nunca vira regra automática. |
+| **Dividir** | quebra um lançamento em partes com categorias diferentes. O caso típico é a conta que você adiantou: a sua parte vai para a categoria real, a parte do outro vai para `Compartilhado`, que fica fora do fluxo e se anula quando o reembolso cair. |
+| **Mandar pro Claude** | não muda nada sozinho. Guarda o lançamento numa fila local com a sua nota e uma sugestão opcional; na sessão seguinte o Claude lê a fila, resolve e conta o que fez. É para o caso que precisa de contexto, não de clique. |
+
+Existe ainda **rasurar**, que tira o lançamento dos agregados sem apagar nada, para a
+duplicata do banco ou o estorno que suja o mês. É reversível.
+
+### Por que as regras são o centro
+
+Uma regra é um par: um texto que aparece no extrato e a categoria que ele significa. Elas
+vivem na aba `Rules` da sua planilha e são lidas em toda categorização, então o trabalho
+feito uma vez não volta. Três coisas que valem saber:
+
+- Regra criada pelo dashboard já nasce aplicada ao passado.
+- Regra não adivinha. Se o texto não casar como você escreveu, o lançamento volta para a
+  revisão, e isso é intencional: melhor pedir confirmação do que categorizar errado.
+- Para **ver, mudar ou apagar** uma regra não há tela. Abra a aba `Rules` na planilha ou
+  peça na conversa ("me mostra as regras que apontam para Alimentação", "essa regra está
+  pegando coisa demais, restringe para o lojista").
+
+### O que só acontece na conversa
+
+- **Criar, renomear ou apagar categoria e subcategoria**, com cor, ícone e tratamento
+  (`fluxo`, `poupança` ou `movimento`). O dashboard só oferece o que já existe na aba
+  `Taxonomy`, então categoria nova nasce sempre aqui.
+- **Reclassificar em massa** depois de mexer na taxonomia, e conferir se as regras e o
+  `PluggyMap` continuam apontando para nomes que existem.
+- **Corrigir valor** com `amount_override`.
+- **Criar lançamento que o banco não trouxe**, como o PIX enviado para alguém que comprou
+  em seu nome e que vira várias linhas detalhadas.
+- **Ajustar o mapa da Pluggy** (aba `PluggyMap`), que traduz a categoria do agregador para
+  a sua taxonomia.
+- **Perguntar.** "Por que setembro foi mais caro que agosto?", "quanto foi de cachorro no
+  ano?", "essa assinatura ainda faz sentido?". O dashboard mostra, a conversa interpreta.
+
+### No espaço Investimentos
+
+| na tela | na conversa |
+|---|---|
+| registrar as ordens executadas depois de simular um aporte | dizer a classe de um ticker novo, que entra com a classe pendente |
+| mudar o alvo de cada ativo dentro da classe e travar um ativo | criar ou renomear nó da política e definir o papel dele (`strategy`, `reserved`, `to_invest`, `free`) |
+| informar o saldo de uma caixinha e criar caixinha nova | corrigir movimentação lançada errada |
+| conferir com a corretora e aceitar os saldos informados | criar as abas pela primeira vez e importar a planilha antiga |
+
+Regra de bolso para saber onde ir: se a decisão vale para um lançamento, é tela; se vale
+para o histórico inteiro, é conversa.
+
 ## Investimentos
 
 O segundo espaço do app acompanha a carteira. Ele é opcional: quem só quer controlar
