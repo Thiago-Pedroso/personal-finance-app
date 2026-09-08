@@ -172,6 +172,8 @@ descarta o que não existir na sua taxonomia. Sem a aba, o mapa cai no fixture.
 | `min_transaction_date` | piso opcional (`YYYY-MM-DD`); o sync descarta lançamentos anteriores |
 | `schema_version` | versão do esquema (atualmente `6`) |
 | `invest_monthly_contribution` | aporte mensal usado como padrão no simulador |
+| `invest_contribution_mode` | modo do simulador de aporte: `spread` ou `focus` |
+| `invest_allocation_sim` | rascunho da aba Simulador: `{base, items: [{label, amount}]}` — nunca vira trade |
 
 ---
 

@@ -52,7 +52,7 @@ uv run python -m finance.categorize stats
 | `Taxonomy` | categorias → subcategorias | `finance/taxonomy.py` |
 | `SubcategoryMeta` | cor e ícone opcionais por subcategoria | `finance/taxonomy.py` |
 | `PluggyMap` | categoria da Pluggy → taxonomia pessoal | `finance/pluggy_map.py` |
-| `Config` | blobs JSON: `budgets`, `sync_state`, `timezone`, `min_transaction_date`, `schema_version`, `invest_monthly_contribution` | `finance/budgets.py`, `finance/sync.py` |
+| `Config` | blobs JSON: `budgets`, `sync_state`, `timezone`, `min_transaction_date`, `schema_version`, `invest_monthly_contribution`, `invest_contribution_mode`, `invest_allocation_sim` | `finance/budgets.py`, `finance/sync.py` |
 | `InvestTrades` | 1 movimentação por linha (a única entrada de fatos da carteira) | `finance/invest/trades.py` |
 | `InvestAssets` | catálogo: classe, conta, setor, alvo, como o valor é apurado | `finance/invest/assets.py` |
 | `InvestAccounts` | onde o dinheiro está custodiado (corretora, carteira, caixinhas) | `finance/invest/accounts.py` |
