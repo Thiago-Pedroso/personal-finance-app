@@ -19,6 +19,7 @@ from datetime import date, datetime, timezone
 from . import budgets as B
 from . import ledger as L
 from . import taxonomy as T
+from . import transaction_dates as TD
 from .config import REPORTS_DIR, ensure_dirs
 
 # Tratamento por categoria (fluxo|poupança|movimento) — fonte da verdade é a taxonomia.
@@ -37,7 +38,7 @@ def _is_rendimento(sub: str | None) -> bool:
 
 
 # Campos de cada transação embutidos nos arquivos mensais (consumidos pelo front).
-_TXN_FIELDS = ("id", "date", "description", "counterparty", "signed_amount",
+_TXN_FIELDS = ("id", "date", "time", "description", "counterparty", "signed_amount",
                "type", "account_name", "category", "subcategory",
                "category_source", "reviewed", "needs_review", "note",
                "amount_override", "excluded", "tags")
@@ -419,10 +420,20 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
     # Aplica o override manual de valor (cópia em memória; o ledger no disco
     # mantém signed_amount cru + amount_override). Tudo a jusante (agregados,
     # splits, insights, recorrências, dashboard) passa a ver o valor efetivo.
+    tz = TD.load_timezone()
     for r in recs:
         ov = r.get("amount_override")
         if ov is not None:
             r["signed_amount"] = ov
+        # HH:MM no fuso do app, só quando a Pluggy (ou uma cópia manual) trouxe
+        # datetime; sem isso, a hora fica em branco em vez de inventada.
+        r["time"] = None
+        if r.get("datetime"):
+            try:
+                r["time"] = TD.local_transaction_time(
+                    TD.parse_provider_datetime(r["datetime"]), tz)
+            except (TypeError, ValueError):
+                pass
 
     months: dict = {}
     month_txns: dict = {}

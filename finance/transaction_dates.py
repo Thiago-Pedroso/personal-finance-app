@@ -41,6 +41,11 @@ def local_transaction_date(value: datetime, local_timezone: ZoneInfo) -> str:
     return utc_value.astimezone(local_timezone).date().isoformat()
 
 
+def local_transaction_time(value: datetime, local_timezone: ZoneInfo) -> str:
+    utc_value = normalize_provider_datetime(value)
+    return utc_value.astimezone(local_timezone).strftime("%H:%M")
+
+
 def parse_provider_datetime(value: str) -> datetime:
     parsed_value = datetime.fromisoformat(value.replace("Z", "+00:00"))
     return normalize_provider_datetime(parsed_value)

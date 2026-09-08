@@ -128,6 +128,13 @@ export function TransactionsTable({ txns, openEdit, saveEdit, title, presetCat,
       enableSorting: false,
     },
     { accessorKey: 'date', header: 'Data',
+      // desempate por hora: dentro do mesmo dia, a ordem segue a mesma direção
+      // da data (desc = mais tarde no topo, como no resto da lista)
+      sortingFn: (a, b) => {
+        const ka = `${a.original.date} ${a.original.time || '00:00'}`
+        const kb = `${b.original.date} ${b.original.time || '00:00'}`
+        return ka < kb ? -1 : ka > kb ? 1 : 0
+      },
       cell: (c) => <span className="tnum text-muted">{fullDate(c.getValue())}</span> },
     {
       accessorKey: 'description', header: 'Descrição', enableSorting: false,
@@ -135,6 +142,10 @@ export function TransactionsTable({ txns, openEdit, saveEdit, title, presetCat,
         <div className="min-w-[180px]">
           <div className="flex items-center gap-1.5 font-medium">
             {row.original.description}
+            {row.original.time && (
+              <span className="tnum shrink-0 text-[11px] font-normal
+                text-faint">{row.original.time}</span>
+            )}
             {row.original.note && (
               <span title={row.original.note}
                 className="inline-flex cursor-help text-amber"
