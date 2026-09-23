@@ -45,14 +45,14 @@ export function savingsRateSeries(months = [], window = 12) {
   const win = months.slice(-window)
   const aggRate = (arr) => {
     const inc = arr.reduce((a, m) => a + (m.income || 0), 0)
-    return inc > 0 ? (arr.reduce((a, m) => a + (m.net || 0), 0) / inc) * 100 : 0
+    return inc > 0 ? (arr.reduce((a, m) => a + (m.surplus || 0), 0) / inc) * 100 : 0
   }
   // só considera mês "com renda relevante" (>= 15% da mediana) na série por mês
   const incomes = win.map((m) => m.income || 0).sort((a, b) => a - b)
   const medInc = incomes.length ? incomes[Math.floor(incomes.length / 2)] : 0
   const rows = win.map((m) => ({
     month: m.month,
-    rate: m.income > 0 && m.income >= 0.15 * medInc ? (m.net / m.income) * 100 : null,
+    rate: m.income > 0 && m.income >= 0.15 * medInc ? (m.surplus / m.income) * 100 : null,
   }))
   const valid = rows.filter((r) => r.rate != null)
   const half = Math.floor(win.length / 2)
