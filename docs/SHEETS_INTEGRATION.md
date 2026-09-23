@@ -61,9 +61,9 @@ Ambos `credentials.json` e `.env` estão no `.gitignore` — **nunca commite**.
 
 ---
 
-## 3. Esquema do banco (12 abas)
+## 3. Esquema do banco (13 abas)
 
-Seis abas do controle de gastos e seis do controle de investimentos. As de investimento
+Sete abas do controle de gastos e seis do controle de investimentos. As de investimento
 só são criadas para quem usa a carteira.
 
 A linha 1 de cada aba é o cabeçalho. Tipos entre parênteses referem-se à coerção em
@@ -96,11 +96,12 @@ Espelha o que `finance/ledger.py::normalize()` produz. Colunas:
 | `category_source` | opt | `rule` \| `pluggy-map` \| `manual` \| `split` |
 | `rule_id` | opt | regra que classificou |
 | `needs_review`, `reviewed` | bool | controle de qualidade |
-| `splits` | json | `[{amount, category, subcategory, note}]` ou vazio |
+| `splits` | json | `[{amount, category, subcategory, note, settle_with?}]` ou vazio |
 | `note` | opt | observação livre |
 | `amount_override` | fnum | sobrepõe `signed_amount` nos relatórios |
 | `synced_at` | opt | timestamp do sync |
 | `tags` | json | lista de etiquetas pessoais, por exemplo `["Viagem"]` |
+| `settle_with` | opt | com quem o valor vai ser acertado (pessoa ou instituição); marca pendência até ser abatido |
 
 ### Aba `Rules` — uma regra por linha
 
@@ -164,6 +165,21 @@ na renderização para manter contraste adequado; o valor salvo não é alterado
 Semente do `data/seed/pluggy_map.yaml`, usada como **dica**: o `categorize`
 descarta o que não existir na sua taxonomia. Sem a aba, o mapa cai no fixture.
 
+### Aba `Reimbursements`: uma entrada abate uma saída
+
+| Coluna | Tipo |
+|---|---|
+| `id` | str (`ab_0001`) |
+| `credit_id`, `debit_id` | str (id do lançamento que abate e do abatido) |
+| `credit_part`, `debit_part` | fnum (índice da parte do split; vazio = lançamento inteiro) |
+| `amount` | float (valor abatido, sempre positivo) |
+| `note` | opt |
+| `created_at` | opt |
+
+A soma abatida nunca passa do valor de cada lado. Vínculo inválido é ignorado no relatório
+com aviso. Em categoria de `fluxo`, o valor abatido sai da conta no mês de cada lado; em
+`movimento` e `poupança` o vínculo só registra que a pendência foi acertada.
+
 ### Aba `Config` — blobs JSON (chave/valor)
 
 | `key` | `value` (JSON) |
@@ -172,7 +188,7 @@ descarta o que não existir na sua taxonomia. Sem a aba, o mapa cai no fixture.
 | `sync_state` | cursores de sincronização por conta |
 | `timezone` | fuso IANA usado nas datas locais, por exemplo `America/Sao_Paulo` |
 | `min_transaction_date` | piso opcional (`YYYY-MM-DD`); o sync descarta lançamentos anteriores |
-| `schema_version` | versão do esquema (atualmente `8`) |
+| `schema_version` | versão do esquema (atualmente `9`) |
 | `invest_monthly_contribution` | aporte mensal usado como padrão no simulador |
 | `invest_contribution_mode` | modo do simulador de aporte: `spread` ou `focus` |
 | `invest_allocation_sim` | rascunho da aba Simulador: `{base, items: [{label, amount}]}` — nunca vira trade |
