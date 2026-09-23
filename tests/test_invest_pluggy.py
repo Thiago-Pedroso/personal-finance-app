@@ -67,8 +67,8 @@ def test_asset_only_at_the_broker_is_flagged():
 
 
 def test_bucket_split_finds_the_unallocated_money():
-    report = PS.bucket_report(70573.36, {"RESERVA": 42180.0, "VIAGEM": 4180.0})
-    assert round(report["unallocated"], 2) == 24213.36
+    report = PS.bucket_report(50000.0, {"RESERVA": 30000.0, "VIAGEM": 5000.0})
+    assert round(report["unallocated"], 2) == 15000.0
     assert round(sum(b["share"] for b in report["buckets"]), 6) == 1.0
 
 
@@ -100,18 +100,18 @@ def test_account_total_sums_only_that_item():
 
 def test_bucket_balances_exclude_the_synced_account_balance():
     assets = A.load([
-        {"ticker": "RESERVA", "account": "picpay", "valuation": "balance"},
-        {"ticker": "CONTA-PICPAY", "account": "picpay", "valuation": "pluggy"},
+        {"ticker": "RESERVA", "account": "banco", "valuation": "balance"},
+        {"ticker": "CONTA-BANCO", "account": "banco", "valuation": "pluggy"},
     ])
     positions = {
-        "RESERVA": {"value": 70573.36},
-        "CONTA-PICPAY": {"value": 30902.71},
+        "RESERVA": {"value": 20000.0},
+        "CONTA-BANCO": {"value": 8000.0},
     }
 
-    balances = PS.bucket_balances(positions, assets, "picpay")
+    balances = PS.bucket_balances(positions, assets, "banco")
 
-    assert balances == {"RESERVA": 70573.36}
-    assert PS.bucket_report(70573.36, balances)["unallocated"] == 0.0
+    assert balances == {"RESERVA": 20000.0}
+    assert PS.bucket_report(20000.0, balances)["unallocated"] == 0.0
 
 
 def test_position_without_value_is_noise():
