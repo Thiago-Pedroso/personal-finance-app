@@ -331,6 +331,12 @@ O **tratamento** de cada categoria decide como ela entra na conta:
 | `poupança` | não é gasto; alimenta "Poupado" e a taxa de poupança |
 | `movimento` | fora da conta, só auditoria (transferências, rateios) |
 
+Os números do mês: **Poupado** = aportes − resgates (subcategorias de
+`Config[invest_destination_subcategories]`); **Saldo** = Receitas − Gastos − Poupado, o que
+ficou livre. Resgate volta para o Saldo sem virar receita. Rendimento fica fora dos três, e
+qualquer outra subcategoria de poupança (custo, taxa) conta como fluxo. A parte com
+destino num nó de papel `free` fica fora do Poupado e continua no Saldo.
+
 `data/seed/taxonomy.yaml` é só a **semente de demonstração**, para quem começa do zero.
 
 Ao adicionar ou renomear categorias, avise o Claude para reclassificar o que for preciso

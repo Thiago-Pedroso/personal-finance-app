@@ -28,6 +28,8 @@ from .invest import ledger_link as LL
 # Tratamento por categoria (fluxo|poupança|movimento) — fonte da verdade é a taxonomia.
 # Carregado uma vez em main(); as funções abaixo consultam via _tr().
 _TREAT: dict = {}
+_SAVING_SUBS: tuple = LL.DESTINATION_SUBCATEGORIES
+_FREE_TICKERS: frozenset = frozenset()
 
 
 def _tr(cat: str | None) -> str:
@@ -74,7 +76,7 @@ def _flowbucket():
 
 
 def _blank() -> dict:
-    return {"income": 0.0, "expense": 0.0, "saved": 0.0,
+    return {"income": 0.0, "expense": 0.0, "saved": 0.0, "moved_to_free": 0.0,
             "by_category": defaultdict(
                 lambda: {"income": 0.0, "expense": 0.0, "count": 0,
                          "subcategories": defaultdict(
@@ -90,6 +92,9 @@ def _post(bucket: dict, amt: float, cat: str, sub: str) -> None:
     cat = cat or "Outros"
     sub = sub or "—"
     treat = _tr(cat)
+    # poupança fora de aporte/resgate/rendimento (ex.: custo) é consumo real
+    if treat == "poupança" and not _is_rendimento(sub) and sub not in _SAVING_SUBS:
+        treat = "fluxo"
     if treat != "fluxo":
         key = "poupanca" if treat == "poupança" else "movements"
         m = bucket[key][cat]
@@ -99,10 +104,9 @@ def _post(bucket: dict, amt: float, cat: str, sub: str) -> None:
         ms = m["subcategories"][sub]
         ms[side] += abs(amt)
         ms["count"] += 1
-        # Poupado = só APORTES (o que saiu da conta pra poupança). Resgate (entrada,
-        # amt>0) NÃO conta — tirar de um cofrinho não é poupar. Rendimento também não.
-        if treat == "poupança" and not _is_rendimento(sub) and amt < 0:
-            bucket["saved"] += -amt
+        # Poupado líquido: aporte soma, resgate abate e volta para o saldo livre
+        if treat == "poupança" and not _is_rendimento(sub):
+            bucket["saved"] -= amt
         return
     c = bucket["by_category"][cat]
     s = c["subcategories"][sub]
@@ -129,6 +133,25 @@ def _add(bucket: dict, rec: dict) -> None:
                   sp.get("subcategory"))
         return
     _post(bucket, rec["signed_amount"], rec["category"], rec["subcategory"])
+
+
+def _free_share(rec: dict) -> float:
+    """Parte do aporte/resgate com destino num nó `free`: continua dinheiro livre."""
+    info = rec.get("invest")
+    if not info or not info.get("needed"):
+        return 0.0
+    free = sum(abs(link["amount"]) for link in info.get("links", [])
+               if link["ticker"] in _FREE_TICKERS)
+    return min(free, info["needed"])
+
+
+def _add_record(bucket: dict, rec: dict) -> None:
+    _add(bucket, _net(rec))
+    share = _free_share(rec)
+    if share:
+        direction = 1 if rec["signed_amount"] < 0 else -1
+        bucket["saved"] -= direction * share
+        bucket["moved_to_free"] += direction * share
 
 
 def _reduce(amount: float, abated: float, cat: str | None) -> float:
@@ -165,9 +188,10 @@ def _month_json(month: str, b: dict) -> dict:
         "month": month,
         "income": round(b["income"], 2),
         "expense": round(b["expense"], 2),
-        "net": round(b["income"] - b["expense"], 2),
-        # Poupado no mês (aportes − resgates). Sobra líquida = net − saved (no front).
+        "net": round(b["income"] - b["expense"] - b["saved"], 2),
+        "surplus": round(b["income"] - b["expense"], 2),
         "saved": round(b["saved"], 2),
+        "moved_to_free": round(b["moved_to_free"], 2),
         "by_category": _undefault(b["by_category"]),
         "movements": _undefault(b["movements"]),
         "poupanca": _undefault(b["poupanca"]),
@@ -178,6 +202,7 @@ def _md(mj: dict, prev: dict | None) -> str:
     L_ = [f"# Relatório {mj['month']}", ""]
     L_.append(f"- **Receitas:** R$ {mj['income']:,.2f}")
     L_.append(f"- **Gastos:** R$ {mj['expense']:,.2f}")
+    L_.append(f"- **Poupado:** R$ {mj['saved']:,.2f}")
     L_.append(f"- **Saldo:** R$ {mj['net']:,.2f}")
     if prev:
         d = mj["expense"] - prev["expense"]
@@ -306,6 +331,8 @@ def _invest_context() -> dict:
     roles = {node["node"]: node.get("role") for node in data.get("policy", [])}
     accounts = {account["id"]: account["name"] for account in data.get("accounts", [])}
     assets = {position["ticker"]: position for position in data.get("positions", [])}
+    free_tickers = [ticker for ticker, position in assets.items()
+                    if roles.get(position.get("node")) == "free"]
     destinations = [{
         "ticker": position["ticker"], "name": position["name"],
         "account": position.get("account"),
@@ -315,7 +342,7 @@ def _invest_context() -> dict:
     } for position in data.get("positions", [])
         if position.get("valuation") in ("balance", "pluggy", "account")]
     return {"trades": data.get("trades", []), "assets": assets,
-            "destinations": destinations,
+            "destinations": destinations, "free_tickers": free_tickers,
             "subcategories": tuple(data.get("destination_subcategories")
                                    or LL.DESTINATION_SUBCATEGORIES),
             "simulator": (data.get("allocation_sim") or {}).get("items") or []}
@@ -483,7 +510,7 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
     memória — cada leitura do Sheets custa ~0,5–2s. O que vier None é lido sob
     demanda."""
     ensure_dirs()
-    global _TREAT
+    global _TREAT, _SAVING_SUBS, _FREE_TICKERS
     if treatments is None or taxonomy is None or category_meta is None:
         tax_l, treat_l, meta_l = T.load_full()   # 1 request serve aos três
         taxonomy = taxonomy if taxonomy is not None else tax_l
@@ -523,6 +550,9 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
     for r in recs:
         r["reimbursed"] = by_tx.get(r["id"])
     invest = _invest_context()
+    _SAVING_SUBS = (invest["subcategories"] if invest
+                    else LL.load_destination_subcategories())
+    _FREE_TICKERS = frozenset(invest.get("free_tickers", ()))
     invest_status = (LL.destination_status(recs, invest["trades"], _TREAT,
                                            invest["assets"], invest["subcategories"])
                      if invest else {})
@@ -536,7 +566,7 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
         months.setdefault(m, _blank())
         month_txns.setdefault(m, []).append(r)   # lista mostra tudo (rasurado incluso)
         if not r.get("excluded"):                 # mas rasurado não entra nos agregados
-            _add(months[m], _net(r))
+            _add_record(months[m], r)
 
     ordered = sorted(months)
     # Agregados enxutos (vão para o dashboard.json — carga rápida, sem transações).
@@ -653,7 +683,8 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
     last = month_jsons[ordered[-1]]
     print(f"Relatórios gerados em {REPORTS_DIR} ({len(targets)} mês(es) + dashboard.json)")
     print(f"Último mês {last['month']}: receitas R$ {last['income']:,.2f} | "
-          f"gastos R$ {last['expense']:,.2f} | saldo R$ {last['net']:,.2f}")
+          f"gastos R$ {last['expense']:,.2f} | poupado R$ {last['saved']:,.2f} | "
+          f"saldo R$ {last['net']:,.2f}")
 
 
 def main() -> None:
