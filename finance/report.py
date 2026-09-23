@@ -18,6 +18,7 @@ from datetime import date, datetime, timezone
 
 from . import budgets as B
 from . import ledger as L
+from . import rules as R
 from . import taxonomy as T
 from . import transaction_dates as TD
 from .config import REPORTS_DIR, ensure_dirs
@@ -41,7 +42,7 @@ def _is_rendimento(sub: str | None) -> bool:
 _TXN_FIELDS = ("id", "date", "time", "description", "counterparty", "signed_amount",
                "type", "account_name", "category", "subcategory",
                "category_source", "reviewed", "needs_review", "note",
-               "amount_override", "excluded", "tags")
+               "amount_override", "excluded", "tags", "rule_id")
 
 def _is_pending(r: dict) -> bool:
     """Precisa de ação do usuário: sem categoria, anomalia, ou palpite da
@@ -394,8 +395,29 @@ def _recurring(recs: list) -> list:
     return out[:40]
 
 
+def _rules_json(rules: list, recs: list) -> dict:
+    usage: dict = defaultdict(lambda: {"count": 0, "last_date": None})
+    for r in recs:
+        if r.get("category_source") == "rule" and r.get("rule_id"):
+            u = usage[r["rule_id"]]
+            u["count"] += 1
+            u["last_date"] = max(u["last_date"] or "", r["date"])
+    ordered = ([r for r in rules if R.has_amount_range(r)]
+               + [r for r in rules if not R.has_amount_range(r)])
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "rules": [{**{k: r.get(k) for k in (
+            "id", "field", "match", "value", "category", "subcategory", "note",
+            "propagate_note", "instruction", "type", "amount_abs_min",
+            "amount_abs_max", "excluded")},
+            "priority": i + 1, **usage.get(r["id"], {"count": 0, "last_date": None})}
+            for i, r in enumerate(ordered)],
+    }
+
+
 def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
-             month=None, category_meta=None, subcategory_meta=None) -> None:
+             month=None, category_meta=None, subcategory_meta=None,
+             rules=None) -> None:
     """Gera os relatórios (arquivos em REPORTS_DIR).
 
     Aceita ledger/taxonomia/tratamentos/budgets já carregados para evitar reler
@@ -544,6 +566,10 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
     dash["pending"] = len(dash["review"])
     (REPORTS_DIR / "dashboard.json").write_text(
         json.dumps(dash, ensure_ascii=False, indent=2) + "\n")
+    if rules is None:
+        rules = R.load_rules()["rules"]
+    (REPORTS_DIR / "rules.json").write_text(
+        json.dumps(_rules_json(rules, recs), ensure_ascii=False, indent=2) + "\n")
 
     last = month_jsons[ordered[-1]]
     print(f"Relatórios gerados em {REPORTS_DIR} ({len(targets)} mês(es) + dashboard.json)")
