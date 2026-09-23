@@ -5,6 +5,8 @@ import { inputCls } from './ui/MultiSelect.jsx'
 import { useToast } from './ui/Toast.jsx'
 import { signedBrl, brl, dayMonth } from '../lib/format.js'
 import { SensitiveAmount } from './ui/SensitiveValue.jsx'
+import { DestinationEditor } from './DestinationEditor.jsx'
+import { neededDestination, destinationBalance } from '../lib/destinations.js'
 import {
   Pencil, Tags, Sparkles, MessageSquare, SplitSquareHorizontal, Plus, Trash2,
   Users, EyeOff, Eye, X, StickyNote, Link2,
@@ -38,7 +40,8 @@ const MATCHES = [
 ]
 
 export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTags,
-  knownSettlers, onSaved, saveEdit }) {
+  knownSettlers, onSaved, saveEdit, treatments, destinations, simulator,
+  destinationSubcategories }) {
   const t = useToast()
   const first = txns[0] || {}
   const [mode, setMode] = useState('value')
@@ -65,6 +68,11 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
   const [tagsToRemove, setTagsToRemove] = useState([])
   const [saving, setSaving] = useState(false)
   const [excluding, setExcluding] = useState(false)
+  const existingLinks = txns.length === 1 && txns[0]?.invest?.status !== 'info'
+    ? txns[0]?.invest?.links || [] : []
+  const [destRows, setDestRows] = useState(() => existingLinks.map((link) => ({
+    ticker: link.ticker, amount: String(link.amount) })))
+  const [destTouched, setDestTouched] = useState(false)
 
   const single = txns.length === 1
   const allExcluded = txns.length > 0 && txns.every((x) => x.excluded)
@@ -86,6 +94,21 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
     ...(allTxns || []).flatMap((x) => [x.settle_with,
       ...(x.splits || []).map((part) => part.settle_with)]),
   ].filter(Boolean))].sort(), [knownSettlers, allTxns])
+
+  const keepsSplits = mode === 'value' && existingSplits
+    && cat === (first.category || '') && sub === (first.subcategory || '')
+  const destParts = mode === 'split'
+    ? rows.map((r) => ({ amount: parseFloat(r.amt) || 0, category: r.category,
+      subcategory: r.subcategory }))
+    : keepsSplits ? existingSplits
+      : [{ amount: first.signed_amount, category: cat, subcategory: sub }]
+  const destNeeded = neededDestination(destParts, treatments, destinationSubcategories)
+  const showDestination = single && (mode === 'value' || mode === 'split')
+    && (destNeeded > 0 || existingLinks.length > 0) && (destinations || []).length > 0
+  const shownDestRows = destTouched || existingLinks.length ? destRows
+    : [{ ticker: '', amount: destNeeded ? String(destNeeded) : '' }]
+  const destOver = showDestination && destTouched
+    && destinationBalance(shownDestRows, destNeeded).over
 
   const sumAbs = rows.reduce((a, r) => a + (parseFloat(r.amt) || 0), 0)
   const remainder = Math.round((absTotal - sumAbs) * 100) / 100
@@ -173,13 +196,16 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
     setTagsToAdd((tags) => tags.filter((value) => value !== tag))
     setTagsToRemove((tags) => tags.includes(tag) ? tags : [...tags, tag])
   }
-  const canSave = mode === 'queue'
+  const canSave = !destOver && (mode === 'queue'
     ? note.trim().length > 0 || !!cat
     : mode === 'tags'
       ? tagsToAdd.length > 0 || tagsToRemove.length > 0
     : mode === 'split'
       ? splitOk
-      : !!cat && (mode !== 'rule' || (!!ruleValue && amountOk))
+      : !!cat && (mode !== 'rule' || (!!ruleValue && amountOk)))
+  const onlyDestination = mode === 'value' && destTouched && !settleTouched
+    && cat === (first.category || '') && sub === (first.subcategory || '')
+    && note.trim() === (first.note || '').trim()
 
   async function save() {
     setSaving(true)
@@ -222,8 +248,17 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
           ...(r.settle_with?.trim() ? { settle_with: r.settle_with.trim() } : {}),
         }))
       }
+      if (showDestination && destTouched) {
+        payload.destinations = shownDestRows
+          .filter((row) => row.ticker && Number(row.amount) > 0)
+          .map((row) => ({ ticker: row.ticker, amount: Number(row.amount),
+            name: (destinations || []).find((d) => d.ticker === row.ticker)?.name }))
+        if (onlyDestination) payload.mode = 'destination'
+      }
       await saveEdit(payload)
-      if (mode === 'queue') {
+      if (payload.mode === 'destination') {
+        t('Destino no investimento atualizado.', 'success')
+      } else if (mode === 'queue') {
         t(`${ids.length} lançamento(s) na Fila do Claude.\n` +
           'Veja/edite em "Fila do Claude" (topo) ou na aba Revisar.', 'success', 6000)
       } else if (mode === 'tags') {
@@ -573,6 +608,13 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
             </p>
           )}
         </div>
+      )}
+
+      {showDestination && (
+        <DestinationEditor rows={shownDestRows} setRows={setDestRows}
+          needed={destNeeded} withdrawal={(first.signed_amount || 0) > 0}
+          destinations={destinations} simulator={simulator}
+          onTouch={() => setDestTouched(true)} />
       )}
 
       {mode !== 'queue' && mode !== 'tags' && (

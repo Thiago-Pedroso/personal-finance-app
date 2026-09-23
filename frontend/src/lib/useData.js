@@ -48,6 +48,18 @@ function localReimbursed(tx, payload) {
   return { amount: links.reduce((sum, link) => sum + link.amount, 0), parts, links }
 }
 
+function localInvest(tx, destinations) {
+  const linked = destinations.reduce((sum, row) => sum + (Number(row.amount) || 0), 0)
+  const needed = tx.invest?.needed ?? Math.abs(tx.signed_amount || 0)
+  const settled = Math.abs(linked - needed) < 0.01
+  return {
+    needed, linked,
+    status: !linked ? 'missing' : settled ? 'linked' : linked < needed ? 'partial' : 'over',
+    links: destinations.map((row) => ({ ticker: row.ticker, name: row.name || row.ticker,
+      amount: Number(row.amount), side: (tx.signed_amount || 0) < 0 ? 'BUY' : 'SELL' })),
+  }
+}
+
 // Espelha na tela o que o backend vai gravar — só os campos visíveis do card.
 // Os totais NÃO são recalculados aqui de propósito: as regras de tratamento,
 // split e rasurado vivem no report.py, e duplicá-las em JS abriria espaço para
@@ -73,6 +85,7 @@ function patchOf(payload, tx) {
     if (payload.settle_with !== undefined) p.settle_with = payload.settle_with || null
   }
   if (payload.excluded !== undefined) p.excluded = !!payload.excluded
+  if (Array.isArray(payload.destinations)) p.invest = localInvest(tx, payload.destinations)
   return p
 }
 

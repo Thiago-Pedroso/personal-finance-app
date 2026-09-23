@@ -8,6 +8,7 @@ import { Button, Card } from '../ui/primitives.jsx'
 import { SensitiveAmount } from '../ui/SensitiveValue.jsx'
 import { DriftBar, DriftChip, InvestmentCardHeader, InvestmentPageHeader,
   Money, pct, Problems, Profit } from './shared.jsx'
+import { InvestAuditCard } from './PendingCards.jsx'
 
 const COMPOSITION_COLORS = [
   '#5b9dff', '#68d9a2', '#f3b477', '#b08cff', '#55c2d9', '#f07f86',
@@ -21,11 +22,11 @@ function compositionColor(slice) {
   return COMPOSITION_COLORS[hash % COMPOSITION_COLORS.length]
 }
 
-function Wealth({ money }) {
+function Wealth({ money, toInvest }) {
   const lines = [
     ['Investido', money.invested, 'na estratégia'],
     ['Reservado', money.reserved, 'guardado com destino'],
-    ['A aportar', money.to_invest, 'saiu da conta, ainda não virou posição'],
+    ['A aportar', money.to_invest, 'guardado para investir, ainda em conta'],
     ['Livre', money.free, 'sem compromisso'],
   ].filter(([, value]) => Math.abs(value) > 0.005)
   return (
@@ -39,6 +40,16 @@ function Wealth({ money }) {
             <p className="text-[13px] text-subtle">{label}</p>
             <p className="tnum mt-1 text-[17px] font-semibold text-strong">
               <Money value={value} /></p>
+            {label === 'A aportar' && toInvest.length > 0 && (
+              <ul className="mt-1 flex flex-col gap-0.5 text-[12px] text-faint">
+                {toInvest.map((position) => (
+                  <li key={position.ticker} className="flex justify-between gap-3">
+                    <span className="truncate">{position.name}</span>
+                    <span className="tnum"><Money value={position.value} /></span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         ))}
       </div>
@@ -193,7 +204,7 @@ function PortfolioComposition({ allocation, policy }) {
   )
 }
 
-export function Visao({ data, goTab, onRefresh, busy }) {
+export function Visao({ data, goTab, onRefresh, busy, onOpenLedger }) {
   const { totals, allocation, plan, history, problems } = data
   const money = data.wealth
     || { invested: totals.eligible_value, reserved: 0, to_invest: 0,
@@ -201,6 +212,9 @@ export function Visao({ data, goTab, onRefresh, busy }) {
   const reserves = totals.value - totals.eligible_value
   const counted = allocation.filter((item) => item.in_totals)
   const outsideStrategy = allocation.filter((item) => !item.in_totals && item.value > 0)
+  const roles = Object.fromEntries((data.policy || []).map((node) => [node.node, node.role]))
+  const toInvest = (data.positions || []).filter((position) =>
+    roles[position.node] === 'to_invest' && Math.abs(position.value) > 0.005)
 
   return (
     <div className="flex flex-col gap-6">
@@ -216,9 +230,13 @@ export function Visao({ data, goTab, onRefresh, busy }) {
         )} />
 
       <Problems items={problems} />
+      {data.links && (
+        <InvestAuditCard audit={data.audit} pending={data.pending}
+          onOpenLedger={onOpenLedger} />
+      )}
 
       <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr_.85fr]">
-        <Wealth money={money} />
+        <Wealth money={money} toInvest={toInvest} />
         <div className="grid gap-5">
           <Tile label="Rentabilidade" sub={`custo ${brl(totals.cost)}`}>
             <Profit value={totals.profit} pctValue={totals.profit_pct} />

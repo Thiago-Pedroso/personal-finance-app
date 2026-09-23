@@ -72,6 +72,11 @@ function Shell() {
   }
   const goCategory = (c) => { setSelCat(c); setTab('cats') }
   const goTxns = (c) => { setTxnPreset(c); setTab('txns') }
+  const openLedger = (origin) => {
+    if (origin.date) { d.setMode('month'); d.setMonth(origin.date.slice(0, 7)) }
+    setTxnPreset({ ids: [origin.ledger_id], idsLabel: 'Origem no investimento' })
+    space.go('financas', 'txns')
+  }
   const onRemoveQueue = async (i) => {
     try { await removeQueue(i); d.loadQueue(); toast('Removido da fila.', 'info') }
     catch (e) { toast(e.message, 'error') }
@@ -249,7 +254,8 @@ function Shell() {
 
       <main className="mt-6">
         {space.space === 'investimentos' && (
-          <InvestSpace tab={tab} setTab={setTab} onError={d.setError} />
+          <InvestSpace tab={tab} setTab={setTab} onError={d.setError}
+            onOpenLedger={openLedger} />
         )}
         {space.space === 'financas' && tab === 'overview' && (
           <Overview dash={dash} month={month} mdata={mdata}
@@ -307,7 +313,10 @@ function Shell() {
           taxonomy={dash.taxonomy} allTxns={mdata.transactions || []}
           availableTags={dash.tags || []}
           knownSettlers={(dash.open_settlements || []).map((group) => group.name)}
-          onSaved={onSaved} saveEdit={d.saveEdit} />
+          onSaved={onSaved} saveEdit={d.saveEdit} treatments={dash.treatments}
+          destinations={dash.invest_destinations || []}
+          simulator={dash.invest_simulator || []}
+          destinationSubcategories={dash.invest_destination_subcategories} />
       )}
 
       {reimburse.open && (

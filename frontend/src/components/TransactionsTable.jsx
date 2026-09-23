@@ -33,7 +33,42 @@ import {
   Search, Pencil, ChevronLeft, ChevronRight, X, ArrowUpDown,
   ArrowUp, ArrowDown, SlidersHorizontal, StickyNote, MessageSquare,
   PiggyBank, ArrowLeftRight, EyeOff, Wand2, Check, Tag as TagIcon, Link2, UserRound,
+  Landmark, CircleAlert,
 } from 'lucide-react'
+import { STATUS_LABEL } from '../lib/destinations.js'
+
+function InvestBadge({ transaction, onOpen }) {
+  const info = transaction.invest
+  if (!info) return null
+  const links = info.links || []
+  const detail = links.map((link) => `${link.name}: ${brl(link.amount)}`).join('\n')
+  if (info.status === 'linked' || info.status === 'info') {
+    const label = links.length === 1 ? links[0].name : `${links.length} destinos`
+    return (
+      <button type="button" onClick={onOpen}
+        title={`${STATUS_LABEL[info.status]}\n${detail}\nClique para editar.`}
+        className="inline-flex max-w-[190px] items-center gap-1 rounded-full border
+          border-violet/40 bg-violet/10 px-1.5 py-0.5 text-[11px] font-semibold
+          text-violet hover:bg-violet/20">
+        <Landmark className="size-3 shrink-0" />
+        <span className="truncate">→ {label}</span>
+      </button>
+    )
+  }
+  const text = info.status === 'missing' ? 'sem destino'
+    : info.status === 'partial' ? `faltam ${brl(info.needed - info.linked)}`
+      : `destino a mais ${brl(info.linked - info.needed)}`
+  return (
+    <button type="button" onClick={onOpen}
+      title={`${STATUS_LABEL[info.status]} no investimento${detail ? `\n${detail}` : ''}`
+        + '\nClique para definir.'}
+      className="inline-flex items-center gap-1 rounded-full border border-amber/40
+        bg-amber/10 px-1.5 py-0.5 text-[11px] font-semibold text-amber
+        hover:bg-amber/20">
+      <CircleAlert className="size-3" />{text}
+    </button>
+  )
+}
 
 function SettleChips({ transaction }) {
   const names = [...new Set([transaction.settle_with,
@@ -71,7 +106,8 @@ function ReimbursedBadge({ transaction, onOpen }) {
   )
 }
 
-const EMPTY = { q: '', cats: [], tags: [], ids: [], accs: [], flow: '', rev: false,
+const EMPTY = { q: '', cats: [], tags: [], ids: [], idsLabel: '', accs: [], flow: '',
+  rev: false,
   d0: '', d1: '', a0: '', a1: '', sub: '', rule: '', queued: false, excl: false,
   hiddenCats: [], hiddenSubs: [] }
 
@@ -92,7 +128,8 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }))
 
   useEffect(() => {
-    if (presetCat) setF({ ...EMPTY, cats: [presetCat] })
+    if (presetCat) setF(typeof presetCat === 'string'
+      ? { ...EMPTY, cats: [presetCat] } : { ...EMPTY, ...presetCat })
   }, [presetCat])
 
   const initKey = JSON.stringify(initialFilter || null)
@@ -277,6 +314,7 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
         // palpite do mapa da Pluggy, ainda não confirmado por ninguém
         const pluggyGuess = t.category_source === 'pluggy-map' && !t.reviewed
         const sw = <SettleChips transaction={t} />
+        const ib = <InvestBadge transaction={t} onOpen={() => openEdit([t])} />
         const rb = <ReimbursedBadge transaction={t} onOpen={() => drill?.drill(
           `Abatimento: ${t.description}`,
           { ids: [t.id, ...t.reimbursed.links.map((link) => link.other_id)] })} />
@@ -298,7 +336,7 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
                   title={`${s.category}${s.subcategory ? '/' + s.subcategory : ''} ${signedBrl(s.amount)}`}
                   onClick={() => pick(s.category)} />
               ))}
-              {qb}{xb}{rb}{sw}
+              {qb}{xb}{rb}{sw}{ib}
             </div>
           )
         }
@@ -308,7 +346,7 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
               <CategoryTag uncategorized hint={e.hint}
                 onClick={() => pick('Sem categoria')} />
               {t.needs_review && <Badge tone="amber">revisar</Badge>}
-              {tb}{qb}{xb}{pm}{rb}{sw}
+              {tb}{qb}{xb}{pm}{rb}{sw}{ib}{ib}
             </span>
           )
         }
@@ -316,7 +354,7 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
           <span className="flex flex-wrap items-center gap-2">
             <CategoryTag category={e.label} onClick={() => pick(e.label)} />
             {t.needs_review && <Badge tone="amber">revisar</Badge>}
-            {tb}{qb}{xb}{pm}{rb}{sw}
+            {tb}{qb}{xb}{pm}{rb}{sw}{ib}
           </span>
         )
       },
@@ -448,7 +486,8 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
               className="inline-flex items-center gap-1 rounded-full border
                 border-green/40 bg-green/10 px-2 py-0.5 text-[11.5px] font-medium
                 text-green hover:bg-green/20">
-              <Link2 className="size-3" />Grupo abatido<X className="size-3" />
+              <Link2 className="size-3" />{f.idsLabel || 'Grupo abatido'}
+              <X className="size-3" />
             </button>
           )}
         </div>

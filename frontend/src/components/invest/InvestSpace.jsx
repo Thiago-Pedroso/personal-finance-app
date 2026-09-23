@@ -18,7 +18,7 @@ export const INVEST_TABS = [
   ['simulador', 'Simulador'],
 ]
 
-export function InvestSpace({ tab, setTab, onError }) {
+export function InvestSpace({ tab, setTab, onError, onOpenLedger }) {
   const invest = useInvest(true)
 
   if (invest.error && !invest.data) {
@@ -63,7 +63,7 @@ export function InvestSpace({ tab, setTab, onError }) {
       )}
       {tab === 'visao' && (
         <Visao data={invest.data} goTab={setTab} onRefresh={invest.refresh}
-          busy={invest.busy} />
+          busy={invest.busy} onOpenLedger={onOpenLedger} />
       )}
       {tab === 'carteira' && (
         <Carteira data={invest.data} onSaveTargets={saveTargets}
@@ -73,7 +73,8 @@ export function InvestSpace({ tab, setTab, onError }) {
         <Aporte data={invest.data} onApply={apply} busy={invest.busy} />
       )}
       {tab === 'caixinhas' && (
-        <Caixinhas data={invest.data} onApply={apply} busy={invest.busy} />
+        <Caixinhas data={invest.data} onApply={apply} busy={invest.busy}
+          onOpenLedger={onOpenLedger} />
       )}
       {tab === 'operacoes' && (
         <Operacoes data={invest.data} onApply={apply} busy={invest.busy}
