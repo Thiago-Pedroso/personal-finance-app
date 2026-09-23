@@ -34,7 +34,8 @@ def test_asset_and_policy_roundtrip():
     asset = {"ticker": "BBAS3", "name": "Banco do Brasil", "node": "acoes",
              "account": "xp", "sector": "Banco", "currency": "BRL",
              "quote_symbol": "BVMF:BBAS3", "valuation": "quote", "pluggy_code": "BBAS3",
-             "target_pct": 0.06, "lot_size": 1.0, "active": True, "note": None}
+             "target_pct": 0.06, "lot_size": 1.0, "active": True, "note": None,
+             "isin": "BRXXXXACNOR0"}
     first = _roundtrip(sheets.INVEST_ASSETS_SCHEMA, asset)
     assert first == asset
 

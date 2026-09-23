@@ -12,8 +12,14 @@ funcionar para quem ainda não tem interface aberta.
                     "quantity": 30, "price": 4.5, "account": "xp"}],
       "balances": [{"ticker": "INTER-GLOBAL", "date": "2026-09-07", "value": 13450}],
       "targets":  {"acoes": {"BBAS3": 0.07}},
-      "locked":   {"acoes": ["ITUB3"]}
+      "locked":   {"acoes": ["ITUB3"]},
+      "links":    [{"ledger_id": "uuid", "destinations": [{"ticker": "VIAGEM",
+                                                           "amount": 1200}]}]
     }
+
+`links` define o destino de um lançamento do Ledger e substitui o que havia antes;
+destinos vazios desfazem a ligação. Caixinha recebe `BUY` (ou `SELL` no resgate) e conta
+recebe `TRANSFER`, que só documenta a chegada: o saldo da conta vem da Pluggy.
 
 Ticker que aparece numa movimentação e ainda não existe é cadastrado sozinho, com o tipo
 deduzido do formato, e ganha linha na aba de cotações.
@@ -23,8 +29,10 @@ import json
 import math
 from datetime import date
 
+from .. import ledger as L
 from . import accounts as ACC
 from . import assets as A
+from . import ledger_link as LL
 from . import plan as PL
 from . import policy as P
 from . import quotes as Q
@@ -84,8 +92,58 @@ def allocation_sim_settings(data: dict) -> tuple[dict | None, list[str]]:
     return {"base": base, "items": items}, problems
 
 
+def needs_ledger(data: dict) -> bool:
+    return bool(data.get("links")) or any(
+        (row or {}).get("ledger_id") for row in data.get("trades") or [])
+
+
+def _link_trades(data: dict, assets: dict, existing: list[dict], records: dict,
+                 treatments: dict, problems: list,
+                 subcategories=LL.DESTINATION_SUBCATEGORIES) -> tuple[list[dict], set]:
+    """Movimentações novas e ids removidos para cada destino informado em `links`."""
+    new_trades, removed = [], set()
+    for link in data.get("links") or []:
+        ledger_id = (link or {}).get("ledger_id")
+        record = records.get(ledger_id)
+        if not record:
+            problems.append(f"Lançamento {ledger_id} não existe no Ledger: destino ignorado.")
+            continue
+        amount = L.effective_amount(record)
+        limit = LL.needed_destination(record, treatments, subcategories) or abs(amount)
+        rows = [row for row in link.get("destinations") or []
+                if float(row.get("amount") or 0) > 0]
+        invalid = [row.get("ticker") for row in rows
+                   if row.get("ticker", "").upper() not in assets
+                   or not A.accepts_destination(assets[row["ticker"].upper()])]
+        if invalid:
+            problems.append(f"Destino inválido para {record['description']}: "
+                            f"{', '.join(map(str, invalid))} não é caixinha, saldo nem conta.")
+            continue
+        total = round(sum(float(row["amount"]) for row in rows), 2)
+        if total - limit > LL.TOLERANCE:
+            problems.append(f"Destinos de {record['description']} somam {total:.2f}, "
+                            f"mais que os {limit:.2f} do lançamento.")
+            continue
+        removed |= {trade["id"] for trade in map(T.normalize, existing)
+                    if trade["ledger_id"] == ledger_id and trade["side"] in LL.LINK_SIDES
+                    and trade["ticker"] in assets
+                    and A.accepts_destination(assets[trade["ticker"]])}
+        for row in rows:
+            ticker = row["ticker"].upper()
+            side = ("TRANSFER" if assets[ticker]["valuation"] == "account"
+                    else "BUY" if amount < 0 else "SELL")
+            new_trades.append(T.normalize({
+                "date": record["date"], "ticker": ticker, "side": side,
+                "price": round(float(row["amount"]), 2),
+                "account": assets[ticker]["account"], "source": "ledger",
+                "ledger_id": ledger_id, "note": row.get("note") or "destino do lançamento"}))
+    return new_trades, removed
+
+
 def plan_changes(data: dict, assets: dict, accounts: dict, tree: dict,
-                 existing: list[dict]) -> dict:
+                 existing: list[dict], records: dict | None = None,
+                 treatments: dict | None = None,
+                 subcategories=LL.DESTINATION_SUBCATEGORIES) -> dict:
     """Calcula o que muda, sem tocar em rede. Devolve o estado novo e os problemas."""
     assets = {ticker: dict(asset) for ticker, asset in assets.items()}
     accounts = {key: dict(value) for key, value in accounts.items()}
@@ -136,9 +194,19 @@ def plan_changes(data: dict, assets: dict, accounts: dict, tree: dict,
             problems.append(f"Movimentação de {trade['ticker']} com data inválida "
                             f"({trade['date'] or 'vazia'}).")
             continue
+        if trade["ledger_id"] and records is not None and trade["ledger_id"] not in records:
+            problems.append(f"Movimentação de {trade['ticker']} aponta para o lançamento "
+                            f"{trade['ledger_id']}, que não existe no Ledger.")
+            continue
         if trade["ticker"] not in assets:
             assets[trade["ticker"]] = _asset_from_trade(trade, tree, problems)
         new_trades.append(trade)
+
+    link_problems: list[str] = []
+    linked, removed = _link_trades(data, assets, existing, records or {},
+                                   treatments or {}, link_problems, subcategories)
+    problems.extend(link_problems)
+    new_trades.extend(linked)
 
     for node, targets in (data.get("targets") or {}).items():
         current = {ticker: asset["target_pct"] for ticker, asset in assets.items()
@@ -155,7 +223,9 @@ def plan_changes(data: dict, assets: dict, accounts: dict, tree: dict,
     quotes = [{"ticker": t["ticker"]} for t in new_trades
               if assets[t["ticker"]]["valuation"] == "quote"]
     return {"assets": assets, "accounts": accounts, "policy": tree,
-            "trades": new_trades, "quotes": quotes, "problems": problems,
+            "trades": new_trades, "removed_trades": removed,
+            "link_problems": link_problems,
+            "quotes": quotes, "problems": problems,
             "contribution_settings": contribution, "allocation_sim": allocation_sim}
 
 

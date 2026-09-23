@@ -28,7 +28,7 @@ from gspread.utils import ValueRenderOption, rowcol_to_a1
 
 from .config import DEFAULT_TIMEZONE, GOOGLE_SA_CREDENTIALS, ROOT, SHEET_ID
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 
 # Escopos: Sheets (ler/gravar) + Drive (abrir a planilha por ID / criar abas).
 _SCOPES = [
@@ -86,7 +86,8 @@ REIMBURSEMENTS_SCHEMA = [
 
 # ---- Investimentos --------------------------------------------------------------------
 # Fatos: uma linha por operação. `side` cobre BUY, SELL, DIVIDEND, JCP, SPLIT, ADJUST e
-# BALANCE (saldo informado de ativo sem cotação).
+# BALANCE (saldo informado de ativo sem cotação), além de TRANSFER (dinheiro do Fluxo que
+# chegou numa conta, só documenta a origem). `ledger_id` liga ao lançamento de origem.
 INVEST_TRADES_SCHEMA = [
     ("id", "str"), ("date", "str"), ("ticker", "str"), ("side", "str"),
     ("quantity", "fnum"), ("price", "fnum"), ("fees", "fnum"), ("currency", "opt"),
@@ -95,12 +96,13 @@ INVEST_TRADES_SCHEMA = [
 ]
 
 # Catálogo. `node` aponta para uma folha da InvestPolicy; `valuation` diz de onde vem o
-# valor: "quote" (cotação), "balance" (saldo informado) ou "pluggy".
+# valor: "quote" (cotação), "balance" (saldo informado), "pluggy" ou "account" (conta).
+# `isin` reconhece o ativo quando o extrato cita o ISIN em vez do ticker.
 INVEST_ASSETS_SCHEMA = [
     ("ticker", "str"), ("name", "opt"), ("node", "str"), ("account", "opt"),
     ("sector", "opt"), ("currency", "opt"), ("quote_symbol", "opt"),
     ("valuation", "str"), ("pluggy_code", "opt"), ("target_pct", "fnum"),
-    ("lot_size", "fnum"), ("active", "bool"), ("note", "opt"),
+    ("lot_size", "fnum"), ("active", "bool"), ("note", "opt"), ("isin", "opt"),
 ]
 
 # Onde o dinheiro está custodiado. `kind`: "broker" | "wallet" | "bucket".

@@ -15,6 +15,7 @@ from pathlib import Path
 
 from .. import ledger as L
 from .. import sheets
+from .. import taxonomy as TX
 from ..config import INVEST_DECISIONS_FILE, INVEST_PENDING_FILE
 from . import accounts as ACC
 from . import assets as A
@@ -44,7 +45,14 @@ def cmd_apply(args) -> int:
         print(f"Nada para aplicar: {path} vazio ou inexistente.")
         return 0
     assets, accounts, tree, trades = _load_state()
-    result = D.plan_changes(data, assets, accounts, tree, trades)
+    records = treatments = None
+    subcategories = LL.DESTINATION_SUBCATEGORIES
+    if D.needs_ledger(data):
+        records = L.load_ledger()
+        treatments = TX.load_treatments()
+        subcategories = LL.load_destination_subcategories()
+    result = D.plan_changes(data, assets, accounts, tree, trades, records, treatments,
+                            subcategories)
 
     if result["accounts"] != accounts:
         ACC.save(result["accounts"])
@@ -55,7 +63,12 @@ def cmd_apply(args) -> int:
     if result["assets"] != assets:
         A.save(result["assets"])
         print(f"Ativos: {len(result['assets'])}")
-    if result["trades"]:
+    if result["removed_trades"]:
+        kept = [trade for trade in trades if trade["id"] not in result["removed_trades"]]
+        T.save(kept + result["trades"])
+        print(f"Movimentações substituídas: -{len(result['removed_trades'])} "
+              f"+{len(result['trades'])}")
+    elif result["trades"]:
         T.append(result["trades"])
         print(f"Movimentações gravadas: {len(result['trades'])}")
     if result["contribution_settings"]:
@@ -74,7 +87,10 @@ def cmd_apply(args) -> int:
     for problem in result["problems"]:
         print(f"  ! {problem}")
     R.generate()
-    return 0
+    if records is not None:
+        from .. import report as flow_report
+        flow_report.generate(recs=list(records.values()))
+    return 1 if result["link_problems"] else 0
 
 
 def cmd_sync(args) -> int:
@@ -84,12 +100,18 @@ def cmd_sync(args) -> int:
     positions = PF.build(assets, trades, Q.load())
     today = date.today().isoformat()
 
+    records = list(L.load_ledger().values())
+    destinations = LL.destination_pending(records, trades, TX.load_treatments(), assets,
+                                          LL.load_destination_subcategories())
+
     print("Lendo investimentos na Pluggy...")
     investments = PS.fetch()
     bucket_items = {account["pluggy_item_id"] for account in accounts.values()
                     if account["kind"] == "bucket" and account["pluggy_item_id"]}
     pending = PS.reconcile(investments, positions, assets, today, bucket_items)
-    pending.extend(PS.reconcile_accounts(PS.fetch_accounts(), positions, assets, today))
+    pending.extend(PS.reconcile_accounts(PS.fetch_accounts(), positions, assets, today,
+                                         records))
+    pending.extend(destinations)
 
     buckets_report = {}
     for account in accounts.values():
@@ -98,13 +120,16 @@ def cmd_sync(args) -> int:
         total = PS.account_total(investments, account["pluggy_item_id"])
         held = PS.bucket_balances(positions, assets, account["id"])
         report = PS.bucket_report(total, held)
+        blocking = PS.blocking_destinations(destinations, account["pluggy_item_id"])
+        report["blocked"] = len(blocking)
         buckets_report[account["id"]] = report
-        print(f"\n{account['name']}: total {_money(report['total'])} · "
-              f"registrado {_money(report['registered'])} · "
+        print(f"\n{account['name']}: total {_money(report['total'])}, "
+              f"registrado {_money(report['registered'])}, "
               f"a alocar {_money(report['unallocated'])}")
+        if blocking:
+            print(f"  rateio suspenso: {len(blocking)} aporte(s) sem destino nesta conta")
 
     print("\nLendo o extrato para proventos...")
-    records = list(L.load_ledger().values())
     income, income_pending = LL.income_from_ledger(records, assets, positions, trades)
     pending.extend(income_pending)
     print(f"  {len(income)} provento(s) reconhecido(s)")

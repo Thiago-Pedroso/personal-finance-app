@@ -20,6 +20,8 @@ from . import trades as T
 
 # Papel temporário e posição encerrada não são carteira: entram zerados e só fazem ruído.
 NOISE_TOLERANCE = 1e-9
+# rendimento diário que a instituição credita sem lançamento cabe nessa folga
+STATEMENT_TOLERANCE = 1.0
 SYMBOLS = {"BRL": "R$", "USD": "US$", "EUR": "€", "GBP": "£"}
 
 
@@ -93,10 +95,22 @@ def money(value: float, currency: str = "BRL") -> str:
     return f"{SYMBOLS.get(currency, currency)} {value:,.2f}"
 
 
+def statement_gap(records: list[dict], account_id: str, since: str | None, today: str,
+                  informed_change: float) -> float | None:
+    """Quanto da variação informada pela instituição não tem lançamento no Ledger."""
+    if not since:
+        return None
+    recorded = sum(float(record.get("signed_amount") or 0.0) for record in records
+                   if record.get("account_id") == account_id
+                   and since < str(record.get("date") or "") <= today)
+    gap = informed_change - recorded
+    return gap if abs(gap) > STATEMENT_TOLERANCE else None
+
+
 def reconcile_accounts(accounts_data: list[dict], positions: dict, assets: dict,
-                       today: str) -> list[dict]:
-    """Saldo de conta é ativo por saldo: o ativo aponta para a conta em `pluggy_code`.
-    A comparação é na moeda da conta, então dólar nunca é confrontado com real."""
+                       today: str, records: list[dict] | None = None) -> list[dict]:
+    """Saldo de conta aponta para a conta em `pluggy_code`, e a comparação é na moeda
+    dela. Com o Ledger, também diz quando falta extrato."""
     by_id = {account["account_id"]: account for account in accounts_data}
     pending = []
     for ticker, asset in assets.items():
@@ -109,6 +123,15 @@ def reconcile_accounts(accounts_data: list[dict], positions: dict, assets: dict,
         current = position.get("native_value", position.get("value", 0.0))
         if abs(account["balance"] - current) <= 0.01:
             continue
+        gap = statement_gap(records or [], code, position.get("last_balance_date"),
+                            today, account["balance"] - current)
+        if gap is not None:
+            pending.append({
+                "kind": "statement_missing", "ticker": ticker, "account_id": code,
+                "since": position.get("last_balance_date"), "difference": gap,
+                "message": f"{asset['name']}: {money(gap, currency)} de variação desde "
+                           f"{position.get('last_balance_date')} sem lançamento no "
+                           "Ledger. Traga o extrato dessa conta."})
         pending.append({
             "kind": "balance_update", "ticker": ticker, "currency": currency,
             "difference": account["balance"] - current, "value": account["balance"],
@@ -217,7 +240,8 @@ def bucket_report(total: float, buckets: dict) -> dict:
 
 def bucket_updates(report: dict, today: str, tolerance: float = 0.01) -> list[dict]:
     """Lançamentos que encaixam as caixinhas no total informado pela instituição."""
-    if abs(report["unallocated"]) <= tolerance or not report["registered"]:
+    if report.get("blocked") or abs(report["unallocated"]) <= tolerance \
+            or not report["registered"]:
         return []
     return [{"date": today, "ticker": bucket["ticker"], "side": "BALANCE",
              "price": round(bucket["suggested"], 2), "source": "pluggy",
@@ -238,6 +262,13 @@ def bucket_balances(positions: dict, assets: dict, account_id: str) -> dict:
         and asset["valuation"] == "balance"
         and ticker in positions
     }
+
+
+def blocking_destinations(pending: list[dict], item_id: str) -> list[dict]:
+    """Aportes sem destino na conta de caixinhas: com eles, a sobra não é rendimento."""
+    return [item for item in pending
+            if item["kind"] in ("destination_missing", "destination_partial")
+            and str(item.get("item_id")) == str(item_id)]
 
 
 def suggested_trades(pending: list[dict]) -> list[dict]:

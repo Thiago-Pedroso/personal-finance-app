@@ -11,10 +11,13 @@ Uso:
 import json
 from datetime import date, datetime, timezone
 
+from .. import ledger as L
 from .. import sheets
+from .. import taxonomy as TX
 from ..config import INVEST_PENDING_FILE, REPORTS_DIR, ensure_dirs
 from . import accounts as ACC
 from . import assets as A
+from . import ledger_link as LL
 from . import plan as PL
 from . import policy as P
 from . import portfolio as PF
@@ -52,6 +55,21 @@ def problems(tree: dict, assets: dict, positions: dict, quote_map: dict) -> list
     return out
 
 
+def ledger_links(records: list[dict], trades: list, treatments: dict,
+                 assets: dict, subcategories=LL.DESTINATION_SUBCATEGORIES) -> list[dict]:
+    """Cada lançamento ligado à carteira (ou que deveria estar), com o que a tela mostra."""
+    by_id = {record["id"]: record for record in records}
+    status = LL.destination_status(records, trades, treatments, assets, subcategories)
+    return [{"ledger_id": ledger_id, "date": by_id[ledger_id].get("date"),
+             "description": by_id[ledger_id].get("description"),
+             "account_name": by_id[ledger_id].get("account_name"),
+             "amount": by_id[ledger_id].get("signed_amount"),
+             "category": by_id[ledger_id].get("category"),
+             "subcategory": by_id[ledger_id].get("subcategory"), **info}
+            for ledger_id, info in sorted(status.items(),
+                                          key=lambda item: by_id[item[0]]["date"])]
+
+
 def load_pending() -> dict:
     """Pendências da última conferência com as corretoras, se houver."""
     if not INVEST_PENDING_FILE.exists():
@@ -66,11 +84,15 @@ def build(assets: dict, trades: list, quote_map: dict, tree: dict, accounts: dic
           contribution: float, history: list | None = None,
           balances: dict | None = None, pending: dict | None = None,
           contribution_mode: str = "spread",
-          allocation_sim: dict | None = None) -> dict:
+          allocation_sim: dict | None = None, records: list | None = None,
+          treatments: dict | None = None,
+          subcategories=LL.DESTINATION_SUBCATEGORIES) -> dict:
     contribution_mode = (contribution_mode if contribution_mode in PL.MODES
                          else "spread")
     positions = PF.build(assets, trades, quote_map, balances)
     totals = PF.totals(positions, tree)
+    records = records or []
+    treatments = treatments or {}
     spread = PF.allocation(positions, tree)
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -95,6 +117,10 @@ def build(assets: dict, trades: list, quote_map: dict, tree: dict, accounts: dic
         "pending": pending or {},
         "problems": problems(tree, assets, positions, quote_map),
         "allocation_sim": allocation_sim or {"base": None, "items": []},
+        "links": ledger_links(records, trades, treatments, assets, subcategories),
+        "audit": LL.destination_pending(records, trades, treatments, assets,
+                                        subcategories),
+        "destination_subcategories": list(subcategories),
     }
 
 
@@ -156,7 +182,10 @@ def generate(write_snapshot: bool = True) -> dict:
 
     report = build(assets, trades, quote_map, tree, accounts, contribution,
                    history_from(snapshots), pending=load_pending(),
-                   contribution_mode=contribution_mode, allocation_sim=allocation_sim)
+                   contribution_mode=contribution_mode, allocation_sim=allocation_sim,
+                   records=list(L.load_ledger().values()),
+                   treatments=TX.load_treatments(),
+                   subcategories=LL.load_destination_subcategories())
     path = REPORTS_DIR / "invest.json"
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     total = report["totals"]

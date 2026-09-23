@@ -9,6 +9,9 @@ reduz a quantidade, preserva o preço médio e produz resultado realizado.
 **Por saldo** (renda fixa, conta no exterior, caixinha): o valor é o último saldo informado
 somado ao que entrou e saiu depois. Informar um saldo novo não sobrescreve nada: gera um
 ajuste, e esse ajuste é valorização, nunca aporte. É o que impede a rentabilidade de mentir.
+
+**Conta** (conta corrente, conta da corretora): o saldo é onde o dinheiro espera, sem custo
+nem lucro.
 """
 
 from . import assets as A
@@ -181,6 +184,13 @@ def build(assets: dict, trades: list[dict], quotes: dict | None = None,
             position["stale"] = (informed is None and not position["last_balance_date"]) \
                 or _needs_fx(asset, fx)
             position["price_source"] = "pluggy"
+        elif asset["valuation"] == "account":
+            fx = _fx_for(asset, quotes)
+            _by_balance(position, rows, fx)
+            position["cost"] = position["value"]
+            position["income"] = 0.0
+            position["stale"] = _needs_fx(asset, fx)
+            position["price_source"] = "account"
         else:
             fx = _fx_for(asset, quotes)
             _by_balance(position, rows, fx)
