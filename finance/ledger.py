@@ -6,6 +6,7 @@ operação). Todo o resto do pipeline continua igual.
 """
 
 import json
+import re
 import unicodedata
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -23,6 +24,7 @@ _OURS = ("category", "subcategory", "category_source", "rule_id", "needs_review"
          "reviewed", "splits", "note", "amount_override", "excluded", "tags",
          "settle_with")
 MAX_TAG_LENGTH = 80
+_TEMPLATE_FIELDS = tuple(name for name, _ in sheets.LEDGER_SCHEMA)
 
 
 def tag_key(value: str) -> str:
@@ -160,6 +162,50 @@ def save_ledger(records: dict, changed_ids: set | None = None) -> None:
         sheets.write_records("Ledger", rows)
     else:
         sheets.update_changed_rows("Ledger", rows, changed_ids)
+
+
+def _statement_key(account_id, date, amount, description) -> tuple:
+    text = " ".join(str(description or "").upper().split())
+    return (account_id, str(date), round(float(amount), 2), text)
+
+
+def duplicate_of(existing: dict, row: dict) -> str | None:
+    """Id do lançamento que já registra a mesma linha de extrato, se houver."""
+    wanted = _statement_key(row["account_id"], row["date"], row["amount"],
+                            row["description"])
+    for rec in existing.values():
+        if _statement_key(rec.get("account_id"), rec.get("date"),
+                          rec.get("signed_amount") or 0.0,
+                          rec.get("description")) == wanted:
+            return rec["id"]
+    return None
+
+
+def manual_record(row: dict, existing: dict) -> dict:
+    """Lançamento vindo de extrato, com os dados da conta copiados de outro já sincronizado."""
+    account = next((rec for rec in existing.values()
+                    if rec.get("account_id") == row["account_id"]), {})
+    amount = float(row["amount"])
+    slug = re.sub(r"[^a-z0-9]+", "-", str(row["description"]).lower()).strip("-")[:28]
+    base = row.get("id") or f"manual-{str(row['date']).replace('-', '')}-{slug}"
+    record_id, suffix = base, 2
+    while record_id in existing:
+        record_id, suffix = f"{base}-{suffix}", suffix + 1
+    category = row.get("category") or None
+    return {**{name: None for name in _TEMPLATE_FIELDS},
+            "id": record_id, "item_id": row.get("item_id") or account.get("item_id"),
+            "account_id": row["account_id"],
+            "account_name": row.get("account_name") or account.get("account_name"),
+            "account_type": account.get("account_type") or "BANK",
+            "date": row["date"], "datetime": f"{row['date']}T03:00:00+00:00",
+            "description": row["description"], "amount": abs(amount),
+            "signed_amount": amount, "currency": row.get("currency") or "BRL",
+            "type": "CREDIT" if amount > 0 else "DEBIT", "status": "POSTED",
+            "category": category, "subcategory": row.get("subcategory") or None,
+            "category_source": "manual" if category else None,
+            "needs_review": not category, "reviewed": bool(category),
+            "note": row.get("note") or None, "excluded": False,
+            "synced_at": _now_iso(), "tags": []}
 
 
 def upsert(existing: dict, incoming: list) -> tuple[int, int]:
