@@ -1,7 +1,7 @@
-"""Motor de regras determinísticas de categorização (data/rules.json).
+"""Motor de regras determinísticas de categorização (aba Rules).
 
-Primeira regra que casa vence (ordem da lista = prioridade).
-Match em descrição/lojista é case- e acento-insensível.
+Regras com faixa de valor são testadas antes das demais; dentro de cada grupo,
+a primeira que casa vence. Match em texto é case- e acento-insensível.
 """
 
 import re
@@ -38,13 +38,13 @@ def rule_matches(rule: dict, rec: dict) -> bool:
     rtype = rule.get("type")  # opcional: só casa nesse tipo (DEBIT/CREDIT)
     if rtype and rec.get("type") != rtype:
         return False
-    # opcional: faixa de valor absoluto (|signed_amount|). min inclusivo, max exclusivo.
+    # opcional: faixa de |signed_amount|, inclusiva nos dois lados, em centavos
     amin, amax = rule.get("amount_abs_min"), rule.get("amount_abs_max")
     if amin is not None or amax is not None:
-        amt = abs(rec.get("signed_amount") or 0)
-        if amin is not None and amt < amin:
+        cents = round(abs(rec.get("signed_amount") or 0) * 100)
+        if amin is not None and cents < round(amin * 100):
             return False
-        if amax is not None and amt >= amax:
+        if amax is not None and cents > round(amax * 100):
             return False
     val = rec.get(rule["field"])
     if val is None:
@@ -68,10 +68,17 @@ def rule_matches(rule: dict, rec: dict) -> bool:
     return False
 
 
+def has_amount_range(rule: dict) -> bool:
+    return (rule.get("amount_abs_min") is not None
+            or rule.get("amount_abs_max") is not None)
+
+
 def first_match(rec: dict, rules: list) -> dict | None:
-    for r in rules:
-        if rule_matches(r, rec):
-            return r
+    for group in ([r for r in rules if has_amount_range(r)],
+                  [r for r in rules if not has_amount_range(r)]):
+        for r in group:
+            if rule_matches(r, rec):
+                return r
     return None
 
 
@@ -90,10 +97,11 @@ def add_rule(data: dict, field: str, match: str, value: str,
              txn_type: str | None = None,
              amount_abs_min: float | None = None,
              amount_abs_max: float | None = None,
-             excluded: bool = False) -> dict:
-    """Adiciona uma regra (idempotente por field+match+valor norm.+tipo+faixa).
-
-    `excluded=True` faz a regra rasurar (tirar dos relatórios) tudo que casar."""
+             excluded: bool = False,
+             propagate_note: bool = False,
+             instruction: str = "") -> dict:
+    """Adiciona uma regra, idempotente por field+match+valor norm.+tipo+faixa.
+    `note` só vai para a transação com `propagate_note`; `instruction` é para o agente."""
     k = (field, match, _key(field, value), txn_type,
          amount_abs_min, amount_abs_max)
     for r in data["rules"]:
@@ -102,6 +110,12 @@ def add_rule(data: dict, field: str, match: str, value: str,
                 r.get("amount_abs_min"), r.get("amount_abs_max")) == k:
             if excluded:              # permite "promover" regra existente a rasurar
                 r["excluded"] = True
+            if propagate_note:
+                r["propagate_note"] = True
+                if note:
+                    r["note"] = note
+            if instruction:
+                r["instruction"] = instruction
             return r  # já existe
     rule = {
         "id": _next_id(data["rules"]),
@@ -121,5 +135,9 @@ def add_rule(data: dict, field: str, match: str, value: str,
         rule["amount_abs_max"] = amount_abs_max
     if excluded:
         rule["excluded"] = True
+    if propagate_note:
+        rule["propagate_note"] = True
+    if instruction:
+        rule["instruction"] = instruction
     data["rules"].append(rule)
     return rule

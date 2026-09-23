@@ -28,7 +28,7 @@ from gspread.utils import ValueRenderOption, rowcol_to_a1
 
 from .config import DEFAULT_TIMEZONE, GOOGLE_SA_CREDENTIALS, ROOT, SHEET_ID
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 8
 
 # Escopos: Sheets (ler/gravar) + Drive (abrir a planilha por ID / criar abas).
 _SCOPES = [
@@ -62,7 +62,8 @@ RULES_SCHEMA = [
     ("id", "str"), ("field", "str"), ("match", "str"), ("value", "str"),
     ("category", "str"), ("subcategory", "opt"), ("note", "opt"),
     ("type", "opt"), ("amount_abs_min", "fnum"), ("amount_abs_max", "fnum"),
-    ("excluded", "bool"), ("created_at", "opt"),
+    ("excluded", "bool"), ("created_at", "opt"), ("propagate_note", "bool"),
+    ("instruction", "opt"),
 ]
 
 TAXONOMY_SCHEMA = [("Category", "str"), ("Subcategories", "str"), ("Treatment", "str"),

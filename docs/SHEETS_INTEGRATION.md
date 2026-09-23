@@ -114,8 +114,10 @@ Espelha o que `finance/ledger.py::normalize()` produz. Colunas:
 | `subcategory` | opt |
 | `note` | opt |
 | `type` | opt (`DEBIT`/`CREDIT` — restringe a regra) |
-| `amount_abs_min`, `amount_abs_max` | fnum (faixa de valor absoluto) |
+| `amount_abs_min`, `amount_abs_max` | fnum (faixa de valor absoluto, inclusiva nos dois lados; min = max significa "igual a"). Regras com faixa são testadas antes das sem faixa |
 | `created_at` | opt |
+| `propagate_note` | bool — quando `TRUE`, `note` também é gravado na transação toda vez que a regra casar; quando `FALSE` (padrão), `note` é só documentação da regra |
+| `instruction` | opt (o que o agente deve fazer quando a regra casar; listado em `finance.show queue`, nunca vai para a transação) |
 
 ### Aba `Taxonomy` — uma categoria por linha
 
@@ -170,7 +172,7 @@ descarta o que não existir na sua taxonomia. Sem a aba, o mapa cai no fixture.
 | `sync_state` | cursores de sincronização por conta |
 | `timezone` | fuso IANA usado nas datas locais, por exemplo `America/Sao_Paulo` |
 | `min_transaction_date` | piso opcional (`YYYY-MM-DD`); o sync descarta lançamentos anteriores |
-| `schema_version` | versão do esquema (atualmente `6`) |
+| `schema_version` | versão do esquema (atualmente `8`) |
 | `invest_monthly_contribution` | aporte mensal usado como padrão no simulador |
 | `invest_contribution_mode` | modo do simulador de aporte: `spread` ou `focus` |
 | `invest_allocation_sim` | rascunho da aba Simulador: `{base, items: [{label, amount}]}` — nunca vira trade |

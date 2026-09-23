@@ -15,7 +15,7 @@ Controle financeiro pessoal operado via Claude Code. As transações chegam do O
 
 ```
 1. uv run python -m finance.sync --days N      # puxa transações da Pluggy → Sheets
-2. uv run python -m finance.show queue         # lê a Fila do Claude (dashboard)
+2. uv run python -m finance.show queue         # Fila do Claude + instruções das regras
 3. escrever data/.decisions.json + apply       # categoriza o que chegou (grava no Sheets)
 4. uv run python -m finance.report             # SEMPRE rodar após qualquer categorização
 5. git commit                                  # commitar só CÓDIGO/DOCS (dados já estão no Sheets)
@@ -176,8 +176,34 @@ Campos relevantes:
 Arquivo de trabalho **efêmero e local** (gitignored). O `apply` lê ele e grava o resultado na
 aba `Ledger` do Sheets.
 
+Antes de categorizar um lojista/descrição que não bate com nenhuma regra em `Rules`, procure no
+Ledger se ele já apareceu antes — às vezes já tem precedente (categoria e principalmente `note`)
+que nunca virou regra determinística. `uv run python -m finance.show find "texto"` acha as
+ocorrências, mas não imprime `note`; pra ver a nota grave um script curto lendo `L.load_ledger()`
+ou confira pelo dashboard. Encontrou precedente? Siga ele em vez de adivinhar de novo e, se for
+recorrente, promova pra regra (ver `rules` abaixo) em vez de corrigir manualmente toda vez.
+
 ```json
 {
+  "rules": [
+    {
+      "field": "description",
+      "match": "contains",
+      "value": "texto do lojista",
+      "category": "Supermercado",
+      "note": "Nota que vai pra transação toda vez que casar",
+      "propagate_note": true
+    },
+    {
+      "field": "description",
+      "match": "contains",
+      "value": "lojista com preço fixo",
+      "amount_abs_min": 99.90,
+      "amount_abs_max": 99.90,
+      "category": "Serviços & Assinaturas",
+      "instruction": "O que o agente deve checar quando essa regra casar"
+    }
+  ],
   "assignments": [
     {
       "ids": ["uuid-completo"],
@@ -209,7 +235,23 @@ aba `Ledger` do Sheets.
 }
 ```
 
-Depois: `uv run python -m finance.categorize apply && uv run python -m finance.report`
+`rules` cria regras determinísticas (aba `Rules`), pra merchant recorrente que apareceu 2+ vezes
+sem virar regra. `note` na regra é só documentação (por quê/como foi criada); só é gravada na
+transação toda vez que a regra casar quando `propagate_note: true`. Sem esse flag (padrão
+`false`), a nota fica interna e não aparece nas transações — use assim pra regras cujo `note` é
+tipo "importado do Mobills" ou "dashboard <data>", não pra descrever a transação em si.
+
+`amount_abs_min`/`amount_abs_max` (opcionais) restringem a regra a uma faixa de valor absoluto,
+inclusiva nos dois lados; min = max significa "igual a". Regras com faixa são testadas antes das
+sem faixa, então dá pra ter uma regra genérica do lojista e outra específica para um valor.
+
+`instruction` (opcional) é uma ordem para o agente, escrita pelo usuário, que nunca vai para a
+transação. O `finance.show queue` lista os lançamentos recentes que casaram com regras que têm
+instrução: siga cada uma ao categorizar. Um lançamento resolvido com `assignment` vira `manual`
+e sai da lista; os que não pedem ação continuam até sair da janela (`--days`, padrão 45).
+
+Depois: `uv run python -m finance.categorize apply --learn --report` (o `--learn` só é
+necessário quando o arquivo tem `rules`; sem elas, `apply --report` basta).
 
 Tags são manuais e podem ser aplicadas em massa pelo dashboard ou pelo arquivo de decisões.
 Não crie regras automáticas para tags. Valores reais de tags pertencem à planilha privada do

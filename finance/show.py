@@ -3,7 +3,7 @@
 Substitui scripts python ad-hoc — é um comando fixo e seguro de allowlistar.
 
 Uso:
-  uv run python -m finance.show queue            # a Fila do Claude, formatada
+  uv run python -m finance.show queue [--days N] # Fila do Claude + instruções das regras
   uv run python -m finance.show tx <id|prefixo>… # registro(s) completos (JSON)
   uv run python -m finance.show find <texto> [-n N]  # busca na descrição
   uv run python -m finance.show cat "Categoria[/Sub]" [-n N]  # por categoria
@@ -13,10 +13,12 @@ Uso:
 import argparse
 import json
 import sys
+from datetime import datetime, timedelta
 
 from . import ledger as L
 from . import rules as R
 from .config import CLAUDE_QUEUE_FILE
+from .transaction_dates import load_timezone
 
 
 def _eff(r: dict) -> float:
@@ -35,7 +37,12 @@ def _line(r: dict) -> str:
             f"[{cat} {r.get('category_source')}]{sp}  {r['id']}")
 
 
-def cmd_queue(_args) -> None:
+def cmd_queue(args) -> None:
+    _print_claude_queue()
+    _print_rule_instructions(args.days)
+
+
+def _print_claude_queue() -> None:
     if not CLAUDE_QUEUE_FILE.exists() or not CLAUDE_QUEUE_FILE.read_text().strip():
         print("Fila do Claude vazia.")
         return
@@ -54,6 +61,28 @@ def cmd_queue(_args) -> None:
             print(f"    • {s.get('date')} {s.get('signed_amount'):>10} "
                   f"{s.get('description')}")
     print(f"\nTotal: {n} item(ns) na fila.")
+
+
+def _print_rule_instructions(days: int) -> None:
+    instructions = {r["id"]: r["instruction"] for r in R.load_rules()["rules"]
+                    if (r.get("instruction") or "").strip()}
+    if not instructions:
+        return
+    cutoff = (datetime.now(load_timezone()).date() - timedelta(days=days)).isoformat()
+    hits = sorted((r for r in L.load_ledger().values()
+                   if r.get("category_source") == "rule"
+                   and r.get("rule_id") in instructions and r["date"] >= cutoff),
+                  key=lambda r: (r["rule_id"], r["date"]))
+    print(f"\n=== Instruções das regras (últimos {days} dias) ===")
+    if not hits:
+        print("Nenhum lançamento recente casou com regra que tem instrução.")
+        return
+    current_rule = None
+    for r in hits:
+        if r["rule_id"] != current_rule:
+            current_rule = r["rule_id"]
+            print(f"\n[{current_rule}] {instructions[current_rule]}")
+        print(f"    • {_line(r)}")
 
 
 def cmd_tx(args) -> None:
@@ -122,7 +151,9 @@ def main() -> None:
     ap = argparse.ArgumentParser(prog="finance.show",
                                  description="Inspeção só-leitura.")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("queue").set_defaults(fn=cmd_queue)
+    p = sub.add_parser("queue")
+    p.add_argument("--days", type=int, default=45)
+    p.set_defaults(fn=cmd_queue)
     p = sub.add_parser("tx")
     p.add_argument("ids", nargs="+")
     p.set_defaults(fn=cmd_tx)
