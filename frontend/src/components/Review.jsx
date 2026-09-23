@@ -3,8 +3,9 @@ import { Card, CardHead, Button } from './ui/primitives.jsx'
 import { inputCls } from './ui/MultiSelect.jsx'
 import { TransactionsTable } from './TransactionsTable.jsx'
 import { CategoryTag } from '../lib/categories.jsx'
-import { signedBrl } from '../lib/format.js'
-import { Trash2, MessageSquare, Pencil, Check, X } from 'lucide-react'
+import { brl, dayMonth, signedBrl } from '../lib/format.js'
+import { useToast } from './ui/Toast.jsx'
+import { Trash2, MessageSquare, Pencil, Check, X, Link2, ArrowRight } from 'lucide-react'
 import { InvestPendingCards } from './invest/PendingCards.jsx'
 
 function Stat({ label, value, tone }) {
@@ -105,6 +106,55 @@ function QueueItem({ q, taxonomy, onUpdate, onRemove }) {
   )
 }
 
+function ReimbursementSuggestions({ suggestions, saveEdit }) {
+  const toast = useToast()
+  const [done, setDone] = useState(() => new Set())
+  const visible = (suggestions || []).filter((item) => !done.has(item.credit.id))
+  if (!visible.length) return null
+
+  async function confirm({ credit, debit }) {
+    try {
+      await saveEdit({ mode: 'reimburse', ids: [credit.id, debit.id],
+        links: [{ credit_id: credit.id, credit_part: null, debit_id: debit.id,
+          debit_part: debit.part, amount: credit.amount }],
+        labels: { [credit.id]: credit, [debit.id]: debit } })
+      setDone((current) => new Set(current).add(credit.id))
+      toast('Abatimento registrado.', 'success')
+    } catch (e) {
+      toast('Erro ao abater: ' + e.message, 'error', 7000)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHead title={`Possíveis reembolsos (${visible.length})`}
+        sub="Entradas com o valor exato de algo a receber. Nada é abatido sem você confirmar." />
+      <div className="flex flex-col gap-2 px-5 pb-5">
+        {visible.map((item) => (
+          <div key={item.credit.id} className="flex flex-wrap items-center gap-3
+            rounded-xl border border-border bg-surface2/50 px-3 py-2.5 text-[12.5px]">
+            <span className="min-w-0 flex-1 truncate">
+              <span className="tnum mr-2 text-faint">{dayMonth(item.credit.date)}</span>
+              {item.credit.description}
+              <span className="tnum ml-2 font-semibold text-green">
+                +{brl(item.credit.amount)}</span>
+            </span>
+            <ArrowRight className="size-4 shrink-0 text-faint" />
+            <span className="min-w-0 flex-1 truncate">
+              <span className="tnum mr-2 text-faint">{dayMonth(item.debit.date)}</span>
+              {item.debit.description}
+              <span className="ml-2 text-faint">({item.debit.settle_with})</span>
+            </span>
+            <Button onClick={() => confirm(item)}>
+              <Link2 className="size-3.5" /> Abater
+            </Button>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
 export function Review({ dash, queue, queuedIds, onRemoveQueue,
   onUpdateQueue, openEdit, saveEdit }) {
   // todo o histórico que precisa de ação (não só o mês selecionado)
@@ -124,6 +174,9 @@ export function Review({ dash, queue, queuedIds, onRemoveQueue,
       </div>
 
       <InvestPendingCards />
+
+      <ReimbursementSuggestions suggestions={dash.reimbursement_suggestions}
+        saveEdit={saveEdit} />
 
       <Card className="border-blue/25 bg-blue/[0.05] px-5 py-4 text-[13px]
         text-muted">

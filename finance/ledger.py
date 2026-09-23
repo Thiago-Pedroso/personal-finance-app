@@ -20,7 +20,8 @@ from .transaction_dates import (
 
 # Campos da NOSSA categorização — preservados ao re-sincronizar.
 _OURS = ("category", "subcategory", "category_source", "rule_id", "needs_review",
-         "reviewed", "splits", "note", "amount_override", "excluded", "tags")
+         "reviewed", "splits", "note", "amount_override", "excluded", "tags",
+         "settle_with")
 MAX_TAG_LENGTH = 80
 
 
@@ -139,6 +140,8 @@ def normalize(tx, account, item_id, local_timezone: ZoneInfo | None = None) -> d
         "excluded": False,
         "synced_at": _now_iso(),
         "tags": [],
+        # com quem esse valor vai ser acertado (pessoa ou instituição). None = ninguém.
+        "settle_with": None,
     }
 
 

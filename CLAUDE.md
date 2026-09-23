@@ -15,7 +15,7 @@ Controle financeiro pessoal operado via Claude Code. As transações chegam do O
 
 ```
 1. uv run python -m finance.sync --days N      # puxa transações da Pluggy → Sheets
-2. uv run python -m finance.show queue         # lê a Fila do Claude (dashboard)
+2. uv run python -m finance.show queue         # Fila do Claude + instruções das regras
 3. escrever data/.decisions.json + apply       # categoriza o que chegou (grava no Sheets)
 4. uv run python -m finance.report             # SEMPRE rodar após qualquer categorização
 5. git commit                                  # commitar só CÓDIGO/DOCS (dados já estão no Sheets)
@@ -43,7 +43,7 @@ uv run python -m finance.categorize stats
 
 ---
 
-## Banco no Google Sheets (6 abas de gastos + 6 de investimentos)
+## Banco no Google Sheets (7 abas de gastos + 6 de investimentos)
 
 | Aba | Conteúdo | Módulo |
 |---|---|---|
@@ -52,6 +52,7 @@ uv run python -m finance.categorize stats
 | `Taxonomy` | categorias → subcategorias | `finance/taxonomy.py` |
 | `SubcategoryMeta` | cor e ícone opcionais por subcategoria | `finance/taxonomy.py` |
 | `PluggyMap` | categoria da Pluggy → taxonomia pessoal | `finance/pluggy_map.py` |
+| `Reimbursements` | abatimentos: qual entrada abate qual saída, e quanto | `finance/reimbursements.py` |
 | `Config` | blobs JSON: `budgets`, `sync_state`, `timezone`, `min_transaction_date`, `schema_version`, `invest_monthly_contribution`, `invest_contribution_mode`, `invest_allocation_sim` | `finance/budgets.py`, `finance/sync.py` |
 | `InvestTrades` | 1 movimentação por linha (a única entrada de fatos da carteira) | `finance/invest/trades.py` |
 | `InvestAssets` | catálogo: classe, conta, setor, alvo, como o valor é apurado | `finance/invest/assets.py` |
@@ -165,6 +166,9 @@ Campos relevantes:
 - `splits` — array `[{amount, category, subcategory, note}]` onde a soma = valor efetivo
 - `note` — observação livre (aparece no hover do dashboard)
 - `tags` — lista JSON de etiquetas pessoais, independente da categoria
+- `settle_with` — com quem o valor vai ser acertado (pessoa ou instituição), em qualquer
+  categoria; também existe em cada parte de `splits`. Enquanto não for totalmente abatido,
+  aparece como pendência em "Em aberto"
 - `needs_review` / `reviewed` — controle de qualidade interno
 
 **Valor efetivo** = `amount_override` se definido, senão `signed_amount`.
@@ -176,8 +180,34 @@ Campos relevantes:
 Arquivo de trabalho **efêmero e local** (gitignored). O `apply` lê ele e grava o resultado na
 aba `Ledger` do Sheets.
 
+Antes de categorizar um lojista/descrição que não bate com nenhuma regra em `Rules`, procure no
+Ledger se ele já apareceu antes — às vezes já tem precedente (categoria e principalmente `note`)
+que nunca virou regra determinística. `uv run python -m finance.show find "texto"` acha as
+ocorrências, mas não imprime `note`; pra ver a nota grave um script curto lendo `L.load_ledger()`
+ou confira pelo dashboard. Encontrou precedente? Siga ele em vez de adivinhar de novo e, se for
+recorrente, promova pra regra (ver `rules` abaixo) em vez de corrigir manualmente toda vez.
+
 ```json
 {
+  "rules": [
+    {
+      "field": "description",
+      "match": "contains",
+      "value": "texto do lojista",
+      "category": "Supermercado",
+      "note": "Nota que vai pra transação toda vez que casar",
+      "propagate_note": true
+    },
+    {
+      "field": "description",
+      "match": "contains",
+      "value": "lojista com preço fixo",
+      "amount_abs_min": 99.90,
+      "amount_abs_max": 99.90,
+      "category": "Serviços & Assinaturas",
+      "instruction": "O que o agente deve checar quando essa regra casar"
+    }
+  ],
   "assignments": [
     {
       "ids": ["uuid-completo"],
@@ -196,7 +226,8 @@ aba `Ledger` do Sheets.
       "ids": ["uuid-completo"],
       "splits": [
         {"amount": -150.00, "category": "Lazer", "subcategory": "Viagem", "note": "Minha parte"},
-        {"amount": -150.00, "category": "Compartilhado", "subcategory": "Outro", "note": "Parte de terceiro"}
+        {"amount": -150.00, "category": "Terceiros", "subcategory": "Outro", "note": "Parte de terceiro",
+         "settle_with": "Pedro"}
       ]
     },
     {
@@ -205,11 +236,33 @@ aba `Ledger` do Sheets.
       "tags_remove": ["Trabalho"]
     }
   ],
+  "reimbursements": [
+    {"credit_id": "uuid-do-pix", "debit_id": "uuid-do-gasto", "amount": 798.87,
+     "note": "reembolso do gasto"},
+    {"credit_id": "uuid-do-pix", "debit_id": "uuid-do-split", "debit_part": 1, "amount": 60}
+  ],
+  "reimbursements_remove": ["ab_0003"],
   "confirm_provisional": false
 }
 ```
 
-Depois: `uv run python -m finance.categorize apply && uv run python -m finance.report`
+`rules` cria regras determinísticas (aba `Rules`), pra merchant recorrente que apareceu 2+ vezes
+sem virar regra. `note` na regra é só documentação (por quê/como foi criada); só é gravada na
+transação toda vez que a regra casar quando `propagate_note: true`. Sem esse flag (padrão
+`false`), a nota fica interna e não aparece nas transações — use assim pra regras cujo `note` é
+tipo "importado do Mobills" ou "dashboard <data>", não pra descrever a transação em si.
+
+`amount_abs_min`/`amount_abs_max` (opcionais) restringem a regra a uma faixa de valor absoluto,
+inclusiva nos dois lados; min = max significa "igual a". Regras com faixa são testadas antes das
+sem faixa, então dá pra ter uma regra genérica do lojista e outra específica para um valor.
+
+`instruction` (opcional) é uma ordem para o agente, escrita pelo usuário, que nunca vai para a
+transação. O `finance.show queue` lista os lançamentos recentes que casaram com regras que têm
+instrução: siga cada uma ao categorizar. Um lançamento resolvido com `assignment` vira `manual`
+e sai da lista; os que não pedem ação continuam até sair da janela (`--days`, padrão 45).
+
+Depois: `uv run python -m finance.categorize apply --learn --report` (o `--learn` só é
+necessário quando o arquivo tem `rules`; sem elas, `apply --report` basta).
 
 Tags são manuais e podem ser aplicadas em massa pelo dashboard ou pelo arquivo de decisões.
 Não crie regras automáticas para tags. Valores reais de tags pertencem à planilha privada do
@@ -262,12 +315,26 @@ Quando se paga via PIX para alguém que comprou algo em seu nome:
 2. Criar entradas individuais no ledger com IDs `pix-YYYYMMDD-nome` para cada compra real
    (copiando `item_id`, `account_id`, `account_name`, `date`, `datetime` do PIX original).
 
-### Gastos compartilhados (splits)
-Quando parte é sua e parte é adiantada para outra pessoa (reembolso esperado/recebido):
-- Sua parte → categoria real (ex.: `Lazer/Viagem`).
-- Parte do outro → `Compartilhado/Outro` com nota indicando reembolso pendente/recebido.
+### Abatimento e "Com quem" (sem interface)
+Tudo pelo `data/.decisions.json` + `uv run python -m finance.categorize apply --report`.
 
-O reembolso, quando chega (PIX recebido), → `Compartilhado/Outro` para anular o saldo.
+1. **Registrar quem deve** (pendência): `settle_with` no lançamento ou na parte do split.
+   ```json
+   {"assignments": [{"ids": ["uuid-gasto"], "category": "Terceiros",
+                     "subcategory": "Outro", "settle_with": "FUNAPE"}]}
+   ```
+   Categoria de terceiros = neutro desde já; categoria real = conta no fluxo até abater.
+2. **Abater** quando o acerto chega (entrada abate saída, total ou parcial):
+   ```json
+   {"reimbursements": [{"credit_id": "uuid-pix", "debit_id": "uuid-gasto",
+                        "amount": 798.87, "note": "reembolso"}]}
+   ```
+   Parte de split: `"debit_part": 1` (índice). Desfazer: `"reimbursements_remove": ["ab_0001"]`.
+3. **Conferir**: `finance.show queue` lista possíveis reembolsos; "Em aberto" (aba
+   Movimentações) mostra o que falta acertar.
+
+Regras: a soma abatida nunca passa do valor de cada lado; em categoria de fluxo o abatido
+sai da conta no mês de cada lado. Nunca use `amount_override` para simular abatimento.
 
 ### Entradas em moeda estrangeira (cartão/conta multimoeda)
 Para entradas manuais em USD: `signed_amount` = valor original em USD (negativo),
@@ -297,6 +364,6 @@ open("data/.claude_queue.jsonl", "w").close()
 - Os dados financeiros vivem na **planilha do Google Sheets do usuário**, fora do git.
 - Arquivos de trabalho efêmeros e locais (`data/.to_categorize.json`, `data/.decisions.json`,
   `data/.budget_input.json`, `data/.claude_queue.jsonl`, `data/.invest_decisions.json`,
-  `data/.invest_pending.json`) e os relatórios gerados (`data/reports/`) também estão no
+  `data/.invest_pending.json`, `data/.reimbursements.json`) e os relatórios gerados (`data/reports/`) também estão no
   `.gitignore`.
 - `data/seed/` é versionado de propósito: são **fixtures sintéticos**, nunca dados reais.

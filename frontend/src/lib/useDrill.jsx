@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useCallback } from 'react'
 const Ctx = createContext(null)
 export const useDrill = () => useContext(Ctx)
 
-// filter: { cats?[], tags?[], sub?, flow?'in'|'out', rev?bool, q? }
+// filter: { cats?[], tags?[], ids?[], sub?, rule?, flow?'in'|'out', rev?bool, q? }
 export function DrillProvider({ children }) {
   const [state, setState] = useState({ open: false, title: '', filter: {} })
   const drill = useCallback((title, filter) =>

@@ -23,6 +23,7 @@ async function postJSON(url, body) {
 export const getDashboard = () => getJSON('/data/dashboard.json')
 export const getMonth = (m) => getJSON(`/data/${m}.json`)
 export const getQueue = () => getJSON('/api/queue')
+export const getRules = () => getJSON('/data/rules.json')
 export const removeQueue = (index) => postJSON('/api/queue/remove', { index })
 // patch: { note?, suggestion?: {category, subcategory} | null }
 export const updateQueue = (index, patch) =>

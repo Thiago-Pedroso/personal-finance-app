@@ -16,7 +16,7 @@ from .config import REPORTS_DIR
 from .ledger import normalize_tags, update_tags
 
 EDITABLE = {"category", "subcategory", "note", "tags", "splits",
-            "amount_override", "excluded", "tags_add", "tags_remove"}
+            "amount_override", "excluded", "tags_add", "tags_remove", "settle_with"}
 
 
 def _taxonomy() -> dict:
@@ -61,6 +61,8 @@ def apply_edits(edits: list[dict]) -> dict:
     for edit in edits:
         _validate(edit.get("fields") or {}, tax)
 
+    if any("settle_with" in (e.get("fields") or {}) for e in edits):
+        sheets.ensure_current_schema()   # a coluna pode ainda não existir na planilha
     precisa_tags = any(("tags_add" in (e.get("fields") or {})
                         or "tags_remove" in (e.get("fields") or {})) for e in edits)
     rows, tags_atuais = _locate(precisa_tags)
@@ -72,6 +74,8 @@ def apply_edits(edits: list[dict]) -> dict:
         remover = base.pop("tags_remove", None)
         if "tags" in base:
             base["tags"] = normalize_tags(base["tags"])
+        if "settle_with" in base:
+            base["settle_with"] = (base["settle_with"] or "").strip() or None
         # uma edição manual passa a valer sobre regra e mapa, como no categorize
         if "category" in base:
             base.update(category_source="manual", rule_id=None,

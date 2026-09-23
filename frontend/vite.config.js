@@ -13,6 +13,7 @@ const DATA = path.join(ROOT, 'data')
 const REPORTS_DIR = path.join(DATA, 'reports')
 const DECISIONS = path.join(DATA, '.decisions.json')
 const EDITS = path.join(DATA, '.edits.json')
+const REIMBURSEMENTS = path.join(DATA, '.reimbursements.json')
 const QUEUE = path.join(DATA, '.claude_queue.jsonl')
 const BUDGET_INPUT = path.join(DATA, '.budget_input.json')
 const INVEST_DECISIONS = path.join(DATA, '.invest_decisions.json')
@@ -93,6 +94,7 @@ async function applyRowEdit(p) {
     fields.splits = p.splits.map((s) => ({
       amount: Number(s.amount), category: s.category,
       subcategory: s.subcategory || null, note: s.note || '',
+      ...(s.settle_with ? { settle_with: s.settle_with } : {}),
     }))
     if (p.note != null) fields.note = String(p.note)
   } else {
@@ -102,6 +104,8 @@ async function applyRowEdit(p) {
     }
     if (p.note != null) fields.note = String(p.note)
   }
+  if (p.settle_with !== undefined && p.mode !== 'tags')
+    fields.settle_with = p.settle_with || null
   if (p.excluded !== undefined) fields.excluded = !!p.excluded
   if (!Object.keys(fields).length)
     return { ok: false, step: 'edit', stderr: 'nada para gravar' }
@@ -127,6 +131,19 @@ async function applyEdit(p) {
     return { ok: true, mode: 'queue', queued: p.ids.length }
   }
 
+  if (p.mode === 'reimburse') {
+    const strip = ({ credit_id, credit_part, debit_id, debit_part, amount }) =>
+      ({ credit_id, credit_part, debit_id, debit_part, amount, note: p.note || null })
+    fs.writeFileSync(REIMBURSEMENTS, JSON.stringify({
+      add: (p.links || []).map(strip), remove: p.remove || [],
+    }, null, 2) + '\n')
+    const r = await run('uv', ['run', 'python', '-m', 'finance.reimbursements',
+      'apply', REIMBURSEMENTS])
+    if (r.ok) scheduleReport()
+    return { ok: r.ok, step: r.ok ? 'done' : 'reimburse',
+      log: r.stdout.trim(), stderr: r.stderr.trim() }
+  }
+
   if (p.mode !== 'rule') {
     const r = await applyRowEdit(p)
     if (r.ok) scheduleReport()
@@ -135,7 +152,9 @@ async function applyEdit(p) {
 
   const learn = p.mode === 'rule'
   const decisions = { assignments: [], rules: [] }
-  const noteVal = p.note == null ? '' : String(p.note)
+  const propagate = learn && !!p.rule?.propagate_note && !!p.rule?.note
+  const noteVal = propagate ? String(p.rule.note)
+    : p.note == null ? '' : String(p.note)
   if (p.mode === 'tags') {
     decisions.assignments.push({
       ids: p.ids,
@@ -151,6 +170,7 @@ async function applyEdit(p) {
         category: s.category,
         subcategory: s.subcategory || null,
         note: s.note || '',
+        ...(s.settle_with ? { settle_with: s.settle_with } : {}),
       })),
     })
   } else if (p.category) {
@@ -158,6 +178,7 @@ async function applyEdit(p) {
       ids: p.ids, category: p.category,
       subcategory: p.subcategory || null, source: 'manual',
       note: noteVal,
+      ...(p.settle_with !== undefined ? { settle_with: p.settle_with || null } : {}),
     })
   }
   if (learn && p.rule && p.rule.value) {
@@ -165,8 +186,12 @@ async function applyEdit(p) {
       field: p.rule.field, match: p.rule.match || 'contains',
       value: p.rule.value, category: p.category,
       subcategory: p.subcategory || null,
-      note: `dashboard ${new Date().toISOString().slice(0, 10)}`,
+      note: propagate ? String(p.rule.note) : '',
+      ...(propagate ? { propagate_note: true } : {}),
+      ...(p.rule.instruction ? { instruction: String(p.rule.instruction) } : {}),
       ...(p.rule.type ? { type: p.rule.type } : {}),
+      ...(p.rule.amount_abs_min != null ? { amount_abs_min: Number(p.rule.amount_abs_min) } : {}),
+      ...(p.rule.amount_abs_max != null ? { amount_abs_max: Number(p.rule.amount_abs_max) } : {}),
       ...(p.excluded ? { excluded: true } : {}),
     })
   }
@@ -184,11 +209,11 @@ async function applyEdit(p) {
   }
   fs.writeFileSync(DECISIONS, JSON.stringify(decisions, null, 2) + '\n')
 
-  // um processo só: apply + report reaproveitam o ledger/taxonomia em memória
-  // (evita subir 2º processo e reler tudo do Sheets).
-  const args = ['run', 'python', '-m', 'finance.categorize', 'apply', '--report']
+  // relatório adiado: a tela só relê depois que a fila de saída esvazia
+  const args = ['run', 'python', '-m', 'finance.categorize', 'apply']
   if (learn) args.push('--learn')
   const a = await run('uv', args)
+  if (a.ok) scheduleReport()
   return { ok: a.ok, step: a.ok ? 'done' : 'categorize',
     log: a.stdout.trim(), stderr: a.stderr.trim() }
 }

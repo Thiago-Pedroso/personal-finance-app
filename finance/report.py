@@ -18,6 +18,8 @@ from datetime import date, datetime, timezone
 
 from . import budgets as B
 from . import ledger as L
+from . import reimbursements as RB
+from . import rules as R
 from . import taxonomy as T
 from . import transaction_dates as TD
 from .config import REPORTS_DIR, ensure_dirs
@@ -41,7 +43,7 @@ def _is_rendimento(sub: str | None) -> bool:
 _TXN_FIELDS = ("id", "date", "time", "description", "counterparty", "signed_amount",
                "type", "account_name", "category", "subcategory",
                "category_source", "reviewed", "needs_review", "note",
-               "amount_override", "excluded", "tags")
+               "amount_override", "excluded", "tags", "rule_id", "settle_with")
 
 def _is_pending(r: dict) -> bool:
     """Precisa de ação do usuário: sem categoria, anomalia, ou palpite da
@@ -77,6 +79,8 @@ def _blank() -> dict:
 
 
 def _post(bucket: dict, amt: float, cat: str, sub: str) -> None:
+    if not amt:
+        return
     cat = cat or "Outros"
     sub = sub or "—"
     treat = _tr(cat)
@@ -119,6 +123,26 @@ def _add(bucket: dict, rec: dict) -> None:
                   sp.get("subcategory"))
         return
     _post(bucket, rec["signed_amount"], rec["category"], rec["subcategory"])
+
+
+def _reduce(amount: float, abated: float, cat: str | None) -> float:
+    if not abated or _tr(cat or "Outros") != "fluxo":
+        return amount
+    return round(amount - abated if amount > 0 else amount + abated, 2)
+
+
+def _net(rec: dict) -> dict:
+    """Cópia para os agregados: o valor abatido sai do fluxo; movimento fica intacto."""
+    info = rec.get("reimbursed")
+    if not info:
+        return rec
+    if rec.get("splits"):
+        return {**rec, "splits": [
+            {**part, "amount": _reduce(part["amount"], info["parts"].get(i, 0.0),
+                                       part.get("category"))}
+            for i, part in enumerate(rec["splits"])]}
+    return {**rec, "signed_amount": _reduce(rec["signed_amount"], info["amount"],
+                                            rec["category"])}
 
 
 def _undefault(o):
@@ -321,7 +345,8 @@ def _insights(plan: dict, mj: dict, prev_mj: dict | None,
                 f"(R$ {p:,.0f} → R$ {a:,.0f})"})
     cash = [t for t in txns
             if t["signed_amount"] < 0 and not t.get("splits")
-            and not t.get("excluded") and _tr(t["category"]) == "fluxo"]
+            and not t.get("excluded") and not t.get("reimbursed")
+            and _tr(t["category"]) == "fluxo"]
     if cash:
         big = min(cash, key=lambda t: t["signed_amount"])
         out.append({"sev": "info", "text":
@@ -394,8 +419,29 @@ def _recurring(recs: list) -> list:
     return out[:40]
 
 
+def _rules_json(rules: list, recs: list) -> dict:
+    usage: dict = defaultdict(lambda: {"count": 0, "last_date": None})
+    for r in recs:
+        if r.get("category_source") == "rule" and r.get("rule_id"):
+            u = usage[r["rule_id"]]
+            u["count"] += 1
+            u["last_date"] = max(u["last_date"] or "", r["date"])
+    ordered = ([r for r in rules if R.has_amount_range(r)]
+               + [r for r in rules if not R.has_amount_range(r)])
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "rules": [{**{k: r.get(k) for k in (
+            "id", "field", "match", "value", "category", "subcategory", "note",
+            "propagate_note", "instruction", "type", "amount_abs_min",
+            "amount_abs_max", "excluded")},
+            "priority": i + 1, **usage.get(r["id"], {"count": 0, "last_date": None})}
+            for i, r in enumerate(ordered)],
+    }
+
+
 def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
-             month=None, category_meta=None, subcategory_meta=None) -> None:
+             month=None, category_meta=None, subcategory_meta=None,
+             rules=None, reimbursement_links=None) -> None:
     """Gera os relatórios (arquivos em REPORTS_DIR).
 
     Aceita ledger/taxonomia/tratamentos/budgets já carregados para evitar reler
@@ -435,6 +481,14 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
             except (TypeError, ValueError):
                 pass
 
+    if reimbursement_links is None:
+        reimbursement_links = RB.load()
+    by_tx, discarded = RB.index(reimbursement_links, {r["id"]: r for r in recs})
+    for link_id, problem in discarded:
+        print(f"⚠ abatimento {link_id} ignorado: {problem}")
+    for r in recs:
+        r["reimbursed"] = by_tx.get(r["id"])
+
     months: dict = {}
     month_txns: dict = {}
     for r in recs:
@@ -442,7 +496,7 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
         months.setdefault(m, _blank())
         month_txns.setdefault(m, []).append(r)   # lista mostra tudo (rasurado incluso)
         if not r.get("excluded"):                 # mas rasurado não entra nos agregados
-            _add(months[m], r)
+            _add(months[m], _net(r))
 
     ordered = sorted(months)
     # Agregados enxutos (vão para o dashboard.json — carga rápida, sem transações).
@@ -467,7 +521,8 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
             continue
         mj = month_jsons[m]
         prev = month_jsons[ordered[i - 1]] if i > 0 else None
-        txns = [{**{k: r.get(k) for k in _TXN_FIELDS}, "splits": r.get("splits")}
+        txns = [{**{k: r.get(k) for k in _TXN_FIELDS}, "splits": r.get("splits"),
+                 "reimbursed": r.get("reimbursed")}
                 for r in sorted(month_txns[m], key=lambda r: (r["date"], r["id"]))]
         insights = _insights(mj["plan"], mj, prev, txns, savings_by_month[m])
         # O arquivo mensal carrega os agregados + transações + plano (consumidos no front).
@@ -487,7 +542,7 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
 
     # ---- dashboard.json (consumido pelo frontend)
     by_cat12: dict = defaultdict(lambda: {"expense": 0.0, "income": 0.0, "count": 0})
-    for r in recs:
+    for r in map(_net, recs):
         if r.get("excluded"):
             continue
         parts = (r["splits"] if r.get("splits")
@@ -512,7 +567,7 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
         "essential_cats": sorted(c for c, m in (category_meta or {}).items()
                                  if m.get("essential")),
         "budgets": bud,
-        "recurring": _recurring(recs),
+        "recurring": _recurring([_net(r) for r in recs]),
         # tratamento por categoria (fonte da verdade da taxonomia) + listas derivadas
         "treatments": _TREAT,
         "cashflow_excludes": sorted(c for c, t in _TREAT.items() if t != "fluxo"),
@@ -536,14 +591,21 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
         "excluded_count": sum(1 for r in recs if r.get("excluded")),
         # tudo que precisa de ação (histórico inteiro) — consumido pela aba Revisar
         "review": [{**{k: r.get(k) for k in _TXN_FIELDS},
-                     "splits": r.get("splits"), "month": r["date"][:7]}
+                     "splits": r.get("splits"), "reimbursed": r.get("reimbursed"),
+                     "month": r["date"][:7]}
                    for r in sorted(recs, key=lambda r: r["date"], reverse=True)
                    if _is_pending(r)],
         "total_transactions": len(recs),
+        "open_settlements": RB.open_items(recs, by_tx),
+        "reimbursement_suggestions": RB.suggestions(recs, by_tx),
     }
     dash["pending"] = len(dash["review"])
     (REPORTS_DIR / "dashboard.json").write_text(
         json.dumps(dash, ensure_ascii=False, indent=2) + "\n")
+    if rules is None:
+        rules = R.load_rules()["rules"]
+    (REPORTS_DIR / "rules.json").write_text(
+        json.dumps(_rules_json(rules, recs), ensure_ascii=False, indent=2) + "\n")
 
     last = month_jsons[ordered[-1]]
     print(f"Relatórios gerados em {REPORTS_DIR} ({len(targets)} mês(es) + dashboard.json)")

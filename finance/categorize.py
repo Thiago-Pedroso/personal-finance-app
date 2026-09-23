@@ -20,6 +20,7 @@ from statistics import median
 
 from . import ledger as L
 from . import pluggy_map
+from . import reimbursements as RB
 from . import rules as R
 from . import sheets
 from . import taxonomy as T
@@ -61,7 +62,9 @@ def prepare() -> None:
             continue
         m = R.first_match(rec, rules)
         if m:
+            note = m["note"] if m.get("propagate_note") else rec.get("note")
             rec.update(category=m["category"], subcategory=m["subcategory"],
+                       note=note or None,
                        category_source="rule", rule_id=m["id"],
                        needs_review=_anomaly(rec, m["id"], ledger),
                        reviewed=not _anomaly(rec, m["id"], ledger))
@@ -167,7 +170,8 @@ def apply(learn: bool, do_report: bool = False) -> None:
                        rd["value"], rd["category"], rd.get("subcategory"),
                        rd.get("note", ""), rd.get("type"),
                        rd.get("amount_abs_min"), rd.get("amount_abs_max"),
-                       bool(rd.get("excluded")))
+                       bool(rd.get("excluded")), bool(rd.get("propagate_note")),
+                       rd.get("instruction", ""))
         new_rules.append(r)
     if learn or new_rules:
         R.save_rules(rules_data)
@@ -180,7 +184,9 @@ def apply(learn: bool, do_report: bool = False) -> None:
             continue
         m = R.first_match(rec, rules)
         if m:
+            note = m["note"] if m.get("propagate_note") else rec.get("note")
             rec.update(category=m["category"], subcategory=m["subcategory"],
+                       note=note or None,
                        category_source="rule", rule_id=m["id"],
                        needs_review=_anomaly(rec, m["id"], ledger),
                        reviewed=not _anomaly(rec, m["id"], ledger))
@@ -203,6 +209,8 @@ def apply(learn: bool, do_report: bool = False) -> None:
             if "tags_add" in a or "tags_remove" in a:
                 rec["tags"] = L.update_tags(
                     rec.get("tags"), a.get("tags_add"), a.get("tags_remove"))
+            if "settle_with" in a:
+                rec["settle_with"] = (a["settle_with"] or "").strip() or None
             if not changes_classification:
                 if "note" in a:
                     rec["note"] = (a["note"] or None)
@@ -248,6 +256,12 @@ def apply(learn: bool, do_report: bool = False) -> None:
     changed = {tid for tid, rec in ledger.items()
                if L.snapshot(rec) != before.get(tid)}
     L.save_ledger(ledger, changed_ids=changed)
+    if dec.get("reimbursements") or dec.get("reimbursements_remove"):
+        created, removed, problems = RB.apply_changes(
+            ledger, dec.get("reimbursements"), dec.get("reimbursements_remove"))
+        for problem in problems:
+            print(f"  ⚠ abatimento não gravado: {problem}")
+        print(f"Abatimentos: +{created} criados, -{removed} removidos.")
     TO_CATEGORIZE_FILE.unlink(missing_ok=True)
     DECISIONS_FILE.unlink(missing_ok=True)
 
@@ -264,7 +278,8 @@ def apply(learn: bool, do_report: bool = False) -> None:
     # taxonomia já em memória — evita reler tudo do Sheets num 2º processo.
     if do_report:
         from . import report as RP
-        RP.generate(recs=list(ledger.values()), taxonomy=tax, treatments=treats)
+        RP.generate(recs=list(ledger.values()), taxonomy=tax, treatments=treats,
+                    rules=rules)
 
 
 # ----------------------------------------------------------------------------- stats
