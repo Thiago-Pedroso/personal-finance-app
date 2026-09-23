@@ -192,6 +192,7 @@ com aviso. Em categoria de `fluxo`, o valor abatido sai da conta no mês de cada
 | `invest_monthly_contribution` | aporte mensal usado como padrão no simulador |
 | `invest_contribution_mode` | modo do simulador de aporte: `spread` ou `focus` |
 | `invest_allocation_sim` | rascunho da aba Simulador: `{base, items: [{label, amount}]}` — nunca vira trade |
+| `invest_destination_subcategories` | subcategorias de poupança que pedem destino na carteira; ausente = `["Aporte", "Resgate"]` |
 
 ---
 
@@ -203,19 +204,24 @@ com aviso. Em categoria de `fluxo`, o valor abatido sai da conta no mês de cada
 `currency` · `fx_rate` (fnum) · `account` · `note` · `source` · `ledger_id` · `created_at`
 
 É a única entrada de fatos: todo o resto é derivado daqui. `side` cobre `BUY`, `SELL`,
-`DIVIDEND`, `JCP`, `SPLIT`, `ADJUST` e `BALANCE` (saldo informado de ativo sem cotação).
+`DIVIDEND`, `JCP`, `SPLIT`, `ADJUST`, `BALANCE` (saldo informado de ativo sem cotação) e
+`TRANSFER` (dinheiro do Fluxo que chegou numa conta; não mexe no saldo, só liga a origem).
 Compra em moeda estrangeira guarda o preço na moeda de origem e o câmbio do dia, para
 depois separar o resultado do ativo do resultado do câmbio. `ledger_id` liga a operação à
-transação bancária que a pagou.
+transação bancária de origem: é o destino de um aporte ou resgate do Fluxo, e um lançamento
+pode ter várias operações, desde que a soma não passe do valor dele.
 
 ### Aba `InvestAssets` — o catálogo
 
 `ticker` · `name` · `node` · `account` · `sector` · `currency` · `quote_symbol` ·
 `valuation` · `pluggy_code` · `target_pct` (fnum) · `lot_size` (fnum) · `active` (bool) ·
-`note`
+`note` · `isin`
 
 `node` aponta para uma folha da política, `valuation` diz de onde vem o valor (`quote`,
-`balance` ou `pluggy`) e `target_pct` é o alvo do ativo **dentro** da classe. `sector` é
+`balance`, `pluggy` ou `account`) e `target_pct` é o alvo do ativo **dentro** da classe.
+`account` é saldo de conta: não tem custo nem lucro, e o valor é o saldo que a Pluggy
+informa. `isin` identifica o ativo quando o extrato cita o código ISIN em vez do ticker
+(provento de ação alugada). `sector` é
 texto livre: a lista do autocomplete nasce do que já está em uso, sem taxonomia no código.
 
 `pluggy_code` guarda o código do papel na corretora **ou o id de uma conta**: saldo de

@@ -1,8 +1,12 @@
 import { useState } from 'react'
-import { CheckCircle2, PiggyBank, Plus, TriangleAlert } from 'lucide-react'
+import {
+  ArrowDownLeft, ArrowUpRight, CheckCircle2, ExternalLink, PiggyBank, Plus, Scale,
+  TriangleAlert,
+} from 'lucide-react'
 
-import { brl, money } from '../../lib/format.js'
+import { brl, fullDate, money } from '../../lib/format.js'
 import { buildBucketReconciliations } from '../../lib/investBuckets.js'
+import { envelopeHistory, linkedCount } from '../../lib/investEnvelopes.js'
 import { Modal } from '../ui/Modal.jsx'
 import { Button, Card, Empty } from '../ui/primitives.jsx'
 import { InvestmentCardHeader, InvestmentPageHeader, Money } from './shared.jsx'
@@ -11,7 +15,7 @@ import { InvestmentCardHeader, InvestmentPageHeader, Money } from './shared.jsx'
 // saldo sem compromisso. Cada linha é um saldo com nome, e o papel vem do nó da política.
 const ROLES = [
   ['reserved', 'Reservas', 'guardado com um destino'],
-  ['to_invest', 'A aportar', 'saiu da conta e ainda não virou posição'],
+  ['to_invest', 'A aportar', 'guardado para investir, ainda em conta'],
   ['free', 'Livre', 'sem compromisso'],
 ]
 
@@ -101,6 +105,97 @@ function UpdateModal({ bucket, onClose, onConfirm, busy }) {
   )
 }
 
+const KIND_STYLE = {
+  in: { icon: ArrowDownLeft, tone: 'text-green', sign: '+' },
+  out: { icon: ArrowUpRight, tone: 'text-red', sign: '−' },
+  balance: { icon: Scale, tone: 'text-secondary', sign: '' },
+}
+
+function subtitleOf(row, accounts, links) {
+  const parts = []
+  if (row.valuation === 'account') {
+    parts.push('saldo em conta')
+  } else if (row.last_balance_date) {
+    parts.push(`atualizado em ${fullDate(row.last_balance_date)}`)
+  } else {
+    parts.push('sem atualização')
+  }
+  if (row.income > 0) parts.push(`rendeu ${brl(row.income)}`)
+  if (accounts[row.account]) parts.push(accounts[row.account].name)
+  const fed = linkedCount(row.ticker, links)
+  if (fed) parts.push(`${fed} ${fed === 1 ? 'entrada' : 'entradas'} do Fluxo`)
+  return parts
+}
+
+// Detalhe do envelope: de onde veio cada valor, para auditar sem abrir a planilha.
+function EnvelopeModal({ row, data, onClose, onUpdate, onOpenLedger }) {
+  const history = envelopeHistory(row.ticker, data.trades, data.links,
+    { account: row.valuation === 'account' })
+  const canUpdate = row.valuation === 'balance'
+  return (
+    <Modal open onOpenChange={(next) => !next && onClose()} width="max-w-xl"
+      title={row.name}
+      sub={<span className="tnum">{brl(row.value)}</span>}
+      footer={(
+        <>
+          <Button variant="ghost" onClick={onClose}>Fechar</Button>
+          {canUpdate && (
+            <Button variant="primary" onClick={() => onUpdate(row)}>Atualizar saldo</Button>
+          )}
+        </>
+      )}>
+      {row.valuation === 'account' && (
+        <p className="mb-3 rounded-xl border border-border bg-surface2/50 px-3 py-2.5
+          text-[13px] leading-5 text-secondary">
+          Saldo da conta informado pela instituição. As entradas vindas do Fluxo
+          mostram a origem do dinheiro, e o saldo acompanha a Pluggy.
+        </p>
+      )}
+      {history.length === 0 ? (
+        <p className="text-[14px] text-subtle">Nenhuma movimentação registrada.</p>
+      ) : (
+        <ol className="flex flex-col divide-y divide-border rounded-xl border
+          border-border">
+          {history.map((item) => {
+            const style = KIND_STYLE[item.kind]
+            const Icon = style.icon
+            return (
+              <li key={item.id} className="flex items-start gap-3 px-3 py-2.5">
+                <Icon className={`mt-0.5 size-4 shrink-0 ${style.tone}`} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-[13px] font-semibold text-strong">
+                      {item.label}</span>
+                    <span className={`tnum text-[13px] font-semibold ${style.tone}`}>
+                      {style.sign}{brl(item.amount)}</span>
+                  </div>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px]
+                    text-faint">
+                    <span className="tnum">{fullDate(item.date)}</span>
+                    {item.balance != null && (
+                      <span className="tnum">saldo {brl(item.balance)}</span>
+                    )}
+                    {item.origin && (
+                      <button type="button"
+                        onClick={() => onOpenLedger?.(item.origin)}
+                        title="Abrir o lançamento no Fluxo"
+                        className="inline-flex min-w-0 items-center gap-1 text-brand
+                          hover:underline">
+                        <span className="truncate">{item.origin.description}</span>
+                        <ExternalLink className="size-3 shrink-0" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </li>
+            )
+          })}
+        </ol>
+      )}
+    </Modal>
+  )
+}
+
 function NewBucketModal({ accountId, node, onClose, onConfirm, busy }) {
   const [name, setName] = useState('')
   const [value, setValue] = useState('')
@@ -138,8 +233,9 @@ function NewBucketModal({ accountId, node, onClose, onConfirm, busy }) {
   )
 }
 
-export function Caixinhas({ data, onApply, busy }) {
+export function Caixinhas({ data, onApply, busy, onOpenLedger }) {
   const [updating, setUpdating] = useState(null)
+  const [viewing, setViewing] = useState(null)
   const [creating, setCreating] = useState(null)
   const groups = groupsOf(data)
   const pending = (data.pending?.buckets) || {}
@@ -197,19 +293,16 @@ export function Caixinhas({ data, onApply, busy }) {
             <div className="grid gap-3 px-5 pb-5 sm:grid-cols-2 sm:px-6
               sm:pb-6 xl:grid-cols-3">
               {rows.map((row) => (
-                <button key={row.ticker} onClick={() => setUpdating(row)}
+                <button key={row.ticker} onClick={() => setViewing(row)}
                   className="flex min-h-[112px] flex-col justify-between rounded-2xl
                     border border-border bg-surface2/40 p-4 text-left
                     transition hover:border-brand/40 hover:bg-surface2/70">
                   <div>
                     <p className="text-[16px] font-bold text-strong">{row.name}</p>
-                    <p className="mt-1 text-[13px] text-subtle">
-                      {row.price_source === 'pluggy' ? 'sincronizado' : (
-                        row.last_balance_date
-                          ? `atualizado em ${row.last_balance_date}`
-                          : 'sem atualização')}
-                      {row.income > 0 && ` · rendeu ${brl(row.income)}`}
-                      {accounts[row.account] && ` · ${accounts[row.account].name}`}
+                    <p className="mt-1 flex flex-wrap gap-x-2.5 text-[13px] text-subtle">
+                      {subtitleOf(row, accounts, data.links).map((part) => (
+                        <span key={part}>{part}</span>
+                      ))}
                     </p>
                   </div>
                   <span className="tnum mt-5 text-[19px] font-bold text-brand-soft">
@@ -284,6 +377,11 @@ export function Caixinhas({ data, onApply, busy }) {
           automáticas de aporte.</p>
       </div>
 
+      {viewing && (
+        <EnvelopeModal row={viewing} data={data} onClose={() => setViewing(null)}
+          onUpdate={(row) => { setViewing(null); setUpdating(row) }}
+          onOpenLedger={onOpenLedger} />
+      )}
       {updating && (
         <UpdateModal bucket={updating} busy={busy}
           onClose={() => setUpdating(null)} onConfirm={updateBalance} />

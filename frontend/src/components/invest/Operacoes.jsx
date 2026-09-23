@@ -12,8 +12,10 @@ const SIDES = [
   ['JCP', 'JCP'], ['BALANCE', 'Saldo informado'], ['SPLIT', 'Desdobramento'],
 ]
 const TONE = { BUY: 'blue', SELL: 'amber', DIVIDEND: 'green', JCP: 'green',
-  BALANCE: 'violet', SPLIT: 'muted', ADJUST: 'muted' }
-const label = (side) => (SIDES.find(([key]) => key === side) || [side, side])[1]
+  BALANCE: 'violet', SPLIT: 'muted', ADJUST: 'muted', TRANSFER: 'muted' }
+// TRANSFER nasce do destino no Fluxo, então só aparece na lista, nunca no formulário
+const LABELS = { ...Object.fromEntries(SIDES), TRANSFER: 'Chegou do Fluxo' }
+const label = (side) => LABELS[side] || side
 
 function NewTradeModal({ tickers, accounts, onClose, onConfirm, busy }) {
   const [form, setForm] = useState({

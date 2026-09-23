@@ -218,6 +218,27 @@ async function applyEdit(p) {
     log: a.stdout.trim(), stderr: a.stderr.trim() }
 }
 
+// Destino no investimento: o lançamento é gravado primeiro, porque a validação do
+// destino lê a categoria dele. O apply regera invest.json e o relatório do Fluxo.
+async function applyDestinations(p) {
+  fs.writeFileSync(INVEST_DECISIONS, JSON.stringify({
+    links: [{ ledger_id: p.ids[0], destinations: p.destinations }],
+  }, null, 2) + '\n')
+  const r = await run('uv', ['run', 'python', '-m', 'finance.invest', 'apply'])
+  const problems = r.stdout.split('\n').filter((line) => line.trim().startsWith('!'))
+  return { ok: r.ok, step: r.ok ? 'done' : 'destination', log: r.stdout.trim(),
+    stderr: r.ok ? '' : problems.join('\n') || r.stderr.trim() }
+}
+
+async function applyEditAndDestinations(p) {
+  const { destinations, ...edit } = p
+  if (p.mode !== 'destination') {
+    const r = await applyEdit(edit)
+    if (!r.ok || !Array.isArray(destinations)) return r
+  }
+  return applyDestinations(p)
+}
+
 function financeServer() {
   return {
     name: 'finance-server',
@@ -287,7 +308,7 @@ function financeServer() {
           if (!payload.ids || !payload.ids.length)
             return json(res, 400, { ok: false, error: 'sem ids' })
           try {
-            const result = await serialize(() => applyEdit(payload))
+            const result = await serialize(() => applyEditAndDestinations(payload))
             return json(res, result.ok ? 200 : 500, result)
           } catch (e) {
             return json(res, 500, { ok: false, error: String(e) })

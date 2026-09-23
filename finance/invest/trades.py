@@ -6,6 +6,7 @@
   SPLIT         desdobramento ou grupamento (quantity = fator)
   ADJUST        acerto de quantidade sem preço
   BALANCE       saldo informado de ativo sem cotação (price = valor total)
+  TRANSFER      dinheiro do Fluxo que chegou numa conta; não muda saldo, só liga a origem
 """
 
 import uuid
@@ -14,7 +15,7 @@ from datetime import datetime, timezone
 from . import sheets_io as io
 
 TAB = "InvestTrades"
-SIDES = ("BUY", "SELL", "DIVIDEND", "JCP", "SPLIT", "ADJUST", "BALANCE")
+SIDES = ("BUY", "SELL", "DIVIDEND", "JCP", "SPLIT", "ADJUST", "BALANCE", "TRANSFER")
 INCOME_SIDES = ("DIVIDEND", "JCP")
 
 

@@ -1,14 +1,16 @@
 """Catálogo de ativos (aba **InvestAssets**).
 
 `node` liga o ativo a uma folha da política e `valuation` diz de onde vem o valor:
-`quote` (cotação), `balance` (saldo que você informa) ou `pluggy` (saldo sincronizado).
+`quote` (cotação), `balance` (saldo que você informa), `pluggy` (saldo sincronizado) ou
+`account` (saldo de conta, que não rende nem tem custo: é onde o dinheiro espera).
 `target_pct` é o alvo do ativo **dentro** do nó, e a soma por nó deveria fechar 100%.
 """
 
 from . import sheets_io as io
 
 TAB = "InvestAssets"
-VALUATIONS = ("quote", "balance", "pluggy")
+VALUATIONS = ("quote", "balance", "pluggy", "account")
+BALANCE_VALUATIONS = ("balance", "pluggy")
 TOLERANCE = 0.005
 
 
@@ -30,6 +32,7 @@ def normalize(rec: dict) -> dict:
         "lot_size": float(lot) if lot not in (None, "") else 1.0,
         "active": True if rec.get("active") is None else bool(rec.get("active")),
         "note": (rec.get("note") or None),
+        "isin": (rec.get("isin") or "").strip().upper() or None,
     }
 
 
@@ -38,7 +41,7 @@ def foreign_balances(assets: dict) -> dict:
     dependem de câmbio para virar patrimônio."""
     return {ticker: (asset["currency"] or "BRL").upper()
             for ticker, asset in assets.items()
-            if asset["active"] and asset["valuation"] in ("balance", "pluggy")
+            if asset["active"] and asset["valuation"] in BALANCE_VALUATIONS + ("account",)
             and (asset["currency"] or "BRL").upper() != "BRL"}
 
 
@@ -108,3 +111,13 @@ def redistribute(targets: dict, changed: dict, locked=()) -> dict:
         share = (targets.get(ticker, 0.0) / base) if base > 0 else 1.0 / len(free)
         result[ticker] = max(0.0, left * share)
     return result
+
+
+def is_envelope(asset: dict) -> bool:
+    return asset["valuation"] in BALANCE_VALUATIONS
+
+
+def accepts_destination(asset: dict) -> bool:
+    """Caixinha e ativo por saldo recebem aporte; conta recebe transferência."""
+    return asset["active"] and (is_envelope(asset) or asset["valuation"] == "account")
+

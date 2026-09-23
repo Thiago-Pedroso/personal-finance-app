@@ -3,7 +3,7 @@
 Substitui scripts python ad-hoc — é um comando fixo e seguro de allowlistar.
 
 Uso:
-  uv run python -m finance.show queue [--days N] # fila, instruções das regras e reembolsos
+  uv run python -m finance.show queue [--days N] # fila, regras, reembolsos e destinos
   uv run python -m finance.show tx <id|prefixo>… # registro(s) completos (JSON)
   uv run python -m finance.show find <texto> [-n N]  # busca na descrição
   uv run python -m finance.show cat "Categoria[/Sub]" [-n N]  # por categoria
@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 from . import ledger as L
 from . import reimbursements as RB
 from . import rules as R
-from .config import CLAUDE_QUEUE_FILE
+from .config import CLAUDE_QUEUE_FILE, REPORTS_DIR
 from .transaction_dates import load_timezone
 
 
@@ -42,6 +42,23 @@ def cmd_queue(args) -> None:
     _print_claude_queue()
     _print_rule_instructions(args.days)
     _print_reimbursement_suggestions()
+    _print_missing_destinations()
+
+
+def _print_missing_destinations() -> None:
+    """Aportes do Fluxo sem destino na carteira, pelo último invest.json gerado."""
+    path = REPORTS_DIR / "invest.json"
+    if not path.exists():
+        return
+    data = json.loads(path.read_text())
+    if not data.get("audit"):
+        return
+    print("\n=== Aportes sem destino na carteira (grave `links` no .invest_decisions.json) ===")
+    for item in data["audit"]:
+        print(f"  {item['message']}  ({item.get('ledger_id')})")
+    options = [f"{p['ticker']} ({p['name']})" for p in data.get("positions", [])
+               if p.get("valuation") in ("balance", "pluggy", "account")]
+    print("  destinos: " + ", ".join(options))
 
 
 def _print_claude_queue() -> None:

@@ -23,6 +23,7 @@ from . import rules as R
 from . import taxonomy as T
 from . import transaction_dates as TD
 from .config import REPORTS_DIR, ensure_dirs
+from .invest import ledger_link as LL
 
 # Tratamento por categoria (fluxo|poupança|movimento) — fonte da verdade é a taxonomia.
 # Carregado uma vez em main(); as funções abaixo consultam via _tr().
@@ -59,6 +60,11 @@ def _is_pending(r: dict) -> bool:
     if r.get("category_source") == "pluggy-map" and not r.get("reviewed"):
         return True
     return False
+
+
+def _needs_destination(r: dict) -> bool:
+    info = r.get("invest") or {}
+    return not r.get("excluded") and info.get("status") in ("missing", "partial", "over")
 
 
 def _flowbucket():
@@ -287,6 +293,34 @@ def _bucket_balances() -> dict:
     return out
 
 
+def _invest_context() -> dict:
+    """Movimentações e envelopes do último invest.json, para ligar o Fluxo à carteira
+    sem outra leitura do Sheets."""
+    path = REPORTS_DIR / "invest.json"
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return {}
+    roles = {node["node"]: node.get("role") for node in data.get("policy", [])}
+    accounts = {account["id"]: account["name"] for account in data.get("accounts", [])}
+    assets = {position["ticker"]: position for position in data.get("positions", [])}
+    destinations = [{
+        "ticker": position["ticker"], "name": position["name"],
+        "account": position.get("account"),
+        "account_name": accounts.get(position.get("account") or "", position.get("account")),
+        "valuation": position.get("valuation"), "node": position.get("node"),
+        "role": roles.get(position.get("node")), "value": position.get("value"),
+    } for position in data.get("positions", [])
+        if position.get("valuation") in ("balance", "pluggy", "account")]
+    return {"trades": data.get("trades", []), "assets": assets,
+            "destinations": destinations,
+            "subcategories": tuple(data.get("destination_subcategories")
+                                   or LL.DESTINATION_SUBCATEGORIES),
+            "simulator": (data.get("allocation_sim") or {}).get("items") or []}
+
+
 def _savings(b: dict, cum_in: float, cum_out: float, mon_in: float,
              mon_out: float) -> dict:
     goals = b.get("savings_goals", []) or []
@@ -488,6 +522,12 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
         print(f"⚠ abatimento {link_id} ignorado: {problem}")
     for r in recs:
         r["reimbursed"] = by_tx.get(r["id"])
+    invest = _invest_context()
+    invest_status = (LL.destination_status(recs, invest["trades"], _TREAT,
+                                           invest["assets"], invest["subcategories"])
+                     if invest else {})
+    for r in recs:
+        r["invest"] = invest_status.get(r["id"])
 
     months: dict = {}
     month_txns: dict = {}
@@ -522,7 +562,7 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
         mj = month_jsons[m]
         prev = month_jsons[ordered[i - 1]] if i > 0 else None
         txns = [{**{k: r.get(k) for k in _TXN_FIELDS}, "splits": r.get("splits"),
-                 "reimbursed": r.get("reimbursed")}
+                 "reimbursed": r.get("reimbursed"), "invest": r.get("invest")}
                 for r in sorted(month_txns[m], key=lambda r: (r["date"], r["id"]))]
         insights = _insights(mj["plan"], mj, prev, txns, savings_by_month[m])
         # O arquivo mensal carrega os agregados + transações + plano (consumidos no front).
@@ -592,9 +632,12 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
         # tudo que precisa de ação (histórico inteiro) — consumido pela aba Revisar
         "review": [{**{k: r.get(k) for k in _TXN_FIELDS},
                      "splits": r.get("splits"), "reimbursed": r.get("reimbursed"),
-                     "month": r["date"][:7]}
+                     "invest": r.get("invest"), "month": r["date"][:7]}
                    for r in sorted(recs, key=lambda r: r["date"], reverse=True)
-                   if _is_pending(r)],
+                   if _is_pending(r) or _needs_destination(r)],
+        "invest_destinations": invest.get("destinations", []),
+        "invest_simulator": invest.get("simulator", []),
+        "invest_destination_subcategories": list(invest.get("subcategories", [])),
         "total_transactions": len(recs),
         "open_settlements": RB.open_items(recs, by_tx),
         "reimbursement_suggestions": RB.suggestions(recs, by_tx),

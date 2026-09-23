@@ -152,6 +152,38 @@ def prepare() -> None:
 
 
 # ----------------------------------------------------------------------------- apply
+def _statement_trade(row: dict, ledger_id: str) -> dict | None:
+    """Movimentação da carteira pedida na linha do extrato (`invest`)."""
+    invest = row.get("invest")
+    if not invest:
+        return None
+    amount = abs(float(row["amount"]))
+    side = str(invest.get("side") or "DIVIDEND").upper()
+    quantity = float(invest.get("quantity") or 0.0)
+    price = amount / quantity if quantity and side in ("DIVIDEND", "JCP") else amount
+    return {"date": row["date"], "ticker": invest["ticker"], "side": side,
+            "quantity": quantity if side in ("DIVIDEND", "JCP") else 0.0,
+            "price": price, "account": invest.get("account"), "source": "extrato",
+            "ledger_id": ledger_id, "note": row.get("note") or row["description"]}
+
+
+def _import_statement(ledger: dict, rows: list[dict]) -> tuple[int, list[dict]]:
+    """Grava as linhas de extrato novas; as que já existem são puladas."""
+    added, trades = 0, []
+    for row in rows:
+        duplicate = L.duplicate_of(ledger, row)
+        if duplicate:
+            print(f"  = já no Ledger: {row['date']} {row['description']} ({duplicate})")
+            continue
+        record = L.manual_record(row, ledger)
+        ledger[record["id"]] = record
+        added += 1
+        trade = _statement_trade(row, record["id"])
+        if trade:
+            trades.append(trade)
+    return added, trades
+
+
 def apply(learn: bool, do_report: bool = False) -> None:
     if not DECISIONS_FILE.exists():
         sys.exit(f"Não encontrei {DECISIONS_FILE}. O agente deve gravá-lo antes.")
@@ -175,6 +207,9 @@ def apply(learn: bool, do_report: bool = False) -> None:
         new_rules.append(r)
     if learn or new_rules:
         R.save_rules(rules_data)
+
+    # 1b) lançamentos de extrato que a Pluggy não trouxe
+    imported, invest_rows = _import_statement(ledger, dec.get("manual_transactions", []))
 
     # 2) reaplica todas as regras (regra vence mapa-pluggy; manual é intocável)
     rules = rules_data["rules"]
@@ -255,7 +290,11 @@ def apply(learn: bool, do_report: bool = False) -> None:
 
     changed = {tid for tid, rec in ledger.items()
                if L.snapshot(rec) != before.get(tid)}
-    L.save_ledger(ledger, changed_ids=changed)
+    L.save_ledger(ledger, changed_ids=None if imported else changed)
+    if invest_rows:
+        from .invest import trades as invest_trades
+        invest_trades.append(invest_rows)
+        print(f"Carteira: {len(invest_rows)} movimentação(ões) ligadas ao extrato.")
     if dec.get("reimbursements") or dec.get("reimbursements_remove"):
         created, removed, problems = RB.apply_changes(
             ledger, dec.get("reimbursements"), dec.get("reimbursements_remove"))
@@ -265,6 +304,8 @@ def apply(learn: bool, do_report: bool = False) -> None:
     TO_CATEGORIZE_FILE.unlink(missing_ok=True)
     DECISIONS_FILE.unlink(missing_ok=True)
 
+    if imported:
+        print(f"Extrato: +{imported} lançamento(s) novo(s).")
     print(f"Regras novas: {len(new_rules)} | reaplicadas por regra: {reapplied} | "
           f"atribuições: {assigned} | provisórias confirmadas: {confirmed} | "
           f"linhas gravadas: {len(changed)}")
