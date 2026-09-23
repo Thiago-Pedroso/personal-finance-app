@@ -17,6 +17,7 @@ import { Review } from './components/Review.jsx'
 import { Rules } from './components/Rules.jsx'
 import { TransactionsTable } from './components/TransactionsTable.jsx'
 import { EditModal } from './components/EditModal.jsx'
+import { ReimburseModal } from './components/ReimburseModal.jsx'
 import { DrillDrawer } from './components/DrillDrawer.jsx'
 import { Eye, EyeOff, RefreshCw, Wallet, MessageSquare, TrendingUp }
   from 'lucide-react'
@@ -56,6 +57,10 @@ function Shell() {
 
   const openEdit = (rows) => setEdit({ open: true, rows })
   const closeEdit = () => setEdit((e) => ({ ...e, open: false }))
+  const [reimburse, setReimburse] = useState({ open: false, rows: [], key: 0 })
+  const openReimburse = (rows) =>
+    setReimburse((current) => ({ open: true, rows, key: current.key + 1 }))
+  const closeReimburse = () => setReimburse((current) => ({ ...current, open: false }))
   // edição recarrega os dados (o pipeline recategoriza no servidor), mas
   // preservamos a rolagem pra não "pular" pro topo e perder o lugar.
   const onSaved = async (reload) => {
@@ -253,6 +258,7 @@ function Shell() {
         )}
         {space.space === 'financas' && tab === 'txns' && (
           <TransactionsTable txns={mdata.transactions || []} openEdit={openEdit}
+            openReimburse={openReimburse}
             saveEdit={d.saveEdit} presetCat={txnPreset} queuedIds={queuedIds}
             treatments={dash.treatments} excludedCount={dash.excluded_count}
             title={`Transações — ${monthLabel(month)}`} />
@@ -293,14 +299,20 @@ function Shell() {
 
       {dash && (
         <DrillDrawer txns={mdata.transactions || []} openEdit={openEdit}
-          saveEdit={d.saveEdit} queuedIds={queuedIds} treatments={dash.treatments} />
+          openReimburse={openReimburse} saveEdit={d.saveEdit} queuedIds={queuedIds} treatments={dash.treatments} />
       )}
 
       {dash && edit.open && (
         <EditModal open={edit.open} onClose={closeEdit} txns={edit.rows}
           taxonomy={dash.taxonomy} allTxns={mdata.transactions || []}
           availableTags={dash.tags || []}
+          knownSettlers={(dash.open_settlements || []).map((group) => group.name)}
           onSaved={onSaved} saveEdit={d.saveEdit} />
+      )}
+
+      {reimburse.open && (
+        <ReimburseModal key={reimburse.key} open={reimburse.open}
+          onClose={closeReimburse} txns={reimburse.rows} saveEdit={d.saveEdit} />
       )}
     </div>
   )

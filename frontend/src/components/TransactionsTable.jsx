@@ -11,6 +11,16 @@ import {
 } from '../lib/categories.jsx'
 import { signedBrl, brl, fullDate, longDate } from '../lib/format.js'
 import { SensitiveAmount } from './ui/SensitiveValue.jsx'
+import { useDrill } from '../lib/useDrill.jsx'
+
+const partAmounts = (t) => t.splits?.length
+  ? t.splits.map((part) => part.amount) : [t.signed_amount]
+
+// abater exige ao menos uma entrada e uma saída entre os selecionados
+function canReimburse(selected) {
+  const amounts = selected.flatMap(partAmounts)
+  return amounts.some((amount) => amount > 0) && amounts.some((amount) => amount < 0)
+}
 
 // rótulos de categoria para FILTRO (split → partes; palpite Pluggy → "Sem categoria")
 function effLabels(t) {
@@ -22,16 +32,53 @@ function effLabels(t) {
 import {
   Search, Pencil, ChevronLeft, ChevronRight, X, ArrowUpDown,
   ArrowUp, ArrowDown, SlidersHorizontal, StickyNote, MessageSquare,
-  PiggyBank, ArrowLeftRight, EyeOff, Wand2, Check, Tag as TagIcon,
+  PiggyBank, ArrowLeftRight, EyeOff, Wand2, Check, Tag as TagIcon, Link2, UserRound,
 } from 'lucide-react'
 
-const EMPTY = { q: '', cats: [], tags: [], accs: [], flow: '', rev: false,
+function SettleChips({ transaction }) {
+  const names = [...new Set([transaction.settle_with,
+    ...(transaction.splits || []).map((part) => part.settle_with)].filter(Boolean))]
+  return names.map((name) => (
+    <span key={name} title={`A acertar com ${name}`}
+      className="inline-flex max-w-[140px] cursor-help items-center gap-1 rounded-full
+        border border-border bg-surface2 px-1.5 py-0.5 text-[11px] font-medium
+        text-muted">
+      <UserRound className="size-3 shrink-0" />
+      <span className="truncate">{name}</span>
+    </span>
+  ))
+}
+
+function ReimbursedBadge({ transaction, onOpen }) {
+  const info = transaction.reimbursed
+  if (!info?.links?.length) return null
+  const total = Math.abs(transaction.signed_amount)
+  const full = !transaction.splits?.length && info.amount >= total - 0.005
+  const verb = (link) => link.side === 'credit' ? 'Abate' : 'Abatido por'
+  const title = info.links.map((link) =>
+    `${verb(link)} ${link.other_description || link.other_id}`
+    + `${link.other_date ? ` (${fullDate(link.other_date)})` : ''}: ${brl(link.amount)}`)
+    .join('\n')
+  return (
+    <button type="button" onClick={onOpen} title={`${title}\nClique para ver o grupo.`}
+      className="inline-flex items-center gap-1 rounded-full border border-green/40
+        bg-green/10 px-1.5 py-0.5 text-[11px] font-semibold text-green
+        hover:bg-green/20">
+      <Link2 className="size-3" />
+      {full ? 'abatido' : `abatido ${brl(info.amount)}${
+        transaction.splits?.length ? '' : ` de ${brl(total)}`}`}
+    </button>
+  )
+}
+
+const EMPTY = { q: '', cats: [], tags: [], ids: [], accs: [], flow: '', rev: false,
   d0: '', d1: '', a0: '', a1: '', sub: '', rule: '', queued: false, excl: false,
   hiddenCats: [], hiddenSubs: [] }
 
-export function TransactionsTable({ txns, openEdit, saveEdit, title, presetCat,
-  initialFilter, compact, pageSize = 25, queuedIds, treatments,
+export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, title,
+  presetCat, initialFilter, compact, pageSize = 25, queuedIds, treatments,
   excludedCount = 0 }) {
+  const drill = useDrill()
   const qids = queuedIds || new Set()
   const isQueued = (id) => qids.has && qids.has(id)
   const treatOf = (cat) => (treatments || {})[cat] || 'fluxo'
@@ -87,6 +134,7 @@ export function TransactionsTable({ txns, openEdit, saveEdit, title, presetCat,
       if (f.hiddenCats.length && tcats.every((c) => f.hiddenCats.includes(c))) return false
       if (f.sub && !tsubs.includes(f.sub)) return false
       if (f.rule && t.rule_id !== f.rule) return false
+      if (f.ids.length && !f.ids.includes(t.id)) return false
       if (f.hiddenSubs.length && tsubs.every((s) => f.hiddenSubs.includes(s))) return false
       if (f.tags.length && !f.tags.every(
         (tag) => (t.tags || []).includes(tag))) return false
@@ -228,6 +276,10 @@ export function TransactionsTable({ txns, openEdit, saveEdit, title, presetCat,
         ) : null
         // palpite do mapa da Pluggy, ainda não confirmado por ninguém
         const pluggyGuess = t.category_source === 'pluggy-map' && !t.reviewed
+        const sw = <SettleChips transaction={t} />
+        const rb = <ReimbursedBadge transaction={t} onOpen={() => drill?.drill(
+          `Abatimento: ${t.description}`,
+          { ids: [t.id, ...t.reimbursed.links.map((link) => link.other_id)] })} />
         const pm = pluggyGuess ? (
           <span title="Categoria sugerida pelo mapa da Pluggy — ainda não confirmada"
             className="inline-flex items-center gap-1 rounded-full border
@@ -246,7 +298,7 @@ export function TransactionsTable({ txns, openEdit, saveEdit, title, presetCat,
                   title={`${s.category}${s.subcategory ? '/' + s.subcategory : ''} ${signedBrl(s.amount)}`}
                   onClick={() => pick(s.category)} />
               ))}
-              {qb}{xb}
+              {qb}{xb}{rb}{sw}
             </div>
           )
         }
@@ -256,7 +308,7 @@ export function TransactionsTable({ txns, openEdit, saveEdit, title, presetCat,
               <CategoryTag uncategorized hint={e.hint}
                 onClick={() => pick('Sem categoria')} />
               {t.needs_review && <Badge tone="amber">revisar</Badge>}
-              {tb}{qb}{xb}{pm}
+              {tb}{qb}{xb}{pm}{rb}{sw}
             </span>
           )
         }
@@ -264,7 +316,7 @@ export function TransactionsTable({ txns, openEdit, saveEdit, title, presetCat,
           <span className="flex flex-wrap items-center gap-2">
             <CategoryTag category={e.label} onClick={() => pick(e.label)} />
             {t.needs_review && <Badge tone="amber">revisar</Badge>}
-            {tb}{qb}{xb}{pm}
+            {tb}{qb}{xb}{pm}{rb}{sw}
           </span>
         )
       },
@@ -317,7 +369,7 @@ export function TransactionsTable({ txns, openEdit, saveEdit, title, presetCat,
         )
       },
     },
-  ], [openEdit, saveEdit, queuedIds, treatments])  // eslint-disable-line react-hooks/exhaustive-deps
+  ], [openEdit, saveEdit, queuedIds, treatments, drill])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // agrupa por dia quando ordenado por data (padrão) — some a coluna Data
   const grouped = (sorting[0]?.id || 'date') === 'date'
@@ -388,6 +440,15 @@ export function TransactionsTable({ txns, openEdit, saveEdit, title, presetCat,
                 border-brand/30 bg-brand/10 px-2 py-0.5 text-[11.5px] font-medium
                 text-brand hover:bg-brand/20">
               Regra {f.rule}<X className="size-3" />
+            </button>
+          )}
+          {f.ids.length > 0 && (
+            <button type="button" onClick={() => set('ids', [])}
+              title="Remover filtro do grupo"
+              className="inline-flex items-center gap-1 rounded-full border
+                border-green/40 bg-green/10 px-2 py-0.5 text-[11.5px] font-medium
+                text-green hover:bg-green/20">
+              <Link2 className="size-3" />Grupo abatido<X className="size-3" />
             </button>
           )}
         </div>
@@ -507,6 +568,11 @@ export function TransactionsTable({ txns, openEdit, saveEdit, title, presetCat,
             <Button variant="primary" onClick={() => openEdit(selected)}>
               <Pencil className="size-3.5" /> Editar em massa
             </Button>
+            {openReimburse && canReimburse(selected) && (
+              <Button onClick={() => openReimburse(selected)}>
+                <Link2 className="size-3.5" /> Abater
+              </Button>
+            )}
             <Button variant="ghost" onClick={() => setSel({})}>limpar</Button>
           </div>
         </div>

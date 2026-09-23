@@ -17,13 +17,46 @@ function localTags(current, add, remove) {
   return out.sort((a, b) => tagKey(a).localeCompare(tagKey(b)))
 }
 
+function sideOf(link, txId) {
+  if (link.credit_id === txId) {
+    return { side: 'credit', part: link.credit_part ?? null,
+      other_id: link.debit_id, other_part: link.debit_part ?? null }
+  }
+  if (link.debit_id === txId) {
+    return { side: 'debit', part: link.debit_part ?? null,
+      other_id: link.credit_id, other_part: link.credit_part ?? null }
+  }
+  return null
+}
+
+function localReimbursed(tx, payload) {
+  const removed = new Set(payload.remove || [])
+  const links = (tx.reimbursed?.links || []).filter((link) => !removed.has(link.id))
+  for (const link of payload.links || []) {
+    const side = sideOf(link, tx.id)
+    if (!side) continue
+    const other = payload.labels?.[side.other_id] || {}
+    links.push({ id: `pendente-${links.length}`, amount: +link.amount, ...side,
+      other_description: other.description, other_date: other.date,
+      note: payload.note || null })
+  }
+  if (!links.length) return null
+  const parts = {}
+  for (const link of links) {
+    if (link.part != null) parts[link.part] = (parts[link.part] || 0) + link.amount
+  }
+  return { amount: links.reduce((sum, link) => sum + link.amount, 0), parts, links }
+}
+
 // Espelha na tela o que o backend vai gravar — só os campos visíveis do card.
 // Os totais NÃO são recalculados aqui de propósito: as regras de tratamento,
 // split e rasurado vivem no report.py, e duplicá-las em JS abriria espaço para
 // os dois lados divergirem em silêncio. Eles chegam no refresh seguinte.
 function patchOf(payload, tx) {
   const p = {}
-  if (payload.mode === 'tags') {
+  if (payload.mode === 'reimburse') {
+    p.reimbursed = localReimbursed(tx, payload)
+  } else if (payload.mode === 'tags') {
     p.tags = localTags(tx.tags, payload.tags_add, payload.tags_remove)
   } else if (payload.mode === 'split' && payload.splits?.length) {
     p.splits = payload.splits
@@ -37,6 +70,7 @@ function patchOf(payload, tx) {
       p.needs_review = false
     }
     if (payload.note != null) p.note = payload.note
+    if (payload.settle_with !== undefined) p.settle_with = payload.settle_with || null
   }
   if (payload.excluded !== undefined) p.excluded = !!payload.excluded
   return p

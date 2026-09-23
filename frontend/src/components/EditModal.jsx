@@ -7,7 +7,7 @@ import { signedBrl, brl, dayMonth } from '../lib/format.js'
 import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 import {
   Pencil, Tags, Sparkles, MessageSquare, SplitSquareHorizontal, Plus, Trash2,
-  Users, EyeOff, Eye, X, StickyNote,
+  Users, EyeOff, Eye, X, StickyNote, Link2,
 } from 'lucide-react'
 
 const MODES = [
@@ -18,8 +18,8 @@ const MODES = [
   { k: 'rule', label: 'Editar + criar regra', icon: Sparkles,
     hint: 'Cria uma regra e aplica em todo o histórico.' },
   { k: 'split', label: 'Dividir', icon: SplitSquareHorizontal, single: true,
-    hint: 'Sua parte conta no fluxo; a adiantada vai pra Compartilhado/Outro '
-      + 'e anula com o reembolso.' },
+    hint: 'Sua parte conta no fluxo; a de outra pessoa vai pra Terceiros '
+      + 'e fecha com o reembolso.' },
   { k: 'queue', label: 'Mandar pro Claude', icon: MessageSquare,
     hint: 'Envia pra fila com uma nota; o Claude decide na conversa.' },
 ]
@@ -38,7 +38,7 @@ const MATCHES = [
 ]
 
 export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTags,
-  onSaved, saveEdit }) {
+  knownSettlers, onSaved, saveEdit }) {
   const t = useToast()
   const first = txns[0] || {}
   const [mode, setMode] = useState('value')
@@ -57,6 +57,9 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
   const [propagateNote, setPropagateNote] = useState(false)
   const [note, setNote] = useState(
     () => (txns.length === 1 ? txns[0]?.note : '') || '')
+  const [settleWith, setSettleWith] = useState(
+    () => (txns.length === 1 ? txns[0]?.settle_with : '') || '')
+  const [settleTouched, setSettleTouched] = useState(false)
   const [tagInput, setTagInput] = useState('')
   const [tagsToAdd, setTagsToAdd] = useState([])
   const [tagsToRemove, setTagsToRemove] = useState([])
@@ -71,12 +74,18 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
   const [rows, setRows] = useState(() => existingSplits
     ? existingSplits.map((s) => ({ amt: String(Math.abs(s.amount)),
         category: s.category || '', subcategory: s.subcategory || '',
-        note: s.note || '' }))
+        note: s.note || '', settle_with: s.settle_with || '' }))
     : [{ amt: String(absTotal), category: first.category || '',
         subcategory: first.subcategory || '', note: '' }])
 
   const cats = Object.keys(taxonomy || {})
   const subs = taxonomy?.[cat] || []
+  const thirdPartyCat = cats.includes('Terceiros') ? 'Terceiros' : 'Compartilhado'
+  const settlers = useMemo(() => [...new Set([
+    ...(knownSettlers || []),
+    ...(allTxns || []).flatMap((x) => [x.settle_with,
+      ...(x.splits || []).map((part) => part.settle_with)]),
+  ].filter(Boolean))].sort(), [knownSettlers, allTxns])
 
   const sumAbs = rows.reduce((a, r) => a + (parseFloat(r.amt) || 0), 0)
   const remainder = Math.round((absTotal - sumAbs) * 100) / 100
@@ -98,8 +107,9 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
   const presetReimburse = () => setRows([
     { amt: '', category: first.category || '',
       subcategory: first.subcategory || '', note: 'minha parte' },
-    { amt: '', category: 'Compartilhado', subcategory: 'Outro',
-      note: 'parte adiantada p/ outra pessoa' },
+    { amt: '', category: thirdPartyCat,
+      subcategory: (taxonomy?.[thirdPartyCat] || [])[0] || '',
+      note: 'parte de outra pessoa', settle_with: '' },
   ])
 
   // valor sugerido para a regra a partir do campo escolhido
@@ -200,12 +210,16 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
         }
         if (ruleExcl) payload.excluded = true
       }
+      if ((mode === 'value' || mode === 'rule') && settleTouched) {
+        payload.settle_with = settleWith.trim() || null
+      }
       if (mode === 'split') {
         payload.category = null
         payload.splits = rows.map((r) => ({
           amount: sign * Math.abs(parseFloat(r.amt) || 0),
           category: r.category, subcategory: r.subcategory || null,
           note: r.note || '',
+          ...(r.settle_with?.trim() ? { settle_with: r.settle_with.trim() } : {}),
         }))
       }
       await saveEdit(payload)
@@ -228,6 +242,17 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
       t('Erro ao salvar: ' + e.message, 'error', 7000)
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function removeReimbursement(link) {
+    try {
+      await saveEdit({ mode: 'reimburse', ids: [first.id, link.other_id],
+        remove: [link.id] })
+      t('Abatimento removido.', 'success')
+      onClose()
+    } catch (e) {
+      t('Erro: ' + e.message, 'error', 7000)
     }
   }
 
@@ -423,10 +448,16 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
                       <Trash2 className="size-4" /></button>
                   )}
                 </div>
-                <input value={r.note}
-                  onChange={(e) => setRow(i, 'note', e.target.value)}
-                  placeholder="nota (opcional)"
-                  className={inputCls('mt-2 w-full')} />
+                <div className="mt-2 flex gap-2">
+                  <input value={r.note}
+                    onChange={(e) => setRow(i, 'note', e.target.value)}
+                    placeholder="nota (opcional)"
+                    className={inputCls('min-w-0 flex-1')} />
+                  <input value={r.settle_with || ''} list="settlers"
+                    onChange={(e) => setRow(i, 'settle_with', e.target.value)}
+                    placeholder="com quem (opcional)"
+                    className={inputCls('w-44')} />
+                </div>
               </div>
             ))}
           </div>
@@ -469,6 +500,20 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
           </label>
         </div>
       )}
+
+      {(mode === 'value' || mode === 'rule') && (
+        <label className="mt-3 block text-[12px] text-muted">
+          Com quem
+          <span className="text-faint"> (opcional, quem vai acertar esse valor com você)</span>
+          <input value={settleWith} list="settlers"
+            onChange={(e) => { setSettleWith(e.target.value); setSettleTouched(true) }}
+            placeholder={txns.length > 1 ? 'deixe vazio para não alterar' : 'Ex.: FUNAPE, Julia'}
+            className={inputCls('mt-1 w-full')} />
+        </label>
+      )}
+      <datalist id="settlers">
+        {settlers.map((name) => <option key={name} value={name} />)}
+      </datalist>
 
       {/* construtor de regra */}
       {mode === 'rule' && (
@@ -576,6 +621,35 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
 trata como Compartilhado e anula com o que ele me mandou…"
             className={inputCls('mt-1 w-full resize-y')} />
         </label>
+      )}
+
+      {single && first.reimbursed?.links?.length > 0 && (
+        <div className="mt-4 rounded-xl border border-green/30 bg-green/5 px-3 py-2.5">
+          <div className="flex items-center gap-1.5 text-[12px] font-semibold text-green">
+            <Link2 className="size-3.5" /> Abatimentos
+          </div>
+          {first.reimbursed.links.map((link) => (
+            <div key={link.id} className="mt-1.5 flex items-center justify-between
+              gap-3 text-[12px] text-muted">
+              <span className="min-w-0 truncate">
+                {link.side === 'credit' ? 'Abate' : 'Abatido por'}{' '}
+                <span className="text-text">{link.other_description}</span>
+                {link.other_date && <span className="tnum ml-1.5 text-faint">
+                  {dayMonth(link.other_date)}</span>}
+              </span>
+              <span className="flex shrink-0 items-center gap-2">
+                <span className="tnum">{brl(link.amount)}</span>
+                <button onClick={() => removeReimbursement(link)}
+                  disabled={String(link.id).startsWith('pendente')}
+                  title="Remover vínculo"
+                  className="rounded-lg p-1 text-muted hover:text-red
+                    disabled:opacity-40">
+                  <Trash2 className="size-3.5" />
+                </button>
+              </span>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* rasurar: tira de todos os relatórios, reversível */}

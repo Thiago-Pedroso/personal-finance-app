@@ -13,6 +13,7 @@ const DATA = path.join(ROOT, 'data')
 const REPORTS_DIR = path.join(DATA, 'reports')
 const DECISIONS = path.join(DATA, '.decisions.json')
 const EDITS = path.join(DATA, '.edits.json')
+const REIMBURSEMENTS = path.join(DATA, '.reimbursements.json')
 const QUEUE = path.join(DATA, '.claude_queue.jsonl')
 const BUDGET_INPUT = path.join(DATA, '.budget_input.json')
 const INVEST_DECISIONS = path.join(DATA, '.invest_decisions.json')
@@ -93,6 +94,7 @@ async function applyRowEdit(p) {
     fields.splits = p.splits.map((s) => ({
       amount: Number(s.amount), category: s.category,
       subcategory: s.subcategory || null, note: s.note || '',
+      ...(s.settle_with ? { settle_with: s.settle_with } : {}),
     }))
     if (p.note != null) fields.note = String(p.note)
   } else {
@@ -102,6 +104,8 @@ async function applyRowEdit(p) {
     }
     if (p.note != null) fields.note = String(p.note)
   }
+  if (p.settle_with !== undefined && p.mode !== 'tags')
+    fields.settle_with = p.settle_with || null
   if (p.excluded !== undefined) fields.excluded = !!p.excluded
   if (!Object.keys(fields).length)
     return { ok: false, step: 'edit', stderr: 'nada para gravar' }
@@ -125,6 +129,19 @@ async function applyEdit(p) {
     })
     fs.appendFileSync(QUEUE, line + '\n')
     return { ok: true, mode: 'queue', queued: p.ids.length }
+  }
+
+  if (p.mode === 'reimburse') {
+    const strip = ({ credit_id, credit_part, debit_id, debit_part, amount }) =>
+      ({ credit_id, credit_part, debit_id, debit_part, amount, note: p.note || null })
+    fs.writeFileSync(REIMBURSEMENTS, JSON.stringify({
+      add: (p.links || []).map(strip), remove: p.remove || [],
+    }, null, 2) + '\n')
+    const r = await run('uv', ['run', 'python', '-m', 'finance.reimbursements',
+      'apply', REIMBURSEMENTS])
+    if (r.ok) scheduleReport()
+    return { ok: r.ok, step: r.ok ? 'done' : 'reimburse',
+      log: r.stdout.trim(), stderr: r.stderr.trim() }
   }
 
   if (p.mode !== 'rule') {
@@ -153,6 +170,7 @@ async function applyEdit(p) {
         category: s.category,
         subcategory: s.subcategory || null,
         note: s.note || '',
+        ...(s.settle_with ? { settle_with: s.settle_with } : {}),
       })),
     })
   } else if (p.category) {
@@ -160,6 +178,7 @@ async function applyEdit(p) {
       ids: p.ids, category: p.category,
       subcategory: p.subcategory || null, source: 'manual',
       note: noteVal,
+      ...(p.settle_with !== undefined ? { settle_with: p.settle_with || null } : {}),
     })
   }
   if (learn && p.rule && p.rule.value) {
