@@ -12,10 +12,10 @@ const essentialOf = (m, cats) =>
     : (m.expense || 0)
 
 export function deriveToolsInputs(dash, { window = 6 } = {}) {
-  const months = (dash?.months || []).filter((m) => m && typeof m.net === 'number')
+  const months = (dash?.months || []).filter((m) => m && typeof m.surplus === 'number')
   const lastN = months.slice(-window)
 
-  const sobraMedia = avg(lastN, 'net')        // renda − gastos, média dos últimos meses
+  const sobraMedia = avg(lastN, 'surplus')    // renda − gastos, média dos últimos meses
   const gastosMedios = avg(lastN, 'expense')
   const essentialCats = dash?.essential_cats || []
   const gastosEssenciais = lastN.length

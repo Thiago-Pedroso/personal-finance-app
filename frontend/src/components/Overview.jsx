@@ -106,8 +106,8 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
   const hasPlan = planned > 0
   const mIncome = mdata.income || 0
   const mExpense = mdata.expense || 0
-  const mNet = mIncome - mExpense
   const mSaved = mdata.saved || 0                       // Poupado (aportes − resgates)
+  const mNet = mIncome - mExpense - mSaved
   const savedSpark = dash.months.slice(-8).map((m) => m.saved || 0)
   const taxaPoup = mIncome >= 1 ? Math.round((mSaved / mIncome) * 100) : null
   const spentPct = hasPlan ? Math.min((realizedPlan / planned) * 100, 100) : 0
@@ -246,8 +246,6 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
           <div className="mt-2 flex flex-wrap items-center gap-x-1.5 text-[12.5px]">
             <span className="text-violet">
               {taxaPoup != null ? `${taxaPoup}% da renda` : 'poupado no mês'}</span>
-            <span className="text-faint">· sobra{' '}
-              <SensitiveAmount>{signedBrl(mNet - mSaved)}</SensitiveAmount></span>
           </div>
         </Card>
       </div>

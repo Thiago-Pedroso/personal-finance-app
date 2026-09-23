@@ -5,17 +5,13 @@ import { brl, signedBrl, monthLabel } from '../lib/format.js'
 import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 import { PiggyBank } from 'lucide-react'
 
-// Poupança = balde próprio. "Poupado" = aportes − resgates, EXCLUINDO rendimento
-// (rendimento só cresce o patrimônio; bate com o `saved` do backend). Aporte lê como
-// POSITIVO/bom (violeta) — a cor é "bom/ruim pro objetivo", não "entrou/saiu".
+// Poupado = aportes − resgates, sem rendimento; bate com o `saved` do backend
 const isRend = (s) => (s || '').toLowerCase().includes('rendiment')
 
-// Poupado = só APORTES (saídas pra poupança, v.out). Resgate (v.in) é mostrado à parte,
-// NÃO entra no poupado — tirar de um cofrinho não é poupar. Rendimento idem.
 function split(bucket) {
   let poupado = 0, resgatado = 0, rendimento = 0
   for (const [s, v] of Object.entries(bucket.subcategories || {})) {
-    if (isRend(s)) { rendimento += (v.out || 0) - (v.in || 0) } else {
+    if (isRend(s)) { rendimento += (v.in || 0) - (v.out || 0) } else {
       poupado += v.out || 0
       resgatado += v.in || 0
     }
@@ -34,13 +30,14 @@ export function Poupanca({ dash, mdata, month }) {
     Object.entries(m.poupanca || {}).forEach(([c, v]) => {
       agg[c] = agg[c] || { poupado: 0, rendimento: 0, count: 0 }
       const s = split(v)
-      agg[c].poupado += s.poupado; agg[c].rendimento += s.rendimento
+      agg[c].poupado += s.poupado - s.resgatado; agg[c].rendimento += s.rendimento
       agg[c].count += v.count || 0
     }))
   const present = cats.filter(
     (c) => (mdata.poupanca || {})[c] || agg[c].poupado || agg[c].rendimento)
 
   const saved = mdata.saved || 0
+  const movedToFree = mdata.moved_to_free || 0
   const income = mdata.income || 0
   const taxa = income >= 1 ? Math.round((saved / income) * 100) : null
 
@@ -64,10 +61,15 @@ export function Poupanca({ dash, mdata, month }) {
             )}
           </div>
           <p className="mt-1 max-w-xl text-[12.5px] text-faint">
-            Só os <b className="text-muted">aportes</b> — o que você direcionou pra
-            poupança. Resgate (tirar do cofrinho) e rendimento <b className="text-muted">
-            não contam</b>, e nada disso é gasto.
+            <b className="text-muted">Aportes menos resgates</b>. O resgate volta
+            para o saldo livre e só vira gasto se for gasto. Rendimento fica de fora.
           </p>
+          {movedToFree !== 0 && (
+            <p className="mt-1 text-[12.5px] text-muted">
+              Movido para livre: <SensitiveAmount>{signedBrl(movedToFree)}</SensitiveAmount>
+              <span className="text-faint"> (destino de papel livre, fica no saldo)</span>
+            </p>
+          )}
         </div>
         <span className="grid size-12 shrink-0 place-items-center rounded-2xl
           bg-violet/10 text-violet ring-1 ring-violet/20">
@@ -107,9 +109,9 @@ export function Poupanca({ dash, mdata, month }) {
                   {s.resgatado > 0 && (
                     <div className="flex justify-between">
                       <span className="text-muted">Resgatado{' '}
-                        <span className="text-faint">(não conta)</span></span>
+                        <span className="text-faint">(abate do poupado)</span></span>
                       <span className="tnum text-faint">
-                        <SensitiveAmount>{brl(s.resgatado)}</SensitiveAmount>
+                        <SensitiveAmount>{signedBrl(-s.resgatado)}</SensitiveAmount>
                       </span>
                     </div>
                   )}
@@ -126,7 +128,7 @@ export function Poupanca({ dash, mdata, month }) {
               )}
               <div className="mt-3 flex justify-between border-t border-border pt-2
                 text-[12px] text-faint">
-                <span>aportado acum. {dash.months.length}m · {agg[c].count}x</span>
+                <span>poupado acum. {dash.months.length}m, {agg[c].count}x</span>
                 <span className="tnum text-violet">
                   <SensitiveAmount>{brl(agg[c].poupado)}</SensitiveAmount>
                 </span>
