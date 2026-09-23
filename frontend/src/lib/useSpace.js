@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 // dá para mandar link de uma tela específica.
 export const SPACES = {
   financas: ['overview', 'txns', 'cats', 'tags', 'plan', 'tools', 'poup', 'movs',
-             'review'],
+             'rules', 'review'],
   investimentos: ['visao', 'carteira', 'aporte', 'caixinhas', 'operacoes',
                   'simulador'],
 }

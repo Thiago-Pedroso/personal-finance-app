@@ -14,6 +14,7 @@ import { Planejamento } from './components/Planejamento.jsx'
 import { Tools } from './components/Tools.jsx'
 import { Poupanca } from './components/Poupanca.jsx'
 import { Review } from './components/Review.jsx'
+import { Rules } from './components/Rules.jsx'
 import { TransactionsTable } from './components/TransactionsTable.jsx'
 import { EditModal } from './components/EditModal.jsx'
 import { DrillDrawer } from './components/DrillDrawer.jsx'
@@ -38,6 +39,7 @@ const TABS = [
   ['tools', 'Ferramentas'],
   ['poup', 'Poupança'],
   ['movs', 'Movimentações'],
+  ['rules', 'Regras'],
   ['review', 'Revisar'],
 ]
 
@@ -278,6 +280,9 @@ function Shell() {
         )}
         {space.space === 'financas' && tab === 'movs' && (
           <Movements dash={dash} mdata={mdata} month={month} />
+        )}
+        {space.space === 'financas' && tab === 'rules' && (
+          <Rules dash={dash} mdata={mdata} period={month} />
         )}
         {space.space === 'financas' && tab === 'review' && (
           <Review dash={dash} queue={d.queue} queuedIds={queuedIds}

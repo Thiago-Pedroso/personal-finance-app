@@ -22,11 +22,11 @@ function effLabels(t) {
 import {
   Search, Pencil, ChevronLeft, ChevronRight, X, ArrowUpDown,
   ArrowUp, ArrowDown, SlidersHorizontal, StickyNote, MessageSquare,
-  PiggyBank, ArrowLeftRight, EyeOff, Wand2, Check,
+  PiggyBank, ArrowLeftRight, EyeOff, Wand2, Check, Tag as TagIcon,
 } from 'lucide-react'
 
 const EMPTY = { q: '', cats: [], tags: [], accs: [], flow: '', rev: false,
-  d0: '', d1: '', a0: '', a1: '', sub: '', queued: false, excl: false,
+  d0: '', d1: '', a0: '', a1: '', sub: '', rule: '', queued: false, excl: false,
   hiddenCats: [], hiddenSubs: [] }
 
 export function TransactionsTable({ txns, openEdit, saveEdit, title, presetCat,
@@ -86,6 +86,7 @@ export function TransactionsTable({ txns, openEdit, saveEdit, title, presetCat,
       if (f.cats.length && !tcats.some((c) => f.cats.includes(c))) return false
       if (f.hiddenCats.length && tcats.every((c) => f.hiddenCats.includes(c))) return false
       if (f.sub && !tsubs.includes(f.sub)) return false
+      if (f.rule && t.rule_id !== f.rule) return false
       if (f.hiddenSubs.length && tsubs.every((s) => f.hiddenSubs.includes(s))) return false
       if (f.tags.length && !f.tags.every(
         (tag) => (t.tags || []).includes(tag))) return false
@@ -138,33 +139,54 @@ export function TransactionsTable({ txns, openEdit, saveEdit, title, presetCat,
       cell: (c) => <span className="tnum text-muted">{fullDate(c.getValue())}</span> },
     {
       accessorKey: 'description', header: 'Descrição', enableSorting: false,
-      cell: ({ row }) => (
-        <div className="min-w-[180px]">
-          <div className="flex items-center gap-1.5 font-medium">
-            {row.original.description}
-            {row.original.time && (
-              <span className="tnum shrink-0 text-[11px] font-normal
-                text-faint">{row.original.time}</span>
+      cell: ({ row }) => {
+        const tags = row.original.tags || []
+        return (
+          <div className="min-w-[180px]">
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1
+              font-medium">
+              <span className="break-words">{row.original.description}</span>
+              <span className="inline-flex shrink-0 items-center gap-1.5">
+                {row.original.time && (
+                  <span className="tnum text-[11px] font-normal
+                    text-faint">{row.original.time}</span>
+                )}
+                {row.original.note && (
+                  <span title={row.original.note}
+                    className="inline-flex cursor-help text-amber"
+                    aria-label="nota">
+                    <StickyNote className="size-3.5" />
+                  </span>
+                )}
+                {tags.length > 0 && (
+                  <button type="button" onClick={() => set('tags', [tags[0]])}
+                    title={`Tags: ${tags.join(', ')}. Clique para filtrar.`}
+                    className="inline-flex max-w-[160px] items-center gap-1
+                      rounded-full border border-brand/30 bg-brand/10 px-1.5
+                      py-px text-[11px] font-medium text-brand
+                      hover:bg-brand/20">
+                    <TagIcon className="size-3 shrink-0" />
+                    <span className="truncate">{tags[0]}</span>
+                    {tags.length > 1 && (
+                      <span className="tnum shrink-0 text-brand/70">
+                        +{tags.length - 1}</span>
+                    )}
+                  </button>
+                )}
+              </span>
+            </div>
+            {row.original.counterparty && (
+              <div className="text-[12px] text-faint">{row.original.counterparty}</div>
             )}
             {row.original.note && (
-              <span title={row.original.note}
-                className="inline-flex cursor-help text-amber"
-                aria-label="nota">
-                <StickyNote className="size-3.5" />
-              </span>
+              <div className="mt-0.5 line-clamp-1 text-[11.5px]
+                italic text-faint" title={row.original.note}>
+                “{row.original.note}”
+              </div>
             )}
           </div>
-          {row.original.counterparty && (
-            <div className="text-[12px] text-faint">{row.original.counterparty}</div>
-          )}
-          {row.original.note && (
-            <div className="mt-0.5 line-clamp-1 text-[11.5px]
-              italic text-faint" title={row.original.note}>
-              “{row.original.note}”
-            </div>
-          )}
-        </div>
-      ),
+        )
+      },
     },
     {
       accessorKey: 'category', header: 'Categoria', enableSorting: false,
@@ -357,7 +379,18 @@ export function TransactionsTable({ txns, openEdit, saveEdit, title, presetCat,
   return (
     <Card className="overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-4">
-        <h3 className="text-[15px] font-semibold">{title}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-[15px] font-semibold">{title}</h3>
+          {f.rule && (
+            <button type="button" onClick={() => set('rule', '')}
+              title="Remover filtro de regra"
+              className="inline-flex items-center gap-1 rounded-full border
+                border-brand/30 bg-brand/10 px-2 py-0.5 text-[11.5px] font-medium
+                text-brand hover:bg-brand/20">
+              Regra {f.rule}<X className="size-3" />
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2
