@@ -3,7 +3,7 @@
 Substitui scripts python ad-hoc — é um comando fixo e seguro de allowlistar.
 
 Uso:
-  uv run python -m finance.show queue [--days N] # Fila do Claude + instruções das regras
+  uv run python -m finance.show queue [--days N] # fila, instruções das regras e reembolsos
   uv run python -m finance.show tx <id|prefixo>… # registro(s) completos (JSON)
   uv run python -m finance.show find <texto> [-n N]  # busca na descrição
   uv run python -m finance.show cat "Categoria[/Sub]" [-n N]  # por categoria
@@ -16,6 +16,7 @@ import sys
 from datetime import datetime, timedelta
 
 from . import ledger as L
+from . import reimbursements as RB
 from . import rules as R
 from .config import CLAUDE_QUEUE_FILE
 from .transaction_dates import load_timezone
@@ -40,6 +41,7 @@ def _line(r: dict) -> str:
 def cmd_queue(args) -> None:
     _print_claude_queue()
     _print_rule_instructions(args.days)
+    _print_reimbursement_suggestions()
 
 
 def _print_claude_queue() -> None:
@@ -83,6 +85,22 @@ def _print_rule_instructions(days: int) -> None:
             current_rule = r["rule_id"]
             print(f"\n[{current_rule}] {instructions[current_rule]}")
         print(f"    • {_line(r)}")
+
+
+def _print_reimbursement_suggestions() -> None:
+    ledger = L.load_ledger()
+    by_tx, _ = RB.index(RB.load(), ledger)
+    found = RB.suggestions(list(ledger.values()), by_tx)
+    if not found:
+        return
+    print("\n=== Possíveis reembolsos (confirme antes de abater) ===")
+    for item in found:
+        credit, debit = item["credit"], item["debit"]
+        part = "" if debit["part"] is None else f" parte {debit['part']}"
+        print(f"  {credit['date']} +{credit['amount']:.2f} {credit['description']} "
+              f"({credit['id']})")
+        print(f"    abate {debit['date']} {debit['description']}{part} "
+              f"[{debit['settle_with']}] ({debit['id']})")
 
 
 def cmd_tx(args) -> None:

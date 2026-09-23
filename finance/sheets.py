@@ -28,7 +28,7 @@ from gspread.utils import ValueRenderOption, rowcol_to_a1
 
 from .config import DEFAULT_TIMEZONE, GOOGLE_SA_CREDENTIALS, ROOT, SHEET_ID
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 # Escopos: Sheets (ler/gravar) + Drive (abrir a planilha por ID / criar abas).
 _SCOPES = [
@@ -56,6 +56,7 @@ LEDGER_SCHEMA = [
     ("rule_id", "opt"), ("needs_review", "bool"), ("reviewed", "bool"),
     ("splits", "json"), ("note", "opt"), ("amount_override", "fnum"),
     ("excluded", "bool"), ("synced_at", "opt"), ("tags", "json"),
+    ("settle_with", "opt"),
 ]
 
 RULES_SCHEMA = [
@@ -74,6 +75,14 @@ SUBCATEGORY_META_SCHEMA = [("Category", "str"), ("Subcategory", "str"),
 
 PLUGGY_MAP_SCHEMA = [("PluggyCategory", "str"), ("Category", "str"),
                      ("Subcategory", "opt")]
+
+# Abatimento: uma entrada (credit) abate uma saída (debit), total ou parcialmente.
+# `*_part` é o índice da parte do split; vazio vale para o lançamento inteiro.
+REIMBURSEMENTS_SCHEMA = [
+    ("id", "str"), ("credit_id", "str"), ("credit_part", "fnum"),
+    ("debit_id", "str"), ("debit_part", "fnum"), ("amount", "float"),
+    ("note", "opt"), ("created_at", "opt"),
+]
 
 # ---- Investimentos --------------------------------------------------------------------
 # Fatos: uma linha por operação. `side` cobre BUY, SELL, DIVIDEND, JCP, SPLIT, ADJUST e
@@ -126,6 +135,7 @@ SCHEMAS = {
     "Taxonomy": TAXONOMY_SCHEMA,
     "PluggyMap": PLUGGY_MAP_SCHEMA,
     "SubcategoryMeta": SUBCATEGORY_META_SCHEMA,
+    "Reimbursements": REIMBURSEMENTS_SCHEMA,
     "InvestTrades": INVEST_TRADES_SCHEMA,
     "InvestAssets": INVEST_ASSETS_SCHEMA,
     "InvestAccounts": INVEST_ACCOUNTS_SCHEMA,

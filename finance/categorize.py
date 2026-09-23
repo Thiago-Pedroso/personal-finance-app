@@ -20,6 +20,7 @@ from statistics import median
 
 from . import ledger as L
 from . import pluggy_map
+from . import reimbursements as RB
 from . import rules as R
 from . import sheets
 from . import taxonomy as T
@@ -208,6 +209,8 @@ def apply(learn: bool, do_report: bool = False) -> None:
             if "tags_add" in a or "tags_remove" in a:
                 rec["tags"] = L.update_tags(
                     rec.get("tags"), a.get("tags_add"), a.get("tags_remove"))
+            if "settle_with" in a:
+                rec["settle_with"] = (a["settle_with"] or "").strip() or None
             if not changes_classification:
                 if "note" in a:
                     rec["note"] = (a["note"] or None)
@@ -253,6 +256,12 @@ def apply(learn: bool, do_report: bool = False) -> None:
     changed = {tid for tid, rec in ledger.items()
                if L.snapshot(rec) != before.get(tid)}
     L.save_ledger(ledger, changed_ids=changed)
+    if dec.get("reimbursements") or dec.get("reimbursements_remove"):
+        created, removed, problems = RB.apply_changes(
+            ledger, dec.get("reimbursements"), dec.get("reimbursements_remove"))
+        for problem in problems:
+            print(f"  ⚠ abatimento não gravado: {problem}")
+        print(f"Abatimentos: +{created} criados, -{removed} removidos.")
     TO_CATEGORIZE_FILE.unlink(missing_ok=True)
     DECISIONS_FILE.unlink(missing_ok=True)
 
