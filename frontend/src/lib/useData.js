@@ -163,9 +163,9 @@ export function useData() {
   }, [aguardaRelatorio])
 
   const saveEdit = useCallback(async (payload) => {
-    // fila do Claude e criação de regra não são edição de linha: afetam mais do
-    // que o card editado, então esperam a resposta (quem chama recarrega)
-    if (payload.mode === 'queue' || payload.mode === 'rule') {
+    // fila do Claude não mexe no ledger: espera a resposta (quem chama recarrega).
+    // Regra entra na fila de saída; os outros lançamentos que casarem chegam no refresh.
+    if (payload.mode === 'queue') {
       await postEdit(payload)
       return
     }

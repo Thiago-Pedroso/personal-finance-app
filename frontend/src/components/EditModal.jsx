@@ -7,26 +7,30 @@ import { signedBrl, brl, dayMonth } from '../lib/format.js'
 import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 import {
   Pencil, Tags, Sparkles, MessageSquare, SplitSquareHorizontal, Plus, Trash2,
-  Users, EyeOff, Eye, X,
+  Users, EyeOff, Eye, X, StickyNote,
 } from 'lucide-react'
 
 const MODES = [
   { k: 'value', label: 'Só este(s)', icon: Pencil,
-    hint: 'Grava a categoria só nestes lançamentos (manual).' },
+    hint: 'Grava a categoria só nestes lançamentos.' },
   { k: 'tags', label: 'Tags', icon: Tags,
-    hint: 'Adiciona ou remove etiquetas sem alterar a categorização.' },
+    hint: 'Adiciona ou remove tags sem mexer na categoria.' },
   { k: 'rule', label: 'Editar + criar regra', icon: Sparkles,
-    hint: 'Cria uma regra e aplica retroativo a tudo que casa.' },
+    hint: 'Cria uma regra e aplica em todo o histórico.' },
   { k: 'split', label: 'Dividir', icon: SplitSquareHorizontal, single: true,
-    hint: 'Divide o lançamento: sua parte conta no fluxo; a parte adiantada '
-      + 'vira Compartilhado (fora do fluxo) e anula com o reembolso.' },
+    hint: 'Sua parte conta no fluxo; a adiantada vai pra Compartilhado/Outro '
+      + 'e anula com o reembolso.' },
   { k: 'queue', label: 'Mandar pro Claude', icon: MessageSquare,
-    hint: 'Envia pra fila com uma nota; eu decido na conversa.' },
+    hint: 'Envia pra fila com uma nota; o Claude decide na conversa.' },
 ]
 const FIELDS = [
   ['merchant_name', 'Lojista'],
   ['counterparty', 'Contraparte'],
   ['description', 'Descrição'],
+]
+const AMOUNT_MODES = [
+  ['any', 'qualquer'], ['eq', 'igual a'], ['max', 'até'],
+  ['min', 'a partir de'], ['between', 'entre'],
 ]
 const MATCHES = [
   ['contains', 'contém'], ['exact', 'igual a'],
@@ -45,6 +49,12 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
   const [value, setValue] = useState('')
   const [byType, setByType] = useState(false)
   const [ruleExcl, setRuleExcl] = useState(false)
+  const [amountMode, setAmountMode] = useState('any')
+  const [amountFrom, setAmountFrom] = useState(
+    () => String(Math.abs(txns[0]?.signed_amount || 0)))
+  const [amountTo, setAmountTo] = useState('')
+  const [instruction, setInstruction] = useState('')
+  const [propagateNote, setPropagateNote] = useState(false)
   const [note, setNote] = useState(
     () => (txns.length === 1 ? txns[0]?.note : '') || '')
   const [tagInput, setTagInput] = useState('')
@@ -99,6 +109,20 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
   }, [field, first])
   const ruleValue = value || suggested
 
+  const amountRange = useMemo(() => {
+    const from = amountFrom === '' ? null : Math.abs(+amountFrom)
+    const to = amountTo === '' ? null : Math.abs(+amountTo)
+    if (amountMode === 'eq') return { min: from, max: from }
+    if (amountMode === 'max') return { min: null, max: from }
+    if (amountMode === 'min') return { min: from, max: null }
+    if (amountMode === 'between') return { min: from, max: to }
+    return { min: null, max: null }
+  }, [amountMode, amountFrom, amountTo])
+  const amountOk = amountMode === 'any' || (amountMode === 'between'
+    ? amountRange.min != null && amountRange.max != null
+      && amountRange.min <= amountRange.max
+    : amountRange.min != null || amountRange.max != null)
+
   // pré-visualização: quantos lançamentos do mês casariam com a regra
   const preview = useMemo(() => {
     if (mode !== 'rule' || !ruleValue) return null
@@ -110,6 +134,9 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
     if (match === 'regex') { try { re = new RegExp(ruleValue, 'i') } catch { /* */ } }
     return (allTxns || []).filter((x) => {
       if (byType && x.type !== first.type) return false
+      const cents = Math.round(Math.abs(x.signed_amount || 0) * 100)
+      if (amountRange.min != null && cents < Math.round(amountRange.min * 100)) return false
+      if (amountRange.max != null && cents > Math.round(amountRange.max * 100)) return false
       const f = norm(x[field])
       if (match === 'contains') return f.includes(tgt)
       if (match === 'exact') return f === tgt
@@ -117,8 +144,9 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
       if (match === 'regex') return re && re.test(x[field] || '')
       return false
     }).length
-  }, [mode, ruleValue, match, field, byType, allTxns, first])
+  }, [mode, ruleValue, match, field, byType, amountRange, allTxns, first])
 
+  const propagating = mode === 'rule' && propagateNote && !!note.trim()
   const ids = txns.map((x) => x.id)
   const usedTags = useMemo(() => [...new Set(
     txns.flatMap((transaction) => transaction.tags || []))].sort(), [txns])
@@ -141,7 +169,7 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
       ? tagsToAdd.length > 0 || tagsToRemove.length > 0
     : mode === 'split'
       ? splitOk
-      : !!cat && (mode !== 'rule' || !!ruleValue)
+      : !!cat && (mode !== 'rule' || (!!ruleValue && amountOk))
 
   async function save() {
     setSaving(true)
@@ -165,6 +193,10 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
         payload.rule = {
           field, match, value: ruleValue,
           ...(byType ? { type: first.type } : {}),
+          ...(amountRange.min != null ? { amount_abs_min: amountRange.min } : {}),
+          ...(amountRange.max != null ? { amount_abs_max: amountRange.max } : {}),
+          ...(propagating ? { note: note.trim(), propagate_note: true } : {}),
+          ...(instruction.trim() ? { instruction: instruction.trim() } : {}),
         }
         if (ruleExcl) payload.excluded = true
       }
@@ -184,15 +216,13 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
         t(`Tags atualizadas em ${ids.length} lançamento(s).`, 'success')
       } else if (mode === 'split') {
         t(`Lançamento dividido em ${rows.length} partes.`, 'success')
+      } else if (mode === 'rule') {
+        t('Regra salva. Os outros lançamentos que casarem atualizam em instantes.',
+          'success')
       } else {
-        t(`Aplicado a ${ids.length} lançamento(s)` +
-          (mode === 'rule'
-            ? (ruleExcl ? ' + regra que já rasura o que casar.' : ' + regra aprendida.')
-            : '.'), 'success')
+        t(`Aplicado a ${ids.length} lançamento(s).`, 'success')
       }
-      // edição de linha já apareceu na tela e grava em segundo plano;
-      // só regra e fila precisam de releitura aqui
-      if (mode === 'rule' || mode === 'queue') onSaved(mode !== 'queue')
+      if (mode === 'queue') onSaved(false)
       onClose()
     } catch (e) {
       t('Erro ao salvar: ' + e.message, 'error', 7000)
@@ -207,7 +237,7 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
       await saveEdit({ mode: 'exclude', ids, excluded: !allExcluded })
       t(allExcluded
         ? `${ids.length} lançamento(s) restaurado(s).`
-        : `${ids.length} lançamento(s) rasurado(s) — fora dos relatórios.`,
+        : `${ids.length} lançamento(s) rasurado(s).`,
         'success')
       onClose()
     } catch (e) {
@@ -223,7 +253,8 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
       title={txns.length > 1
         ? `Editar ${txns.length} lançamentos` : 'Editar lançamento'}
       sub={txns.length === 1
-        ? `${first.description} · ${signedBrl(first.signed_amount)}`
+        ? <>{first.description}<span className="tnum ml-2 text-faint">
+          {signedBrl(first.signed_amount)}</span></>
         : <><SensitiveAmount>{signedBrl(
           txns.reduce((a, x) => a + x.signed_amount, 0))}</SensitiveAmount>{' '}
           no total</>}
@@ -263,7 +294,10 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
           border-border bg-surface2/60 p-2 text-[12px] text-muted">
           {txns.slice(0, 8).map((x) => (
             <div key={x.id} className="flex justify-between gap-3 px-1 py-0.5">
-              <span className="truncate">{dayMonth(x.date)} · {x.description}</span>
+              <span className="truncate">
+                <span className="tnum mr-2 text-faint">{dayMonth(x.date)}</span>
+                {x.description}
+              </span>
               <span className="tnum">{signedBrl(x.signed_amount)}</span>
             </div>
           ))}
@@ -410,12 +444,6 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
                 : `falta alocar ${brl(remainder)}`}
             </span>
           </div>
-          <p className="mt-2 text-[12px] text-muted">
-            Dica: ponha sua parte na categoria real e a parte adiantada em
-            <b className="text-text"> Compartilhado/Outro</b> — ela some do
-            fluxo e anula quando o reembolso entrar (categorize o PIX recebido
-            também como Compartilhado).
-          </p>
         </div>
       )}
 
@@ -459,10 +487,31 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
           <input value={value} onChange={(e) => setValue(e.target.value)}
             placeholder={suggested}
             className={inputCls('mt-2 w-full')} />
+          <div className="mt-2 flex items-center gap-2 text-[12px] text-muted">
+            <span className="w-10 shrink-0">Valor</span>
+            <select value={amountMode}
+              onChange={(e) => setAmountMode(e.target.value)}
+              className={inputCls('w-32')}>
+              {AMOUNT_MODES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </select>
+            {amountMode !== 'any' && (
+              <input type="number" step="0.01" min="0" value={amountFrom}
+                onChange={(e) => setAmountFrom(e.target.value)}
+                placeholder="R$" className={inputCls('tnum min-w-0 flex-1')} />
+            )}
+            {amountMode === 'between' && (
+              <>
+                <span>e</span>
+                <input type="number" step="0.01" min="0" value={amountTo}
+                  onChange={(e) => setAmountTo(e.target.value)}
+                  placeholder="R$" className={inputCls('tnum min-w-0 flex-1')} />
+              </>
+            )}
+          </div>
           <label className="mt-2 flex items-center gap-2 text-[12px] text-muted">
             <input type="checkbox" checked={byType}
               onChange={(e) => setByType(e.target.checked)} />
-            só quando o tipo for {first.type} (evita casar entrada com saída)
+            <span>Só quando o tipo for {first.type}</span>
           </label>
           <label className={`mt-2 flex items-center gap-2 rounded-lg border px-2
             py-1.5 text-[12px] transition ${ruleExcl
@@ -470,27 +519,49 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
               : 'border-transparent text-muted'}`}>
             <input type="checkbox" checked={ruleExcl}
               onChange={(e) => setRuleExcl(e.target.checked)} />
-            <EyeOff className="size-3.5" />
-            já entram <b className="font-semibold">rasuradas</b> — fora de todos os
-            relatórios (ótimo p/ aplicação/recompra compromissada)
+            <EyeOff className="size-3.5 shrink-0" />
+            <span>Rasurar tudo que casar (ex.: compromissadas)</span>
           </label>
           {preview != null && (
             <p className="mt-2 text-[12px] text-blue">
-              ≈ {preview} lançamento(s) deste mês casam — a aplicação é
-              retroativa em todo o histórico.
+              ≈ {preview} lançamento(s) neste mês. Aplica em todo o histórico.
             </p>
           )}
         </div>
       )}
 
-      {/* nota da transação (contexto p/ o Claude; aparece no hover) */}
       {mode !== 'queue' && mode !== 'tags' && (
         <label className="mt-4 block text-[12px] text-muted">
-          Nota {txns.length > 1 ? '(aplicada a todos)' : ''} — contexto,
-          aparece no hover e fica registrada pro Claude
+          Nota
+          <span className="text-faint"> (aparece no hover
+            {txns.length > 1 && !propagating ? ', vale para todos' : ''})</span>
           <textarea value={note} onChange={(e) => setNote(e.target.value)}
             rows={3}
             placeholder="Ex.: dividi a conta com um amigo; jantar de aniversário…"
+            className={inputCls('mt-1 w-full resize-y')} />
+        </label>
+      )}
+      {mode === 'rule' && (
+        <label className={`mt-1 flex items-center gap-2 rounded-lg border px-2
+          py-1.5 text-[12px] transition ${!note.trim()
+            ? 'cursor-not-allowed border-transparent text-faint'
+            : propagateNote
+              ? 'border-brand/40 bg-brand/5 text-brand'
+              : 'border-transparent text-muted'}`}>
+          <input type="checkbox" checked={propagateNote}
+            disabled={!note.trim()}
+            onChange={(e) => setPropagateNote(e.target.checked)} />
+          <StickyNote className="size-3.5 shrink-0" />
+          <span>Manter junto com a regra (vale também para os próximos)</span>
+        </label>
+      )}
+      {mode === 'rule' && (
+        <label className="mt-4 block text-[12px] text-muted">
+          Instrução pro Claude
+          <span className="text-faint"> (lida a cada sync, nunca aparece no hover)</span>
+          <textarea value={instruction}
+            onChange={(e) => setInstruction(e.target.value)} rows={2}
+            placeholder="Ex.: se o IOF veio separado no mesmo dia, não somar 3,50"
             className={inputCls('mt-1 w-full resize-y')} />
         </label>
       )}
@@ -520,10 +591,8 @@ trata como Compartilhado e anula com o que ele me mandou…"
             </div>
             <p className="mt-0.5">
               {allExcluded
-                ? `Fora de todos os relatórios. Restaure pra ${single
-                    ? 'ele voltar' : 'eles voltarem'} a contar.`
-                : `Tira ${single ? 'este lançamento' : 'estes lançamentos'} de `
-                  + 'todos os relatórios (fluxo, poupança, gráficos). Reversível.'}
+                ? 'Fora dos relatórios. Restaure para voltar a contar.'
+                : 'Tira de todos os relatórios. Reversível.'}
             </p>
           </div>
           <button onClick={toggleExclude} disabled={excluding}

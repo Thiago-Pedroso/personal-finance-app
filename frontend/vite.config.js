@@ -135,7 +135,9 @@ async function applyEdit(p) {
 
   const learn = p.mode === 'rule'
   const decisions = { assignments: [], rules: [] }
-  const noteVal = p.note == null ? '' : String(p.note)
+  const propagate = learn && !!p.rule?.propagate_note && !!p.rule?.note
+  const noteVal = propagate ? String(p.rule.note)
+    : p.note == null ? '' : String(p.note)
   if (p.mode === 'tags') {
     decisions.assignments.push({
       ids: p.ids,
@@ -165,8 +167,12 @@ async function applyEdit(p) {
       field: p.rule.field, match: p.rule.match || 'contains',
       value: p.rule.value, category: p.category,
       subcategory: p.subcategory || null,
-      note: `dashboard ${new Date().toISOString().slice(0, 10)}`,
+      note: propagate ? String(p.rule.note) : '',
+      ...(propagate ? { propagate_note: true } : {}),
+      ...(p.rule.instruction ? { instruction: String(p.rule.instruction) } : {}),
       ...(p.rule.type ? { type: p.rule.type } : {}),
+      ...(p.rule.amount_abs_min != null ? { amount_abs_min: Number(p.rule.amount_abs_min) } : {}),
+      ...(p.rule.amount_abs_max != null ? { amount_abs_max: Number(p.rule.amount_abs_max) } : {}),
       ...(p.excluded ? { excluded: true } : {}),
     })
   }
@@ -184,11 +190,11 @@ async function applyEdit(p) {
   }
   fs.writeFileSync(DECISIONS, JSON.stringify(decisions, null, 2) + '\n')
 
-  // um processo só: apply + report reaproveitam o ledger/taxonomia em memória
-  // (evita subir 2º processo e reler tudo do Sheets).
-  const args = ['run', 'python', '-m', 'finance.categorize', 'apply', '--report']
+  // relatório adiado: a tela só relê depois que a fila de saída esvazia
+  const args = ['run', 'python', '-m', 'finance.categorize', 'apply']
   if (learn) args.push('--learn')
   const a = await run('uv', args)
+  if (a.ok) scheduleReport()
   return { ok: a.ok, step: a.ok ? 'done' : 'categorize',
     log: a.stdout.trim(), stderr: a.stderr.trim() }
 }
