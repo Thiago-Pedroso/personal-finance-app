@@ -53,7 +53,7 @@ uv run python -m finance.categorize stats
 | `SubcategoryMeta` | cor e ícone opcionais por subcategoria | `finance/taxonomy.py` |
 | `PluggyMap` | categoria da Pluggy → taxonomia pessoal | `finance/pluggy_map.py` |
 | `Reimbursements` | abatimentos: qual entrada abate qual saída, e quanto | `finance/reimbursements.py` |
-| `Config` | blobs JSON: `budgets`, `sync_state`, `timezone`, `min_transaction_date`, `schema_version`, `invest_monthly_contribution`, `invest_contribution_mode`, `invest_allocation_sim` | `finance/budgets.py`, `finance/sync.py` |
+| `Config` | blobs JSON: `budgets`, `sync_state`, `timezone`, `min_transaction_date`, `schema_version`, `invest_monthly_contribution`, `invest_contribution_mode`, `invest_allocation_sim`, `invest_destination_subcategories` | `finance/budgets.py`, `finance/sync.py` |
 | `InvestTrades` | 1 movimentação por linha (a única entrada de fatos da carteira) | `finance/invest/trades.py` |
 | `InvestAssets` | catálogo: classe, conta, setor, alvo, como o valor é apurado | `finance/invest/assets.py` |
 | `InvestAccounts` | onde o dinheiro está custodiado (corretora, carteira, caixinhas) | `finance/invest/accounts.py` |
@@ -96,7 +96,9 @@ Arquivo **efêmero e local** (gitignored), espelho do `.decisions.json` da categ
   "assets":   [{"ticker": "SAPR11", "node": "fiis", "sector": "Saneamento",
                 "target_pct": 0.1}],
   "targets":  {"acoes": {"BBAS3": 0.07}},
-  "locked":   {"acoes": ["ITUB3"]}
+  "locked":   {"acoes": ["ITUB3"]},
+  "links":    [{"ledger_id": "uuid-do-aporte", "destinations": [
+                 {"ticker": "VIAGEM", "amount": 1200}]}]
 }
 ```
 
@@ -107,12 +109,43 @@ fica pendente, porque isso é decisão de política.
 ### Onde o dinheiro está
 
 Cada nó da política tem um `role`, e é ele que divide o patrimônio em quatro números:
-`strategy` (a carteira), `reserved` (guardado com destino), `to_invest` (saiu da conta e
-ainda não virou posição) e `free` (sem compromisso). Só o vocabulário é fixo: quantos nós
+`strategy` (a carteira), `reserved` (guardado com destino), `to_invest` (guardado para
+investir, ainda em conta) e `free` (sem compromisso). Só o vocabulário é fixo: quantos nós
 existem em cada papel, e os nomes deles, são do usuário.
 
-Saldo de conta corrente é um ativo por saldo apontando para a conta em `pluggy_code`, e se
-atualiza sozinho no `sync`. Cartão de crédito não entra: fatura é dívida.
+Três tipos de lugar, pelo `valuation` do ativo:
+
+- **Conta** (`account`): saldo de conta com `pluggy_code` = id da conta, atualizado no
+  `sync`. Sem custo nem lucro. Conta de corretora fica num nó `to_invest`: o saldo dela é
+  o dinheiro a aportar. Cartão de crédito não entra: fatura é dívida.
+- **Caixinha** (`balance`): saldo separado por objetivo dentro de um banco, com rendimento
+  rateado.
+- **Ativo**: cotação (`quote`) ou saldo da corretora (`pluggy`).
+
+Só se registra **fato**: dinheiro na corretora é "a aportar" até virar posição. Intenção
+("esse dinheiro é para a viagem") fica no Simulador, nunca na carteira.
+
+### Ligação com o Fluxo (destino)
+
+Todo lançamento de categoria `poupança` com subcategoria de aporte ou resgate precisa de
+**destino** (os nomes vêm de `Config[invest_destination_subcategories]`, padrão
+`["Aporte", "Resgate"]`): movimentações com o `ledger_id` dele somando o valor. Defina com `links` no
+`.invest_decisions.json` (ou pelo campo de destino na edição do lançamento):
+
+- Caixinha: aporte vira `BUY`, resgate vira `SELL`.
+- Conta (PIX para a corretora): vira `TRANSFER`, que só documenta a chegada.
+
+**Poupança conta quando o dinheiro sai do dia a dia**: o PIX para a corretora é
+`Investimentos/Aporte` com destino na conta dela. Transferência entre contas do próprio
+usuário depois disso é `Transferências` (movimento).
+
+Aporte sem destino aparece no `finance.show queue` (com os tickers de destino válidos), no
+`sync`, na aba Revisar e na Visão Geral de Investimentos, e **suspende o rateio** do
+rendimento das caixinhas daquela conta.
+
+`statement_missing` no `sync` = a conta variou sem lançamento no Ledger (a Pluggy nem
+sempre traz todas as transações, principalmente de conta de corretora): peça o extrato e
+grave com `manual_transactions`.
 
 ### Regras do domínio (aplique sem perguntar)
 
@@ -242,9 +275,20 @@ recorrente, promova pra regra (ver `rules` abaixo) em vez de corrigir manualment
     {"credit_id": "uuid-do-pix", "debit_id": "uuid-do-split", "debit_part": 1, "amount": 60}
   ],
   "reimbursements_remove": ["ab_0003"],
+  "manual_transactions": [
+    {"account_id": "uuid-da-conta", "date": "2026-09-15", "amount": 12.00,
+     "description": "RENDIMENTOS DE CLIENTES ABCD11 S/ 20",
+     "category": "Investimentos", "subcategory": "Rendimentos",
+     "invest": {"ticker": "ABCD11", "side": "DIVIDEND", "quantity": 20}}
+  ],
   "confirm_provisional": false
 }
 ```
+
+`manual_transactions` grava linhas de extrato que a Pluggy não trouxe, copiando os dados
+da conta de um lançamento já sincronizado (o `account_id` sai de `finance.show tx` numa
+linha da mesma conta). Linha igual a uma existente (mesma conta, data,
+valor e descrição) é pulada. `invest` cria a movimentação da carteira já ligada à linha.
 
 `rules` cria regras determinísticas (aba `Rules`), pra merchant recorrente que apareceu 2+ vezes
 sem virar regra. `note` na regra é só documentação (por quê/como foi criada); só é gravada na
