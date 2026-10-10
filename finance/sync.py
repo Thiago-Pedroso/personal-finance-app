@@ -9,6 +9,7 @@ Uso:
 import argparse
 from datetime import date, datetime, timedelta, timezone
 
+from . import iof
 from . import ledger as L
 from . import pluggy_client as pc
 from . import sheets
@@ -55,6 +56,7 @@ def main() -> None:
     api_key = pc.get_api_key()
     state = _load_state()
     ledger = L.load_ledger()
+    known_ids = set(ledger)
     local_timezone = load_timezone()
     min_date = _load_min_date()
     run_started = datetime.now(timezone.utc)
@@ -102,11 +104,20 @@ def main() -> None:
                     "last_synced_at": run_started.isoformat(),
                 }
 
+    iof_settings = iof.load_settings()
+    iof_changed = set()
+    if iof_settings:
+        iof_changed = iof.apply(ledger, iof_settings, set(ledger) - known_ids)
+
     L.save_ledger(ledger)
     _save_state(state)
     print(f"\nLedger: {len(ledger)} transações (+{total_added} novas, ~{total_updated} atualizadas).")
     if total_discarded:
         print(f"{total_discarded} descartadas por serem anteriores a {min_date}.")
+    if iof_changed:
+        print(f"{len(iof_changed)} com IOF estimado somado (Config[iof]).")
+    if iof_settings:
+        iof.report_conflicts(ledger)
     uncat = sum(1 for r in ledger.values() if not r["category"])
     if uncat:
         print(f"{uncat} sem categoria → rode a skill finance-categorize.")
