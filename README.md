@@ -24,6 +24,8 @@ novas regras. Um dashboard React (leitura + edição leve) visualiza tudo.
 - **Categorização** por regras determinísticas + loop assistido pelo Claude, com
   **aprendizado de regras** retroativo (`finance.categorize`).
 - **Relatórios** mensais (JSON + Markdown) e um `dashboard.json` agregado (`finance.report`).
+- **Saldo total**: quanto há de livre de verdade, a partir de uma âncora informada uma vez
+  (`finance.balance`). Detalhes em [Saldo do mês e Saldo total](#saldo-do-mês-e-saldo-total).
 - **Tags pessoais** em múltiplos lançamentos, com edição em massa, filtros e análise por
   período. As tags ficam somente na planilha de cada usuário.
 - **Dashboard React/Vite**: visão geral, transações com filtros, análise por categoria,
@@ -173,6 +175,41 @@ edição, com os cinco caminhos da tabela abaixo. Dá para selecionar vários e 
 
 **5. Pronto.** Cada gravação regera os relatórios sozinha, e os dados já estão na planilha.
 Não existe passo de salvar, e nada de financeiro vai para o git.
+
+### Saldo do mês e Saldo total
+
+A Visão Geral mostra dois saldos diferentes:
+
+- **Saldo do mês** (ou do ano) = Receitas − Gastos − Poupado. Diz se o período fechou
+  no azul. Negativo significa que você gastou e guardou mais do que entrou, cobrindo a
+  diferença com dinheiro que já estava parado.
+- **Saldo total** = quanto você tem de livre de verdade no fim do período, já descontado
+  o que deve nos cartões.
+
+O Saldo total parte de uma **âncora**, um valor que você informa uma única vez, e soma o
+Saldo de cada mês dali em diante. Como a compra no cartão conta como gasto na data e o
+pagamento da fatura fica fora da conta, nunca é preciso separar o que foi cartão e o que
+foi débito.
+
+Para montar a âncora:
+
+1. **Escolha o dia D.** O melhor é o fechamento de uma fatura, quando o valor devido é
+   exato. Os lançamentos de D+1 em diante precisam estar completos no app.
+2. **Some o dinheiro livre no fim de D:** contas e caixinhas sem destino. Reserva,
+   caixinhas com objetivo e saldo na corretora para aportar ficam de fora, porque o que vai
+   para eles já é descontado como Poupado.
+3. **Subtraia a dívida dos cartões em D:** faturas fechadas não pagas e compras da fatura
+   aberta. Não use o "limite utilizado", que inclui parcelas futuras.
+4. **Grave:** `uv run python -m finance.balance set 2030-01-05 7200.00`.
+
+Exemplo: livre de R$ 10.000 no fechamento, fatura fechada de R$ 2.500 e R$ 300 de compras
+no mesmo dia na fatura nova dão uma âncora de R$ 7.200.
+
+Sem âncora, o card se chama **Saldo acumulado** e soma os saldos desde o primeiro mês do
+histórico. De tempos em tempos, compare o Saldo total com o livre real num dia de fatura
+paga: diferença quase sempre é lançamento faltando. Se não for, grave uma âncora nova, que
+substitui a anterior. Os rendimentos do dinheiro livre ficam fora do Saldo, então o total
+tende a ficar um pouco abaixo do real.
 
 ### Os cinco caminhos da caixa de edição
 

@@ -53,7 +53,7 @@ uv run python -m finance.categorize stats
 | `SubcategoryMeta` | cor e ícone opcionais por subcategoria | `finance/taxonomy.py` |
 | `PluggyMap` | categoria da Pluggy → taxonomia pessoal | `finance/pluggy_map.py` |
 | `Reimbursements` | abatimentos: qual entrada abate qual saída, e quanto | `finance/reimbursements.py` |
-| `Config` | blobs JSON: `budgets`, `sync_state`, `timezone`, `min_transaction_date`, `schema_version`, `invest_monthly_contribution`, `invest_contribution_mode`, `invest_allocation_sim`, `invest_destination_subcategories` | `finance/budgets.py`, `finance/sync.py` |
+| `Config` | blobs JSON: `budgets`, `sync_state`, `timezone`, `min_transaction_date`, `schema_version`, `invest_monthly_contribution`, `invest_contribution_mode`, `invest_allocation_sim`, `invest_destination_subcategories`, `free_balance_anchor` | `finance/budgets.py`, `finance/sync.py`, `finance/balance.py` |
 | `InvestTrades` | 1 movimentação por linha (a única entrada de fatos da carteira) | `finance/invest/trades.py` |
 | `InvestAssets` | catálogo: classe, conta, setor, alvo, como o valor é apurado | `finance/invest/assets.py` |
 | `InvestAccounts` | onde o dinheiro está custodiado (corretora, carteira, caixinhas) | `finance/invest/accounts.py` |
@@ -336,6 +336,24 @@ Os números do mês: **Poupado** = aportes − resgates (subcategorias de
 ficou livre. Resgate volta para o Saldo sem virar receita. Rendimento fica fora dos três, e
 qualquer outra subcategoria de poupança (custo, taxa) conta como fluxo. A parte com
 destino num nó de papel `free` fica fora do Poupado e continua no Saldo.
+
+**Saldo total** = âncora + Saldo de cada mês depois dela. A âncora
+(`Config[free_balance_anchor]`, `{"date", "value"}`) é o dinheiro livre no fim do dia D
+menos o que se devia nos cartões naquele dia. Compra no cartão já é gasto na data e o
+pagamento da fatura é `movimento`, então depois da âncora não importa o meio de pagamento.
+Sem âncora, o card mostra o acumulado desde o primeiro mês. Para definir:
+`uv run python -m finance.balance set YYYY-MM-DD VALOR` (`show` confere, `clear` remove).
+Ao montar o valor com o usuário:
+
+- Livre é o que está em lugares `free`: contas e caixinhas sem destino. Reserva, caixinha
+  com objetivo e saldo "a aportar" ficam fora, porque o que vai para eles já sai no Poupado.
+- Dívida de cartão é fatura fechada não paga + compras da fatura aberta até D. Nunca o
+  "limite utilizado", que inclui parcelas futuras que o Ledger ainda vai contar.
+- Prefira D = dia de fechamento de fatura, e só aceite D se o Ledger estiver completo de
+  D+1 em diante (sem `statement_missing`, sem pendência de categoria).
+- Divergiu do livre real num dia de fatura paga? Procure o lançamento que falta antes de
+  trocar a âncora. Rendimento do dinheiro livre fica fora do Saldo e faz o total ficar um
+  pouco abaixo do real com o tempo.
 
 `data/seed/taxonomy.yaml` é só a **semente de demonstração**, para quem começa do zero.
 

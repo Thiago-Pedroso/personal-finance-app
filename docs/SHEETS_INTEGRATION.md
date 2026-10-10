@@ -187,6 +187,7 @@ com aviso. Em categoria de `fluxo`, o valor abatido sai da conta no mês de cada
 | `budgets` | o objeto de orçamento inteiro (income_plan, spending, savings_goals) |
 | `sync_state` | cursores de sincronização por conta |
 | `timezone` | fuso IANA usado nas datas locais, por exemplo `America/Sao_Paulo` |
+| `free_balance_anchor` | base do Saldo total: `{date, value}`, dinheiro livre no fim do dia `date` menos a dívida de cartão; ausente = acumulado desde o primeiro mês |
 | `min_transaction_date` | piso opcional (`YYYY-MM-DD`); o sync descarta lançamentos anteriores |
 | `schema_version` | versão do esquema (atualmente `9`) |
 | `invest_monthly_contribution` | aporte mensal usado como padrão no simulador |
