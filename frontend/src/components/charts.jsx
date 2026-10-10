@@ -107,6 +107,10 @@ export function CashflowChart({ months, selected, onSelect, showSaved }) {
 // Além de ~8 fatias ninguém casa cor com legenda, então o excedente vira uma
 // fatia "Outras". Clicar nela não filtra (não é categoria de verdade).
 const MAX_SLICES = 7
+const sharePct = (value, total) => {
+  const share = (value / total) * 100
+  return share > 0 && share < 0.5 ? '<1%' : `${share.toFixed(0)}%`
+}
 const REST_LABEL = 'Outras categorias'
 
 export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
@@ -127,66 +131,86 @@ export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
   if (!total) return <p className="py-10 text-center text-[13px] text-faint">
     Sem gastos neste mês.</p>
   return (
-    <div className="flex flex-wrap items-center gap-5">
-      <ResponsiveContainer width={200} height={200}>
-        <PieChart>
-          <Pie data={data} dataKey="value" nameKey="label" innerRadius={58}
-            outerRadius={90} paddingAngle={1.5} stroke="none"
-            onClick={(d) => d.label !== REST_LABEL && onSelect?.(d.label)}>
-            {data.map((d, i) => <Cell key={d.label} className="cursor-pointer"
-              fill={colorOf(d, i)} />)}
-          </Pie>
-          <Tooltip content={({ active, payload }) => active && payload?.length ? (
-            <div className="rounded-xl border border-border bg-surface2/95
-              px-3 py-2 text-[12.5px] shadow-xl">
-              <b>{payload[0].name}</b> ·{' '}
-              {valuesHidden ? (
-                `${((payload[0].value / total) * 100).toFixed(0)}%`
-              ) : (
-                <>{brl(payload[0].value)} ·{' '}
-                  {((payload[0].value / total) * 100).toFixed(0)}%</>
-              )}
-            </div>) : null} />
-        </PieChart>
-      </ResponsiveContainer>
-      <div className="flex min-w-[210px] flex-1 flex-col gap-1.5">
-        {data.map((s, i) => {
-          const isRest = s.label === REST_LABEL
-          const M = palette || isRest ? null : catMeta(s.label)
-          return (
-          <div key={s.label}
-            className="group flex items-center gap-2 rounded-lg px-2 py-1
-              text-[13px] hover:bg-white/5">
-            <button onClick={() => !isRest && onSelect?.(s.label)}
-              className="flex flex-1 items-center justify-between gap-3
-                text-left">
-              <span className="flex items-center gap-2">
-                {M ? <M.Icon className="size-3.5" style={{ color: M.color }} />
-                  : <i className="size-2.5 rounded-[3px]"
-                      style={{ background: colorOf(s, i) }} />}
-                {isRest ? `${s.label} (${s.rest})` : s.label}
-              </span>
-              <span className="tnum text-muted">
-                {valuesHidden ? (
-                  `${((s.value / total) * 100).toFixed(0)}%`
-                ) : (
-                  <>{brl(s.value)} · {((s.value / total) * 100).toFixed(0)}%</>
+    <div className="flex flex-col items-center gap-8 md:flex-row">
+      <div className="relative shrink-0">
+        <ResponsiveContainer width={240} height={240}>
+          <PieChart>
+            <Pie data={data} dataKey="value" nameKey="label" innerRadius={74}
+              outerRadius={112} paddingAngle={1.5} stroke="none"
+              onClick={(d) => d.label !== REST_LABEL && onSelect?.(d.label)}>
+              {data.map((d, i) => <Cell key={d.label} className="cursor-pointer"
+                fill={colorOf(d, i)} />)}
+            </Pie>
+            <Tooltip content={({ active, payload }) => active && payload?.length ? (
+              <div className="rounded-xl border border-border bg-surface2/95
+                px-3 py-2 text-[13px] shadow-xl">
+                <p className="font-bold text-strong">{payload[0].name}</p>
+                <p className="tnum mt-1 font-bold text-strong">
+                  {sharePct(payload[0].value, total)}</p>
+                {!valuesHidden && (
+                  <p className="tnum text-secondary">{brl(payload[0].value)}</p>
                 )}
-              </span>
-            </button>
-            {onOpen && (
-              <button onClick={(e) => { e.stopPropagation(); onOpen(s.label) }}
-                title={`Ver lançamentos · ${s.label}`}
-                className="shrink-0 rounded-md p-1 text-faint opacity-0
-                  transition hover:bg-surface2 hover:text-text
-                  group-hover:opacity-100 focus:opacity-100">
-                <Receipt className="size-3.5" />
-              </button>
-            )}
-          </div>
-          )
-        })}
+              </div>) : null} />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 grid place-content-center
+          text-center">
+          <p className="text-[13px] font-semibold text-secondary">Total</p>
+          <p className="tnum mt-0.5 text-[17px] font-bold text-strong">
+            <SensitiveAmount>{brl(total)}</SensitiveAmount></p>
+        </div>
       </div>
+      <table className="w-full flex-1 text-[15px]">
+        <thead>
+          <tr className="border-b border-white/15 text-[14px] text-secondary">
+            <th className="py-2.5 pl-3 text-left font-semibold">Categoria</th>
+            {!valuesHidden && (
+              <th className="w-40 px-3 py-2.5 text-right font-semibold">Valor</th>
+            )}
+            <th className="w-20 px-3 py-2.5 text-right font-semibold">%</th>
+            {onOpen && <th className="w-8" />}
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((s, i) => {
+            const isRest = s.label === REST_LABEL
+            const M = palette || isRest ? null : catMeta(s.label)
+            return (
+              <tr key={s.label} onClick={() => !isRest && onSelect?.(s.label)}
+                className={`group border-b border-border/60 last:border-0
+                  ${isRest ? '' : 'cursor-pointer hover:bg-surface2/45'}`}>
+                <td className="py-3 pl-3">
+                  <span className="flex items-center gap-2">
+                    {M ? <M.Icon className="size-4 shrink-0"
+                        style={{ color: M.color }} />
+                      : <i className="size-2.5 shrink-0 rounded-[3px]"
+                          style={{ background: colorOf(s, i) }} />}
+                    <span className="font-semibold text-strong">
+                      {isRest ? `${s.label} (${s.rest})` : s.label}</span>
+                  </span>
+                </td>
+                {!valuesHidden && (
+                  <td className="tnum whitespace-nowrap px-3 py-3 text-right
+                    font-semibold text-strong">{brl(s.value)}</td>
+                )}
+                <td className="tnum px-3 py-3 text-right font-bold text-brand-soft">
+                  {sharePct(s.value, total)}</td>
+                {onOpen && (
+                  <td className="py-3 pr-1 text-right">
+                    <button onClick={(e) => { e.stopPropagation(); onOpen(s.label) }}
+                      title={`Ver lançamentos de ${s.label}`}
+                      className="rounded-md p-1 text-faint opacity-0 transition
+                        hover:bg-surface2 hover:text-text group-hover:opacity-100
+                        focus:opacity-100">
+                      <Receipt className="size-3.5" />
+                    </button>
+                  </td>
+                )}
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -218,7 +242,7 @@ export function HBars({ items, color = '#f4685f', onClick, onOpen, byCat,
               {it.count != null && <span className="ml-1 text-[11px]
                 text-faint">{it.count}x</span>}
             </button>
-            <span className="tnum text-muted">
+            <span className="tnum font-semibold text-strong">
               {valuesHidden
                 ? `${total ? Math.round((it.value / total) * 100) : 0}%`
                 : brl(it.value)}
