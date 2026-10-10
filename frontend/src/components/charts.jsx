@@ -106,7 +106,7 @@ export function CashflowChart({ months, selected, onSelect, showSaved }) {
 
 // Além de ~8 fatias ninguém casa cor com legenda, então o excedente vira uma
 // fatia "Outras". Clicar nela não filtra (não é categoria de verdade).
-const MAX_SLICES = 7
+const MAX_SLICES = 9
 const sharePct = (value, total) => {
   const share = (value / total) * 100
   return share > 0 && share < 0.5 ? '<1%' : `${share.toFixed(0)}%`
@@ -128,6 +128,7 @@ export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
          rest: rest.length }]
     : visible
   const total = data.reduce((a, s) => a + s.value, 0)
+  const maxValue = Math.max(...data.map((s) => s.value), 1)
   if (!total) return <p className="py-10 text-center text-[13px] text-faint">
     Sem gastos neste mês.</p>
   return (
@@ -175,11 +176,12 @@ export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
           {data.map((s, i) => {
             const isRest = s.label === REST_LABEL
             const M = palette || isRest ? null : catMeta(s.label)
+            const count = isRest ? null : s.count
             return (
               <tr key={s.label} onClick={() => !isRest && onSelect?.(s.label)}
                 className={`group border-b border-border/60 last:border-0
                   ${isRest ? '' : 'cursor-pointer hover:bg-surface2/45'}`}>
-                <td className="py-3 pl-3">
+                <td className="py-2.5 pl-3">
                   <span className="flex items-center gap-2">
                     {M ? <M.Icon className="size-4 shrink-0"
                         style={{ color: M.color }} />
@@ -187,7 +189,15 @@ export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
                           style={{ background: colorOf(s, i) }} />}
                     <span className="font-semibold text-strong">
                       {isRest ? `${s.label} (${s.rest})` : s.label}</span>
+                    {count != null && <span className="text-[12px] text-subtle">
+                      {count}x</span>}
                   </span>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full
+                    bg-white/[0.06]">
+                    <div className="h-full rounded-full" style={{
+                      width: `${Math.max(2, (s.value / maxValue) * 100)}%`,
+                      background: colorOf(s, i) }} />
+                  </div>
                 </td>
                 {!valuesHidden && (
                   <td className="tnum whitespace-nowrap px-3 py-3 text-right

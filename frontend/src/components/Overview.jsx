@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Card, CardHead, Button } from './ui/primitives.jsx'
-import { CashflowChart, CategoryDonut, HBars, Sparkline } from './charts.jsx'
+import { CashflowChart, CategoryDonut, Sparkline } from './charts.jsx'
 import { catMeta, subcategoryMeta } from '../lib/categories.jsx'
 import { useDrill } from '../lib/useDrill.jsx'
 import { brl, signedBrl, fmtPct, pctDelta, monthLabel } from '../lib/format.js'
 import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 import {
-  TrendingUp, TrendingDown, ArrowRight, ChevronLeft, ListFilter,
+  TrendingUp, TrendingDown, ArrowRight, ChevronLeft, ChevronRight, ListFilter,
 } from 'lucide-react'
 
 const CHART_MONTHS = 13
@@ -33,8 +33,7 @@ function Kpi({ label, value, prev, kind, onClick, spark }) {
           <Sparkline data={spark} color={sparkColor} />
         </div>
       )}
-      <div className="text-[12px] font-semibold uppercase tracking-wider
-        text-muted">{label}</div>
+      <div className="text-[15px] font-bold text-secondary">{label}</div>
       <div className={`mt-1.5 text-[28px] font-bold tnum ${valColor}`}>
         <SensitiveAmount>{brl(value)}</SensitiveAmount></div>
       <div className="mt-2 flex items-center gap-1.5 text-[12.5px]">
@@ -241,8 +240,7 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
           <div className="absolute right-4 top-4">
             <Sparkline data={savedSpark} color="#b08cff" />
           </div>
-          <div className="text-[12px] font-semibold uppercase tracking-wider
-            text-muted">Poupado</div>
+          <div className="text-[15px] font-bold text-secondary">Poupado</div>
           <div className="mt-1.5 text-[28px] font-bold tnum text-violet">
             <SensitiveAmount>{brl(mSaved)}</SensitiveAmount></div>
           <div className="mt-2 flex flex-wrap items-center gap-x-1.5 text-[12.5px]">
@@ -275,45 +273,67 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
         </div>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <Card>
           <CardHead
-            title={focus
-              ? `Subcategorias de ${focus}`
-              : 'Maiores gastos'}
-            right={<Button variant="ghost"
-              onClick={() => goCategory(focus || cats[0]?.label)}>
-              Analisar <ArrowRight className="size-4" /></Button>} />
+            title={focus ? (
+              <span className="flex items-center gap-2">
+                <button onClick={() => setFocus(null)}
+                  className="flex items-center gap-1 rounded-lg px-1.5 py-0.5
+                    text-secondary hover:bg-surface2 hover:text-strong">
+                  <ChevronLeft className="size-4" /> Composição
+                </button>
+                <ChevronRight className="size-4 text-subtle" />
+                <span className="flex items-center gap-1.5">
+                  {(() => { const M = catMeta(focus); return (
+                    <M.Icon className="size-4" style={{ color: M.color }} />) })()}
+                  {focus}
+                </span>
+              </span>
+            ) : 'Composição dos gastos'}
+            right={
+              <div className="flex items-center gap-1">
+                {focus && (
+                  <Button variant="ghost" onClick={() => openCat(focus)}>
+                    <ListFilter className="size-4" /> Ver lançamentos
+                  </Button>
+                )}
+                <Button variant="ghost"
+                  onClick={() => goCategory(focus || cats[0]?.label)}>
+                  Analisar <ArrowRight className="size-4" /></Button>
+              </div>
+            } />
           <div className="px-5 pb-5">
-            {focus ? (
-              <HBars items={subItems.slice(0, 12)}
-                totalValue={subItems.reduce((sum, item) => sum + item.value, 0)}
-                onClick={(s) => openCat(focus, s)}
-                onOpen={(s) => openCat(focus, s)} />
-            ) : (
-              <HBars items={cats.slice(0, 9)} byCat
-                totalValue={cats.reduce((sum, item) => sum + item.value, 0)}
-                onClick={(c) => setFocus(c)}
-                onOpen={(c) => openCat(c)} />
-            )}
+            <CategoryDonut
+              palette={!!focus}
+              slices={focus
+                ? (subItems || []).map((s) => ({ label: s.label, value: s.value,
+                    count: s.count, color: s.color }))
+                : cats.map((c) => ({ label: c.label, value: c.value,
+                    count: c.count }))}
+              onSelect={(label) => focus
+                ? openCat(focus, label) : setFocus(label)}
+              onOpen={(label) => focus
+                ? openCat(focus, label) : openCat(label)} />
           </div>
         </Card>
         <Card>
           <CardHead title="Fora do fluxo" />
           <div className="px-5 pb-5">
-            {movs.length === 0 && <p className="py-8 text-center text-[13px]
-              text-faint">Nada neste mês.</p>}
+            {movs.length === 0 && <p className="py-6 text-center text-[14px]
+              text-subtle">Nada neste período.</p>}
             {movs.map((m) => {
               const M = catMeta(m.label)
               return (
               <button key={m.label} onClick={() => drill?.drill(
                 `${m.label} — ${monthLabel(month)}`, { cats: [m.label] })}
                 className="flex w-full justify-between border-b border-border/60
-                  py-2 text-[13px] last:border-0 hover:text-green">
-                <span className="flex items-center gap-2">
-                  <M.Icon className="size-3.5" style={{ color: M.color }} />
+                  py-2.5 text-[15px] last:border-0 hover:text-green">
+                <span className="flex items-center gap-2 font-semibold text-strong">
+                  <M.Icon className="size-4" style={{ color: M.color }} />
                   {m.label}</span>
-                <span className={`tnum ${m.net >= 0 ? 'text-green' : 'text-red'}`}>
+                <span className={`tnum font-semibold ${
+                  m.net >= 0 ? 'text-green' : 'text-red'}`}>
                   <SensitiveAmount>{signedBrl(m.net)}</SensitiveAmount></span>
               </button>
               )
@@ -321,43 +341,6 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
           </div>
         </Card>
       </div>
-
-      <Card>
-        <CardHead
-          title={focus ? (
-            <span className="flex items-center gap-2">
-              <button onClick={() => setFocus(null)}
-                className="flex items-center gap-1 rounded-lg px-1.5 py-0.5
-                  text-faint hover:bg-surface2 hover:text-text">
-                <ChevronLeft className="size-4" /> Composição
-              </button>
-              <span className="text-faint">›</span>
-              <span className="flex items-center gap-1.5">
-                {(() => { const M = catMeta(focus); return (
-                  <M.Icon className="size-4" style={{ color: M.color }} />) })()}
-                {focus}
-              </span>
-            </span>
-          ) : 'Composição dos gastos'}
-          right={focus && (
-            <Button variant="ghost"
-              onClick={() => openCat(focus)}>
-              <ListFilter className="size-4" /> Ver lançamentos
-            </Button>
-          )} />
-        <div className="px-5 pb-5">
-          <CategoryDonut
-            palette={!!focus}
-            slices={focus
-              ? (subItems || []).map((s) => ({ label: s.label, value: s.value,
-                  color: s.color }))
-              : cats.map((c) => ({ label: c.label, value: c.value }))}
-            onSelect={(label) => focus
-              ? openCat(focus, label) : setFocus(label)}
-            onOpen={(label) => focus
-              ? openCat(focus, label) : openCat(label)} />
-        </div>
-      </Card>
     </div>
   )
 }
