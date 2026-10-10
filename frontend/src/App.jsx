@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useData } from './lib/useData.js'
 import { removeQueue, updateQueue } from './lib/api.js'
-import { monthLabel } from './lib/format.js'
+import { timeAgo } from './lib/format.js'
 import { ToastProvider, useToast } from './components/ui/Toast.jsx'
 import { DrillProvider } from './lib/useDrill.jsx'
 import { PrivacyProvider, usePrivacy } from './lib/usePrivacy.jsx'
@@ -22,6 +22,7 @@ import { DrillDrawer } from './components/DrillDrawer.jsx'
 import { Eye, EyeOff, RefreshCw, Wallet, MessageSquare, TrendingUp }
   from 'lucide-react'
 import { InvestSpace, INVEST_TABS } from './components/invest/InvestSpace.jsx'
+import { PeriodNav } from './components/PeriodNav.jsx'
 import { useSpace } from './lib/useSpace.js'
 
 // Dois espaços lado a lado, em vez de um menu escondido atrás do título: o contador de
@@ -54,6 +55,11 @@ function Shell() {
   const [selCat, setSelCat] = useState(null)
   const [txnPreset, setTxnPreset] = useState(null)
   const [edit, setEdit] = useState({ open: false, rows: [] })
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000)
+    return () => clearInterval(timer)
+  }, [])
 
   const openEdit = (rows) => setEdit({ open: true, rows })
   const closeEdit = () => setEdit((e) => ({ ...e, open: false }))
@@ -132,14 +138,6 @@ function Shell() {
             </span>
             Finance Control
           </h1>
-          <p className="mt-1 text-[12px] text-faint">
-            {investOnly
-              ? 'controle de investimentos'
-              : dash
-              ? `${dash.total_transactions} transações · atualizado ${
-                new Date(dash.generated_at).toLocaleString('pt-BR')}`
-              : 'controle financeiro'}
-          </p>
         </div>
         <div className="flex items-center gap-2">
           {dash && !investOnly && d.queue.length > 0 && (
@@ -153,38 +151,6 @@ function Shell() {
                 font-bold">{d.queue.length}</span>
             </button>
           )}
-          {dash && !investOnly && <div className="flex gap-1 rounded-xl border border-border
-            bg-surface2/70 p-1 text-[12.5px]">
-            {['month', 'year'].map((mo) => (
-              <button key={mo} onClick={() => d.setMode(mo)}
-                className={`rounded-lg px-3.5 py-1.5 font-semibold transition ${
-                  d.mode === mo
-                    ? 'bg-brand text-white shadow-[0_1px_8px_#5b9dff55]'
-                    : 'text-muted hover:text-text'}`}>
-                {mo === 'month' ? 'Mês' : 'Ano'}
-              </button>
-            ))}
-          </div>}
-          {dash && !investOnly && (d.mode === 'month' ? (
-            <select value={d.month || ''}
-              onChange={(e) => d.setMonth(e.target.value)}
-              className="rounded-xl border border-border bg-surface2 px-3 py-2
-                text-[13px] hover:border-faint">
-              {[...dash.months].reverse().map((m) => (
-                <option key={m.month} value={m.month}>
-                  {monthLabel(m.month)}</option>
-              ))}
-            </select>
-          ) : (
-            <select value={d.year || ''}
-              onChange={(e) => d.setYear(e.target.value)}
-              className="rounded-xl border border-border bg-surface2 px-3 py-2
-                text-[13px] hover:border-faint">
-              {[...d.years].reverse().map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-          ))}
           <Button variant="ghost" onClick={toggleValues}
             className={valuesHidden ? 'bg-surface2 text-brand' : ''}
             aria-label="Modo de privacidade financeira"
@@ -202,31 +168,46 @@ function Shell() {
             </span>
           )}
           {!investOnly && (
-            <Button variant="ghost" onClick={d.refresh} disabled={d.busy}>
-              <RefreshCw className={`size-4 ${d.busy
-                ? 'animate-[spin_.8s_linear_infinite]' : ''}`} />
-              Atualizar
-            </Button>
+            <div className="flex flex-col items-end">
+              <Button variant="ghost" onClick={d.refresh} disabled={d.busy}>
+                <RefreshCw className={`size-4 ${d.busy
+                  ? 'animate-[spin_.8s_linear_infinite]' : ''}`} />
+                Atualizar
+              </Button>
+              {dash && (
+                <span className="-mt-0.5 pr-3.5 text-[12px] text-subtle"
+                  title={new Date(dash.generated_at).toLocaleString('pt-BR')}>
+                  Atualizado {timeAgo(dash.generated_at, now)}
+                </span>
+              )}
+            </div>
           )}
         </div>
       </header>
 
-      <nav className="mt-6 flex flex-wrap gap-1.5">
-        {SPACE_TABS.map(([key, label, Icon]) => (
-          <button key={key} onClick={() => space.go(key)}
-            className={`flex items-center gap-2 rounded-xl border px-4 py-2
-              text-[13.5px] font-semibold transition ${space.space === key
-                ? 'border-brand/40 bg-brand/15 text-brand-soft'
-                : 'border-border bg-surface2/60 text-muted hover:text-text'}`}>
-            <Icon className="size-4" />
-            {label}
-            {key === 'financas' && pend > 0 && (
-              <span className="rounded-full bg-amber/20 px-1.5 text-[11px] font-bold
-                text-amber">{pend}</span>
-            )}
-          </button>
-        ))}
-      </nav>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <nav className="flex flex-wrap gap-1.5">
+          {SPACE_TABS.map(([key, label, Icon]) => (
+            <button key={key} onClick={() => space.go(key)}
+              className={`flex items-center gap-2 rounded-xl border px-4 py-2
+                text-[13.5px] font-semibold transition ${space.space === key
+                  ? 'border-brand/40 bg-brand/15 text-brand-soft'
+                  : 'border-border bg-surface2/60 text-muted hover:text-text'}`}>
+              <Icon className="size-4" />
+              {label}
+              {key === 'financas' && pend > 0 && (
+                <span className="rounded-full bg-amber/20 px-1.5 text-[11px] font-bold
+                  text-amber">{pend}</span>
+              )}
+            </button>
+          ))}
+        </nav>
+        {dash && !investOnly && (
+          <PeriodNav mode={d.mode} setMode={d.setMode}
+            months={dash.months.map((m) => m.month)} month={d.month}
+            setMonth={d.setMonth} years={d.years} year={d.year} setYear={d.setYear} />
+        )}
+      </div>
 
       <nav className={`sticky top-0 z-20 -mx-5 mt-3 flex gap-1 border-b
         border-border px-5 pt-2 backdrop-blur-md ${investOnly
