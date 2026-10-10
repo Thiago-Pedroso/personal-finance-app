@@ -3,7 +3,9 @@ import { Card, CardHead, Button } from './ui/primitives.jsx'
 import { CashflowChart, CategoryDonut, HBars, Sparkline } from './charts.jsx'
 import { catMeta, subcategoryMeta } from '../lib/categories.jsx'
 import { useDrill } from '../lib/useDrill.jsx'
-import { brl, signedBrl, fmtPct, pctDelta, monthLabel } from '../lib/format.js'
+import {
+  brl, signedBrl, fmtPct, pctDelta, monthLabel, fullDate,
+} from '../lib/format.js'
 import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 import {
   TrendingUp, TrendingDown, ArrowRight, ChevronLeft, ListFilter,
@@ -53,6 +55,33 @@ function Kpi({ label, value, prev, kind, onClick, spark }) {
   )
 }
 
+// Saldo total no fim do período: âncora (ou zero) somada aos saldos mensais seguintes
+function TotalBalanceKpi({ months, period, anchor }) {
+  const upToPeriod = months.filter((m) => m.month.slice(0, period.length) <= period)
+  const series = upToPeriod.map((m) => m.balance_total).filter((v) => v != null)
+  const value = upToPeriod.at(-1)?.balance_total ?? null
+  const since = anchor
+    ? `desde ${fullDate(anchor.date)}`
+    : `acumulado desde ${monthLabel(months[0]?.month)}`
+  return (
+    <Card className="relative p-5"
+      title={anchor ? undefined
+        : 'Sem âncora: soma dos saldos mensais desde o primeiro mês do histórico'}>
+      <div className="absolute right-4 top-4">
+        <Sparkline data={series.slice(-8)} color="#79838f" />
+      </div>
+      <div className="text-[15px] font-bold text-strong">
+        {anchor ? 'Saldo total' : 'Saldo acumulado'}</div>
+      <div className={`mt-1.5 text-[28px] font-bold tnum ${value == null
+        ? 'text-faint' : value >= 0 ? 'text-green' : 'text-red'}`}>
+        {value == null ? '—'
+          : <SensitiveAmount>{brl(value)}</SensitiveAmount>}</div>
+      <div className="mt-2 text-[13px] text-subtle">
+        {value == null ? 'período anterior à âncora' : since}</div>
+    </Card>
+  )
+}
+
 export function Overview({ dash, month, mdata, setMonth, goCategory,
   goReview, queue }) {
   const drill = useDrill()
@@ -97,7 +126,7 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
   const tag = focus ? ` · ${focus}` : ''
   // séries curtas p/ as sparklines dos KPIs (últimos 8 meses, respeita o foco)
   const sparkOf = (key) => chartMonths.slice(-8).map((m) => m[key] || 0)
-  // faixa "Ritmo do mês" — sempre sobre o mês inteiro (independe do foco)
+  // card do saldo do período: sempre sobre o período inteiro (independe do foco)
   const plan = mdata.plan || {}
   const daily = plan.daily_allowed || 0
   const daysLeft = plan.days_left
@@ -139,85 +168,66 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
         )}
       </div>
 
-      {isMonth && (
-        <Card className="relative flex flex-col gap-5 overflow-hidden border-brand/20
-          bg-gradient-to-br from-brand/[0.06] via-transparent to-transparent p-5
-          sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-[220px]">
-            <div className="text-[11px] font-semibold uppercase tracking-wider
-              text-faint">Ritmo de {monthLabel(month)}</div>
-            {hasPlan && daily > 0 ? (
-              <>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-[30px] font-bold tnum text-brand">
-                    <SensitiveAmount>{brl(daily)}</SensitiveAmount></span>
-                  <span className="text-[13px] text-muted">por dia</span>
-                </div>
-                <div className="mt-0.5 text-[12.5px] text-faint">
-                  {daysLeft != null
-                    ? `${daysLeft} dia(s) restantes no mês`
-                    : 'até o fim do mês'}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className={`text-[30px] font-bold tnum ${
-                    mNet >= 0 ? 'text-green' : 'text-red'}`}>
-                    <SensitiveAmount>{signedBrl(mNet)}</SensitiveAmount></span>
-                  <span className="text-[13px] text-muted">saldo do mês</span>
-                </div>
-                <div className="mt-0.5 text-[12.5px] text-faint">
-                  defina tetos em Planejamento p/ ver o ritmo diário
-                </div>
-              </>
-            )}
-          </div>
-          <div className="flex-1 sm:max-w-[440px]">
-            {hasPlan ? (
-              <>
-                <div className="flex items-center justify-between text-[12.5px]">
-                  <span className="text-muted">Gasto vs. planejado</span>
-                  <span className="tnum text-muted">
-                    <SensitiveAmount>{brl(realizedPlan)}</SensitiveAmount>{' '}
-                    <span className="text-faint">/{' '}
-                      <SensitiveAmount>{brl(planned)}</SensitiveAmount>
-                    </span>
+      <Card className="relative flex flex-col gap-5 overflow-hidden border-brand/20
+        bg-gradient-to-br from-brand/[0.06] via-transparent to-transparent p-5
+        sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-[220px]">
+          <div className="text-[17px] font-bold text-strong">
+            Saldo de {monthLabel(month)}</div>
+          <div className={`mt-1 text-[30px] font-bold tnum ${
+            mNet >= 0 ? 'text-green' : 'text-red'}`}>
+            <SensitiveAmount>{signedBrl(mNet)}</SensitiveAmount></div>
+          {hasPlan && daily > 0 && (
+            <div className="mt-0.5 text-[12.5px] text-muted">
+              <SensitiveAmount>{brl(daily)}</SensitiveAmount> por dia
+              {daysLeft != null ? ` nos ${daysLeft} dia(s) restantes` : ''}
+            </div>
+          )}
+        </div>
+        <div className="flex-1 sm:max-w-[440px]">
+          {hasPlan ? (
+            <>
+              <div className="flex items-center justify-between text-[12.5px]">
+                <span className="text-muted">Gasto vs. planejado</span>
+                <span className="tnum text-muted">
+                  <SensitiveAmount>{brl(realizedPlan)}</SensitiveAmount>{' '}
+                  <span className="text-faint">/{' '}
+                    <SensitiveAmount>{brl(planned)}</SensitiveAmount>
                   </span>
-                </div>
-                <div className="mt-2 h-2.5 overflow-hidden rounded-full
-                  bg-white/[0.06]">
-                  <div className="h-full rounded-full transition-[width]
-                    duration-500" style={{ width: `${spentPct}%`,
-                      background: realizedPlan > planned ? '#f56a60' : '#5b9dff' }} />
-                </div>
-                <div className="mt-1 text-right text-[11px] text-faint">
-                  {Math.round((realizedPlan / planned) * 100)}% do planejado</div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center justify-between text-[12.5px]">
-                  <span className="text-green">entrou{' '}
-                    <SensitiveAmount>{brl(mIncome)}</SensitiveAmount></span>
-                  <span className="text-red">saiu{' '}
-                    <SensitiveAmount>{brl(mExpense)}</SensitiveAmount></span>
-                </div>
-                <div className="mt-2 h-2.5 overflow-hidden rounded-full
-                  bg-white/[0.06]">
-                  <div className="h-full rounded-full bg-red transition-[width]
-                    duration-500" style={{ width: `${mIncome > 0
-                      ? Math.min((mExpense / mIncome) * 100, 100)
-                      : (mExpense > 0 ? 100 : 0)}%` }} />
-                </div>
-                <div className="mt-1 text-right text-[11px] text-faint">
-                  {mIncome >= 1
-                    ? `${Math.min(Math.round((mExpense / mIncome) * 100), 999)}% da renda gasta`
-                    : 'sem renda registrada no mês'}</div>
-              </>
-            )}
-          </div>
-        </Card>
-      )}
+                </span>
+              </div>
+              <div className="mt-2 h-2.5 overflow-hidden rounded-full
+                bg-white/[0.06]">
+                <div className="h-full rounded-full transition-[width]
+                  duration-500" style={{ width: `${spentPct}%`,
+                    background: realizedPlan > planned ? '#f56a60' : '#5b9dff' }} />
+              </div>
+              <div className="mt-1 text-right text-[11px] text-faint">
+                {Math.round((realizedPlan / planned) * 100)}% do planejado</div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between text-[12.5px]">
+                <span className="text-green">entrou{' '}
+                  <SensitiveAmount>{brl(mIncome)}</SensitiveAmount></span>
+                <span className="text-red">saiu{' '}
+                  <SensitiveAmount>{brl(mExpense)}</SensitiveAmount></span>
+              </div>
+              <div className="mt-2 h-2.5 overflow-hidden rounded-full
+                bg-white/[0.06]">
+                <div className="h-full rounded-full bg-red transition-[width]
+                  duration-500" style={{ width: `${mIncome > 0
+                    ? Math.min((mExpense / mIncome) * 100, 100)
+                    : (mExpense > 0 ? 100 : 0)}%` }} />
+              </div>
+              <div className="mt-1 text-right text-[11px] text-faint">
+                {mIncome >= 1
+                  ? `${Math.min(Math.round((mExpense / mIncome) * 100), 999)}% da renda gasta`
+                  : 'sem renda registrada no período'}</div>
+            </>
+          )}
+        </div>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi label={`Receitas${tag}`} value={cur.income} prev={prev?.income}
@@ -228,10 +238,15 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
           kind="expense" spark={sparkOf('expense')} onClick={() => drill?.drill(
             `Gastos${tag} — ${monthLabel(month)}`,
             focus ? { cats: [focus], flow: 'out' } : { flow: 'out' })} />
-        <Kpi label={`Saldo${tag}`} value={cur.net} prev={prev?.net} kind="net"
-          spark={sparkOf('net')}
-          onClick={() => drill?.drill(`${focus || 'Tudo'} — ${monthLabel(month)}`,
-            focus ? { cats: [focus] } : {})} />
+        {focus ? (
+          <Kpi label={`Saldo${tag}`} value={cur.net} prev={prev?.net} kind="net"
+            spark={sparkOf('net')}
+            onClick={() => drill?.drill(`${focus} — ${monthLabel(month)}`,
+              { cats: [focus] })} />
+        ) : (
+          <TotalBalanceKpi months={dash.months} period={month}
+            anchor={dash.balance_anchor} />
+        )}
         {/* Poupado — nível mês, cor própria (nem receita, nem gasto); clica → lançamentos */}
         <Card className="relative cursor-pointer p-5 hover:border-faint"
           onClick={() => drill?.drill(`Poupança — ${monthLabel(month)}`,
