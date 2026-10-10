@@ -9,7 +9,7 @@ import { Badge, Button } from './ui/primitives.jsx'
 import {
   effectiveCategory, CategoryTag, SubcategoryTag,
 } from '../lib/categories.jsx'
-import { signedBrl, brl, fullDate, longDate } from '../lib/format.js'
+import { signedBrl, brl, fullDate, longDate, shortAccount } from '../lib/format.js'
 import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 import { useDrill } from '../lib/useDrill.jsx'
 
@@ -31,7 +31,7 @@ function effLabels(t) {
 }
 import {
   Search, Pencil, ChevronLeft, ChevronRight, X, ArrowUpDown,
-  ArrowUp, ArrowDown, SlidersHorizontal, StickyNote, MessageSquare,
+  ArrowUp, ArrowDown, SlidersHorizontal, MessageSquare,
   PiggyBank, ArrowLeftRight, EyeOff, Wand2, Check, Tag as TagIcon, Link2, UserRound,
   Landmark, CircleAlert,
 } from 'lucide-react'
@@ -113,7 +113,7 @@ const EMPTY = { q: '', cats: [], tags: [], ids: [], idsLabel: '', accs: [], flow
 
 export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, title,
   presetCat, initialFilter, compact, pageSize = 25, queuedIds, treatments,
-  excludedCount = 0 }) {
+  excludedCount = 0, page = false }) {
   const drill = useDrill()
   const qids = queuedIds || new Set()
   const isQueued = (id) => qids.has && qids.has(id)
@@ -125,6 +125,7 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
   const [sorting, setSorting] = useState([{ id: 'date', desc: true }])
   const [sel, setSel] = useState({})
   const [showFilters, setShowFilters] = useState(!compact)
+  const [showExtra, setShowExtra] = useState(false)
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }))
 
   useEffect(() => {
@@ -228,20 +229,13 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
         const tags = row.original.tags || []
         return (
           <div className="min-w-[180px]">
-            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1
-              font-medium">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1
+              font-semibold text-strong">
               <span className="break-words">{row.original.description}</span>
               <span className="inline-flex shrink-0 items-center gap-1.5">
                 {row.original.time && (
-                  <span className="tnum text-[11px] font-normal
-                    text-faint">{row.original.time}</span>
-                )}
-                {row.original.note && (
-                  <span title={row.original.note}
-                    className="inline-flex cursor-help text-amber"
-                    aria-label="nota">
-                    <StickyNote className="size-3.5" />
-                  </span>
+                  <span className="tnum text-[12px] font-normal
+                    text-subtle">{row.original.time}</span>
                 )}
                 {tags.length > 0 && (
                   <button type="button" onClick={() => set('tags', [tags[0]])}
@@ -260,14 +254,13 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
                 )}
               </span>
             </div>
-            {row.original.counterparty && (
-              <div className="text-[12px] text-faint">{row.original.counterparty}</div>
-            )}
             {row.original.note && (
-              <div className="mt-0.5 line-clamp-1 text-[11.5px]
-                italic text-faint" title={row.original.note}>
-                “{row.original.note}”
-              </div>
+              <div className="mt-0.5 line-clamp-2 text-[13.5px] text-secondary"
+                title={row.original.note}>{row.original.note}</div>
+            )}
+            {row.original.counterparty && (
+              <div className="mt-0.5 text-[12.5px] text-subtle">
+                {row.original.counterparty}</div>
             )}
           </div>
         )
@@ -346,7 +339,7 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
               <CategoryTag uncategorized hint={e.hint}
                 onClick={() => pick('Sem categoria')} />
               {t.needs_review && <Badge tone="amber">revisar</Badge>}
-              {tb}{qb}{xb}{pm}{rb}{sw}{ib}{ib}
+              {tb}{qb}{xb}{pm}{rb}{sw}{ib}
             </span>
           )
         }
@@ -363,10 +356,10 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
       accessorKey: 'subcategory', header: 'Subcategoria', enableSorting: false,
       cell: ({ row }) => {
         const t = row.original
-        if (t.splits?.length) return <span className="text-faint">—</span>
+        if (t.splits?.length) return <span className="text-subtle">—</span>
         const e = effectiveCategory(t)
         if (e.kind !== 'cat' || !e.subcategory) {
-          return <span className="text-faint">—</span>
+          return <span className="text-subtle">—</span>
         }
         return <SubcategoryTag category={e.label} subcategory={e.subcategory}
           onClick={() => set('sub', e.subcategory)}
@@ -374,12 +367,14 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
       },
     },
     { accessorKey: 'account_name', header: 'Conta', enableSorting: false,
-      cell: (c) => <span className="text-[12px] text-faint">{c.getValue()}</span> },
+      cell: (c) => <span className="whitespace-nowrap text-[13.5px] text-secondary"
+        title={c.getValue()}>{shortAccount(c.getValue())}</span> },
     {
-      accessorKey: 'signed_amount', header: 'Valor',
+      accessorKey: 'signed_amount', header: 'Valor', meta: { align: 'right' },
       cell: (c) => (
-        <span className={`tnum font-semibold ${c.getValue() >= 0
-          ? 'text-green' : 'text-red'}`}>{signedBrl(c.getValue())}</span>
+        <span className={`tnum whitespace-nowrap text-[15px] font-semibold ${
+          c.getValue() >= 0 ? 'text-green' : 'text-red'}`}>
+          <SensitiveAmount>{signedBrl(c.getValue())}</SensitiveAmount></span>
       ),
     },
     {
@@ -389,18 +384,19 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
         const canConfirm = saveEdit
           && t.category_source === 'pluggy-map' && !t.reviewed
         return (
-          <div className="flex items-center justify-end gap-1">
+          <div className="flex items-center justify-end gap-1 transition
+            md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100">
             {canConfirm && (
               <button onClick={() => saveEdit({ mode: 'value', ids: [t.id],
                 category: t.category, subcategory: t.subcategory })}
-                className="rounded-lg p-1.5 text-muted hover:bg-surface2
-                  hover:text-green" title="Confirmar — concordo com o palpite da Pluggy">
+                className="rounded-lg p-1.5 text-secondary hover:bg-surface2
+                  hover:text-green" title="Confirmar o palpite da Pluggy">
                 <Check className="size-3.5" />
               </button>
             )}
             <button onClick={() => openEdit([t])}
-              className="rounded-lg p-1.5 text-muted hover:bg-surface2
-                hover:text-text" title="Editar">
+              className="rounded-lg p-1.5 text-secondary hover:bg-surface2
+                hover:text-strong" title="Editar">
               <Pencil className="size-3.5" />
             </button>
           </div>
@@ -425,6 +421,8 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
 
   const selected = table.getSelectedRowModel().rows.map((r) => r.original)
   const active = JSON.stringify(f) !== JSON.stringify(EMPTY)
+  const extraActive = [f.hiddenSubs.length > 0, f.tags.length > 0, !!f.d0, !!f.d1,
+    f.a0 !== '', f.a1 !== '', f.rev, f.queued, f.excl, !!f.sub].filter(Boolean).length
   const pageRows = table.getRowModel().rows
   const colCount = table.getVisibleLeafColumns().length
   const dayAgg = {}
@@ -438,76 +436,85 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
   }
 
   const pager = rows.length > 0 ? (
-    <div className="flex flex-wrap items-center justify-between gap-3 px-5
-      py-3 text-[12.5px] text-muted">
-      <div className="flex items-center gap-2">
-        <span>Por página</span>
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t
+      border-border px-5 py-3 text-[13.5px] text-secondary">
+      <label className="flex items-center gap-2">
+        Por página
         <select value={table.getState().pagination.pageSize}
           onChange={(e) => table.setPageSize(+e.target.value)}
           className={inputCls('py-1')}>
           {[25, 50, 100, 200].map((n) => <option key={n}>{n}</option>)}
         </select>
-        <span className="text-faint">· {rows.length} no total</span>
-      </div>
-      <div className="flex items-center gap-3">
-        <span>
-          Página {table.getState().pagination.pageIndex + 1} de{' '}
-          {table.getPageCount() || 1}
-        </span>
-        <Button variant="ghost" onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}>
-          <ChevronLeft className="size-4" />
-        </Button>
-        <Button variant="ghost" onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}>
-          <ChevronRight className="size-4" />
-        </Button>
-      </div>
+      </label>
+      {table.getPageCount() > 1 && (
+        <div className="flex items-center gap-3">
+          <span>
+            Página {table.getState().pagination.pageIndex + 1} de{' '}
+            {table.getPageCount()}
+          </span>
+          <Button variant="ghost" onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()} aria-label="Página anterior">
+            <ChevronLeft className="size-4" />
+          </Button>
+          <Button variant="ghost" onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()} aria-label="Próxima página">
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+      )}
     </div>
   ) : null
 
-  return (
-    <Card className="overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-4">
-        <div className="flex items-center gap-2">
-          <h3 className="text-[15px] font-semibold">{title}</h3>
-          {f.rule && (
-            <button type="button" onClick={() => set('rule', '')}
-              title="Remover filtro de regra"
-              className="inline-flex items-center gap-1 rounded-full border
-                border-brand/30 bg-brand/10 px-2 py-0.5 text-[11.5px] font-medium
-                text-brand hover:bg-brand/20">
-              Regra {f.rule}<X className="size-3" />
-            </button>
-          )}
-          {f.ids.length > 0 && (
-            <button type="button" onClick={() => set('ids', [])}
-              title="Remover filtro do grupo"
-              className="inline-flex items-center gap-1 rounded-full border
-                border-green/40 bg-green/10 px-2 py-0.5 text-[11.5px] font-medium
-                text-green hover:bg-green/20">
-              <Link2 className="size-3" />{f.idsLabel || 'Grupo abatido'}
-              <X className="size-3" />
-            </button>
-          )}
+  const chip = (label, onClear, tone = 'brand', Icon = null) => (
+    <button type="button" onClick={onClear} title="Remover filtro"
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1
+        text-[12.5px] font-medium ${tone === 'green'
+          ? 'border-green/40 bg-green/10 text-green hover:bg-green/20'
+          : 'border-brand/30 bg-brand/10 text-brand-soft hover:bg-brand/20'}`}>
+      {Icon && <Icon className="size-3" />}{label}<X className="size-3" />
+    </button>
+  )
+
+  const stat = (label, value, tone) => (
+    <div>
+      <p className="text-[13px] text-secondary">{label}</p>
+      <p className={`tnum mt-0.5 text-[18px] font-bold ${tone}`}>{value}</p>
+    </div>
+  )
+
+  const toolbar = (
+    <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {title && (page
+            ? <h2 className="text-[24px] font-bold tracking-[-0.03em] text-strong">
+                {title}</h2>
+            : <h3 className="text-[19px] font-bold tracking-[-0.02em] text-strong">
+                {title}</h3>)}
+          {f.rule && chip(`Regra ${f.rule}`, () => set('rule', ''))}
+          {f.ids.length > 0 && chip(f.idsLabel || 'Grupo abatido',
+            () => set('ids', []), 'green', Link2)}
+          {f.sub && chip(f.sub, () => set('sub', ''))}
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2
-              text-faint" />
+              text-subtle" />
             <input value={f.q} onChange={(e) => set('q', e.target.value)}
-              placeholder="Buscar…"
+              placeholder="Buscar…" aria-label="Buscar lançamentos"
               className={inputCls('w-56 pl-9')} />
           </div>
-          <Button variant={showFilters ? 'default' : 'ghost'}
-            onClick={() => setShowFilters((s) => !s)}>
-            <SlidersHorizontal className="size-4" /> Filtros
-          </Button>
+          {compact && (
+            <Button variant={showFilters ? 'default' : 'ghost'}
+              onClick={() => setShowFilters((s) => !s)} aria-expanded={showFilters}>
+              <SlidersHorizontal className="size-4" /> Filtros
+            </Button>
+          )}
         </div>
       </div>
 
       {showFilters && (
-        <div className="flex flex-wrap items-center gap-2 px-5 pb-3 pt-3">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <MultiSelect label="Categoria" options={catOpts}
             value={catOpts.filter((c) => !f.hiddenCats.includes(c))}
             count={f.hiddenCats.length}
@@ -517,6 +524,33 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
               { label: 'Marcar Todas', onClick: () => set('hiddenCats', []) },
               { label: 'Desmarcar Todas', onClick: () => set('hiddenCats', catOpts) },
             ]} />
+          <MultiSelect label="Conta" options={accOpts} value={f.accs}
+            onChange={(v) => set('accs', v)} />
+          <select value={f.flow} onChange={(e) => set('flow', e.target.value)}
+            aria-label="Entradas e saídas" className={inputCls()}>
+            <option value="">Entradas e saídas</option>
+            <option value="in">Só entradas</option>
+            <option value="out">Só saídas</option>
+          </select>
+          <Button variant={showExtra ? 'default' : 'ghost'}
+            onClick={() => setShowExtra((s) => !s)} aria-expanded={showExtra}>
+            <SlidersHorizontal className="size-4" /> Mais filtros
+            {extraActive > 0 && (
+              <span className="rounded-full bg-brand/25 px-1.5 text-[11px] font-bold
+                text-brand-soft">{extraActive}</span>
+            )}
+          </Button>
+          {active && (
+            <Button variant="ghost" onClick={() => setF(EMPTY)}>
+              <X className="size-3.5" /> Limpar
+            </Button>
+          )}
+        </div>
+      )}
+
+      {showFilters && showExtra && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border
+          border-border bg-surface2/40 p-2">
           <MultiSelect label="Subcategoria" options={subOpts}
             value={subOpts.filter((s) => !f.hiddenSubs.includes(s))}
             count={f.hiddenSubs.length}
@@ -528,80 +562,70 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
             ]} />
           <MultiSelect label="Tags" options={tagOpts} value={f.tags}
             onChange={(value) => set('tags', value)} />
-          <MultiSelect label="Conta" options={accOpts} value={f.accs}
-            onChange={(v) => set('accs', v)} />
-          <select value={f.flow} onChange={(e) => set('flow', e.target.value)}
-            className={inputCls()}>
-            <option value="">Entradas + saídas</option>
-            <option value="in">Só entradas</option>
-            <option value="out">Só saídas</option>
-          </select>
-          <div className="flex items-center gap-1 text-[12px] text-muted">
+          <div className="flex items-center gap-1 text-[13px] text-secondary">
             <input type="date" value={f.d0} onChange={(e) => set('d0', e.target.value)}
-              className={inputCls('w-[140px]')} />
-            <span>–</span>
+              aria-label="Data inicial" className={inputCls('w-[140px]')} />
+            <span>até</span>
             <input type="date" value={f.d1} onChange={(e) => set('d1', e.target.value)}
-              className={inputCls('w-[140px]')} />
+              aria-label="Data final" className={inputCls('w-[140px]')} />
           </div>
-          <div className="flex items-center gap-1 text-[12px] text-muted">
+          <div className="flex items-center gap-1 text-[13px] text-secondary">
             <input type="number" placeholder="R$ mín" value={f.a0}
               onChange={(e) => set('a0', e.target.value)}
-              className={inputCls('w-24')} />
-            <span>–</span>
+              aria-label="Valor mínimo" className={inputCls('w-24')} />
+            <span>até</span>
             <input type="number" placeholder="R$ máx" value={f.a1}
               onChange={(e) => set('a1', e.target.value)}
-              className={inputCls('w-24')} />
+              aria-label="Valor máximo" className={inputCls('w-24')} />
           </div>
           <label className="flex items-center gap-2 rounded-xl border
-            border-border bg-surface2 px-3 py-2 text-[12px] text-muted">
+            border-border bg-surface2 px-3 py-2 text-[13px] text-secondary">
             <input type="checkbox" checked={f.rev}
               onChange={(e) => set('rev', e.target.checked)} />
-            só a revisar
+            Só a revisar
           </label>
           {qids.size > 0 && (
             <label className="flex items-center gap-2 rounded-xl border
-              border-blue/40 bg-blue/10 px-3 py-2 text-[12px] text-blue">
+              border-blue/40 bg-blue/10 px-3 py-2 text-[13px] text-blue">
               <input type="checkbox" checked={f.queued}
                 onChange={(e) => set('queued', e.target.checked)} />
-              só fila do Claude
+              Só fila do Claude
             </label>
           )}
           {showExclToggle && (
             <label className="flex items-center gap-2 rounded-xl border
-              border-amber/40 bg-amber/10 px-3 py-2 text-[12px] text-amber">
+              border-amber/40 bg-amber/10 px-3 py-2 text-[13px] text-amber">
               <input type="checkbox" checked={f.excl}
                 onChange={(e) => set('excl', e.target.checked)} />
-              <EyeOff className="size-3.5" /> mostrar rasurados
+              <EyeOff className="size-3.5" /> Mostrar rasurados
               {viewExcl > 0
                 ? <span className="tnum font-semibold">({viewExcl})</span>
-                : <span className="text-amber/60">(nenhum neste mês)</span>}
+                : <span className="text-amber/70">(nenhum neste mês)</span>}
             </label>
-          )}
-          {active && (
-            <Button variant="ghost" onClick={() => setF(EMPTY)}>
-              <X className="size-3.5" /> limpar
-            </Button>
           )}
         </div>
       )}
+    </>
+  )
 
-      {/* barra-resumo do conjunto filtrado (padrão Monarch) */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-1 border-y
-        border-border bg-surface2/40 px-5 py-2.5 text-[12.5px]">
-        <span className="text-muted">{rows.length} de {txns.length} lançamentos</span>
-        <span className="text-green">entradas{' '}
-          <SensitiveAmount>{brl(totIn)}</SensitiveAmount></span>
-        <span className="text-red">saídas{' '}
-          <SensitiveAmount>{brl(totOut)}</SensitiveAmount></span>
-        <span className={totIn + totOut >= 0 ? 'text-green' : 'text-red'}>
-          líquido{' '}
-          <SensitiveAmount>{signedBrl(totIn + totOut)}</SensitiveAmount></span>
-      </div>
+  const summary = (
+    <div className="flex flex-wrap items-end gap-x-10 gap-y-3">
+      {stat('Lançamentos', rows.length === txns.length
+        ? rows.length : `${rows.length} de ${txns.length}`, 'text-strong')}
+      {stat('Entradas', <SensitiveAmount>{brl(totIn)}</SensitiveAmount>, 'text-green')}
+      {stat('Saídas', <SensitiveAmount>{brl(Math.abs(totOut))}</SensitiveAmount>,
+        'text-red')}
+      {stat('Líquido', <SensitiveAmount>{signedBrl(totIn + totOut)}</SensitiveAmount>,
+        totIn + totOut >= 0 ? 'text-green' : 'text-red')}
+    </div>
+  )
 
+  const body = (
+    <>
       {selected.length > 0 && (
         <div className="flex items-center justify-between gap-3 bg-brand/[0.08]
-          px-5 py-2.5 text-[13px]">
-          <span className="font-medium text-brand">
+          px-5 py-2.5 text-[14px]">
+          <span className="font-semibold text-brand-soft">
             {selected.length} selecionado(s)</span>
           <div className="flex gap-2">
             <Button variant="primary" onClick={() => openEdit(selected)}>
@@ -612,32 +636,32 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
                 <Link2 className="size-3.5" /> Abater
               </Button>
             )}
-            <Button variant="ghost" onClick={() => setSel({})}>limpar</Button>
+            <Button variant="ghost" onClick={() => setSel({})}>Limpar</Button>
           </div>
         </div>
       )}
 
-      {pager && <div className="border-t border-border">{pager}</div>}
-
       <div className="overflow-x-auto">
-        <table className="w-full text-[13px]">
-          <thead>
+        <table className="w-full text-[14px]">
+          <thead className="bg-table-head">
             {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b border-border text-left">
+              <tr key={hg.id} className="border-b border-white/15 text-left">
                 {hg.headers.map((h) => {
                   const sortable = h.column.getCanSort()
                   const dir = h.column.getIsSorted()
+                  const right = h.column.columnDef.meta?.align === 'right'
                   return (
                     <th key={h.id}
                       onClick={sortable ? h.column.getToggleSortingHandler() : undefined}
-                      className={`whitespace-nowrap px-5 py-3 text-[11px]
-                        font-semibold uppercase tracking-wide text-faint
-                        ${sortable ? 'cursor-pointer select-none hover:text-muted' : ''}`}>
-                      <span className="inline-flex items-center gap-1">
+                      className={`whitespace-nowrap px-5 py-3.5 text-[13.5px] font-bold
+                        text-strong ${right ? 'text-right' : ''}
+                        ${sortable ? 'cursor-pointer select-none hover:text-brand-soft' : ''}`}>
+                      <span className={`inline-flex items-center gap-1 ${
+                        right ? 'flex-row-reverse' : ''}`}>
                         {flexRender(h.column.columnDef.header, h.getContext())}
-                        {sortable && (dir === 'asc' ? <ArrowUp className="size-3" />
-                          : dir === 'desc' ? <ArrowDown className="size-3" />
-                            : <ArrowUpDown className="size-3 opacity-40" />)}
+                        {sortable && (dir === 'asc' ? <ArrowUp className="size-3.5" />
+                          : dir === 'desc' ? <ArrowDown className="size-3.5" />
+                            : <ArrowUpDown className="size-3.5 opacity-40" />)}
                       </span>
                     </th>
                   )
@@ -655,35 +679,37 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
                   prevDay = day
                   const ag = dayAgg[day] || { count: 0, net: 0 }
                   out.push(
-                    <tr key={`h-${day}`}>
-                      <td colSpan={colCount}
-                        className="border-y border-border bg-surface2/40
-                          px-5 py-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[12.5px] font-semibold
-                            text-muted">{longDate(day)}</span>
-                          <span className="text-[11.5px] text-faint">
-                            {ag.count} lanç. · líquido{' '}
-                            <span className={ag.net >= 0
-                              ? 'text-green' : 'text-red'}>
-                              <SensitiveAmount>{signedBrl(ag.net)}</SensitiveAmount>
-                            </span>
+                    <tr key={`h-${day}`}
+                      className="border-b border-border bg-surface2/50">
+                      <td colSpan={colCount - 2} className="px-5 py-2.5">
+                        <span className="flex items-center gap-2.5">
+                          <span className="text-[14px] font-bold text-strong">
+                            {longDate(day)}</span>
+                          <span className="rounded-full bg-white/[0.06] px-2 py-0.5
+                            text-[12px] font-semibold text-secondary">
+                            {ag.count} {ag.count === 1 ? 'lançamento' : 'lançamentos'}
                           </span>
-                        </div>
+                        </span>
                       </td>
+                      <td className={`tnum whitespace-nowrap px-5 py-2.5 text-right
+                        text-[14px] font-semibold ${ag.net >= 0 ? 'text-green' : 'text-red'}`}>
+                        <SensitiveAmount>{signedBrl(ag.net)}</SensitiveAmount>
+                      </td>
+                      <td />
                     </tr>,
                   )
                 }
                 out.push(
                   <tr key={r.id}
-                    className={`border-b border-border/60 hover:bg-white/[0.03]
+                    className={`group border-b border-border/60 hover:bg-white/[0.03]
                       ${r.original.excluded
                         ? 'opacity-45 [&_td]:line-through'
                         : r.getIsSelected() ? 'bg-brand/[0.07]'
                           : isQueued(r.original.id)
                             ? 'bg-blue/[0.05] border-l-2 border-l-blue/50' : ''}`}>
                     {r.getVisibleCells().map((c) => (
-                      <td key={c.id} className="px-5 py-3 align-top">
+                      <td key={c.id} className={`px-5 py-3.5 align-top ${
+                        c.column.columnDef.meta?.align === 'right' ? 'text-right' : ''}`}>
                         {flexRender(c.column.columnDef.cell, c.getContext())}
                       </td>
                     ))}
@@ -693,14 +719,36 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
               return out
             })()}
             {rows.length === 0 && (
-              <tr><td colSpan={colCount} className="py-14 text-center
-                text-faint">Nenhum lançamento com esses filtros.</td></tr>
+              <tr><td colSpan={colCount} className="py-14 text-center text-[14px]
+                text-subtle">Nenhum lançamento com esses filtros.</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {pager && <div className="border-t border-border">{pager}</div>}
+      {pager}
+    </>
+  )
+
+  if (page) {
+    return (
+      <div className="flex flex-col">
+        <div className="pb-5">
+          {toolbar}
+          <div className="mt-5">{summary}</div>
+        </div>
+        <div className="overflow-hidden rounded-xl">{body}</div>
+      </div>
+    )
+  }
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="px-5 pt-5">{toolbar}</div>
+      <div className="mt-4 border-y border-border bg-surface2/40 px-5 py-3">
+        {summary}
+      </div>
+      {body}
     </Card>
   )
 }
