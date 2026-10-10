@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Card, CardHead, Button } from './ui/primitives.jsx'
+import { Card, CardHead, Button, Badge } from './ui/primitives.jsx'
 import { CashflowChart, CategoryDonut, Sparkline } from './charts.jsx'
 import { catMeta, subcategoryMeta } from '../lib/categories.jsx'
 import { useDrill } from '../lib/useDrill.jsx'
@@ -33,7 +33,7 @@ function Kpi({ label, value, prev, kind, onClick, spark }) {
           <Sparkline data={spark} color={sparkColor} />
         </div>
       )}
-      <div className="text-[15px] font-bold text-secondary">{label}</div>
+      <div className="text-[15px] font-bold text-strong">{label}</div>
       <div className={`mt-1.5 text-[28px] font-bold tnum ${valColor}`}>
         <SensitiveAmount>{brl(value)}</SensitiveAmount></div>
       <div className="mt-2 flex items-center gap-1.5 text-[12.5px]">
@@ -240,7 +240,7 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
           <div className="absolute right-4 top-4">
             <Sparkline data={savedSpark} color="#b08cff" />
           </div>
-          <div className="text-[15px] font-bold text-secondary">Poupado</div>
+          <div className="text-[15px] font-bold text-strong">Poupado</div>
           <div className="mt-1.5 text-[28px] font-bold tnum text-violet">
             <SensitiveAmount>{brl(mSaved)}</SensitiveAmount></div>
           <div className="mt-2 flex flex-wrap items-center gap-x-1.5 text-[12.5px]">
@@ -264,9 +264,21 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
 
       <Card>
         <CardHead
-          title={`${focus || 'Receitas, gastos, saldo e poupado'} ${
-            chartMonths.length === 1 ? 'no último mês'
-              : `nos últimos ${chartMonths.length} meses`}`} />
+          title={focus ? `Fluxo mensal de ${focus}` : 'Fluxo mensal'}
+          right={
+            <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
+              {[['Receitas', '#36c98b'], ['Gastos', '#f4685f'], ['Saldo', '#5aa2ff'],
+                ...(focus ? [] : [['Poupado', '#b08cff']])].map(([label, color]) => (
+                <span key={label} className="flex items-center gap-1.5 text-[13px]
+                  text-secondary">
+                  <i className="size-2.5 rounded-full" style={{ background: color }} />
+                  {label}
+                </span>
+              ))}
+              <Badge>{chartMonths.length === 1 ? '1 mês'
+                : `${chartMonths.length} meses`}</Badge>
+            </div>
+          } />
         <div className="px-3 pb-4">
           <CashflowChart months={chartMonths} selected={month}
             onSelect={(m) => m && setMonth(m)} showSaved={!focus} />

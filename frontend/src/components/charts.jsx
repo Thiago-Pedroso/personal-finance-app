@@ -104,29 +104,17 @@ export function CashflowChart({ months, selected, onSelect, showSaved }) {
   )
 }
 
-// Além de ~8 fatias ninguém casa cor com legenda, então o excedente vira uma
-// fatia "Outras". Clicar nela não filtra (não é categoria de verdade).
-const MAX_SLICES = 9
 const sharePct = (value, total) => {
   const share = (value / total) * 100
   return share > 0 && share < 0.5 ? '<1%' : `${share.toFixed(0)}%`
 }
-const REST_LABEL = 'Outras categorias'
-
 export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
   const { valuesHidden } = usePrivacy()
   const colorOf = (slice, index) =>
-    slice.label === REST_LABEL ? '#8a97a6'
-      : slice.color || (palette ? PALETTE[index % PALETTE.length]
-        : catColor(slice.label))
-  const visible = slices.filter((s) => s.value > 0)
+    slice.color || (palette ? PALETTE[index % PALETTE.length]
+      : catColor(slice.label))
+  const data = slices.filter((s) => s.value > 0)
     .sort((a, b) => b.value - a.value)
-  const rest = visible.slice(MAX_SLICES)
-  const data = rest.length > 1
-    ? [...visible.slice(0, MAX_SLICES),
-       { label: REST_LABEL, value: rest.reduce((a, s) => a + s.value, 0),
-         rest: rest.length }]
-    : visible
   const total = data.reduce((a, s) => a + s.value, 0)
   const maxValue = Math.max(...data.map((s) => s.value), 1)
   if (!total) return <p className="py-10 text-center text-[13px] text-faint">
@@ -138,7 +126,7 @@ export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
           <PieChart>
             <Pie data={data} dataKey="value" nameKey="label" innerRadius={74}
               outerRadius={112} paddingAngle={1.5} stroke="none"
-              onClick={(d) => d.label !== REST_LABEL && onSelect?.(d.label)}>
+              onClick={(d) => onSelect?.(d.label)}>
               {data.map((d, i) => <Cell key={d.label} className="cursor-pointer"
                 fill={colorOf(d, i)} />)}
             </Pie>
@@ -174,13 +162,11 @@ export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
         </thead>
         <tbody>
           {data.map((s, i) => {
-            const isRest = s.label === REST_LABEL
-            const M = palette || isRest ? null : catMeta(s.label)
-            const count = isRest ? null : s.count
+            const M = palette ? null : catMeta(s.label)
             return (
-              <tr key={s.label} onClick={() => !isRest && onSelect?.(s.label)}
-                className={`group border-b border-border/60 last:border-0
-                  ${isRest ? '' : 'cursor-pointer hover:bg-surface2/45'}`}>
+              <tr key={s.label} onClick={() => onSelect?.(s.label)}
+                className="group cursor-pointer border-b border-border/60
+                  last:border-0 hover:bg-surface2/45">
                 <td className="py-2.5 pl-3">
                   <span className="flex items-center gap-2">
                     {M ? <M.Icon className="size-4 shrink-0"
@@ -188,9 +174,9 @@ export function CategoryDonut({ slices, onSelect, onOpen, palette }) {
                       : <i className="size-2.5 shrink-0 rounded-[3px]"
                           style={{ background: colorOf(s, i) }} />}
                     <span className="font-semibold text-strong">
-                      {isRest ? `${s.label} (${s.rest})` : s.label}</span>
-                    {count != null && <span className="text-[12px] text-subtle">
-                      {count}x</span>}
+                      {s.label}</span>
+                    {s.count != null && <span className="text-[12px] text-subtle">
+                      {s.count}x</span>}
                   </span>
                   <div className="mt-1.5 h-1.5 overflow-hidden rounded-full
                     bg-white/[0.06]">
