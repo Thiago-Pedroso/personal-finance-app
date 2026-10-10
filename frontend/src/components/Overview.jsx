@@ -9,6 +9,8 @@ import {
   TrendingUp, TrendingDown, ArrowRight, ChevronLeft, ListFilter,
 } from 'lucide-react'
 
+const CHART_MONTHS = 13
+
 function Kpi({ label, value, prev, kind, onClick, spark }) {
   const d = prev == null ? null : value - prev
   const p = pctDelta(value, prev)
@@ -56,7 +58,7 @@ function Kpi({ label, value, prev, kind, onClick, spark }) {
 export function Overview({ dash, month, mdata, setMonth, goCategory,
   goReview, queue }) {
   const drill = useDrill()
-  // filtro de categoria da Visão Geral (filtra KPIs, gráfico 13m, donut…)
+  // filtro de categoria da Visão Geral (filtra KPIs, gráfico, donut…)
   const [focus, setFocus] = useState(null)
   const isMonth = /^\d{4}-\d{2}$/.test(month)
   const i = dash.months.findIndex((m) => m.month === month)
@@ -81,13 +83,13 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
     ? (fp ? { income: fp.income || 0, expense: fp.expense || 0,
              net: (fp.income || 0) - (fp.expense || 0) } : null)
     : prevM
-  const chartMonths = focus
+  const chartMonths = (focus
     ? dash.months.map((m) => {
         const c = m.by_category?.[focus] || {}
         return { month: m.month, income: c.income || 0,
           expense: c.expense || 0, net: (c.income || 0) - (c.expense || 0) }
       })
-    : dash.months
+    : dash.months).slice(-CHART_MONTHS)
   const subItems = focus
     ? Object.entries(mdata.by_category?.[focus]?.subcategories || {})
         .map(([label, s]) => ({ label, value: s.expense, count: s.count,
@@ -264,12 +266,9 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
 
       <Card>
         <CardHead
-          title={focus
-            ? `${focus} — 13 meses`
-            : 'Receitas × Gastos × Saldo × Poupado — 13 meses'}
-          sub={focus
-            ? 'gráfico filtrado pela categoria · clique numa barra p/ o mês'
-            : 'linha tracejada roxa = poupado · clique numa barra para trocar o mês'} />
+          title={`${focus || 'Receitas, gastos, saldo e poupado'} ${
+            chartMonths.length === 1 ? 'no último mês'
+              : `nos últimos ${chartMonths.length} meses`}`} />
         <div className="px-3 pb-4">
           <CashflowChart months={chartMonths} selected={month}
             onSelect={(m) => m && setMonth(m)} showSaved={!focus} />
@@ -280,11 +279,8 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
         <Card>
           <CardHead
             title={focus
-              ? `Subcategorias de ${focus} — ${monthLabel(month)}`
-              : `Maiores gastos — ${monthLabel(month)}`}
-            sub={focus
-              ? 'clique p/ filtrar · ícone p/ ver lançamentos'
-              : 'clique p/ filtrar tudo · ícone p/ ver lançamentos'}
+              ? `Subcategorias de ${focus}`
+              : 'Maiores gastos'}
             right={<Button variant="ghost"
               onClick={() => goCategory(focus || cats[0]?.label)}>
               Analisar <ArrowRight className="size-4" /></Button>} />
@@ -303,8 +299,7 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
           </div>
         </Card>
         <Card>
-          <CardHead title={`Fora do fluxo — ${monthLabel(month)}`}
-            sub="visível, não conta como receita/gasto" />
+          <CardHead title="Fora do fluxo" />
           <div className="px-5 pb-5">
             {movs.length === 0 && <p className="py-8 text-center text-[13px]
               text-faint">Nada neste mês.</p>}
@@ -343,10 +338,7 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
                 {focus}
               </span>
             </span>
-          ) : `Composição dos gastos — ${monthLabel(month)}`}
-          sub={focus
-            ? 'subcategorias · clique p/ filtrar · ícone p/ lançamentos'
-            : 'clique numa categoria p/ filtrar · ícone p/ ver lançamentos'}
+          ) : 'Composição dos gastos'}
           right={focus && (
             <Button variant="ghost"
               onClick={() => openCat(focus)}>
