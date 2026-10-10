@@ -48,7 +48,7 @@ function InvestBadge({ transaction, onOpen }) {
       <button type="button" onClick={onOpen}
         title={`${STATUS_LABEL[info.status]}\n${detail}\nClique para editar.`}
         className="inline-flex max-w-[190px] items-center gap-1 rounded-full border
-          border-violet/40 bg-violet/10 px-1.5 py-0.5 text-[11px] font-semibold
+          border-violet/40 bg-violet/10 px-1.5 py-0.5 text-[12px] font-semibold
           text-violet hover:bg-violet/20">
         <Landmark className="size-3 shrink-0" />
         <span className="truncate">→ {label}</span>
@@ -63,7 +63,7 @@ function InvestBadge({ transaction, onOpen }) {
       title={`${STATUS_LABEL[info.status]} no investimento${detail ? `\n${detail}` : ''}`
         + '\nClique para definir.'}
       className="inline-flex items-center gap-1 rounded-full border border-amber/40
-        bg-amber/10 px-1.5 py-0.5 text-[11px] font-semibold text-amber
+        bg-amber/10 px-1.5 py-0.5 text-[12px] font-semibold text-amber
         hover:bg-amber/20">
       <CircleAlert className="size-3" />{text}
     </button>
@@ -76,7 +76,7 @@ function SettleChips({ transaction }) {
   return names.map((name) => (
     <span key={name} title={`A acertar com ${name}`}
       className="inline-flex max-w-[140px] cursor-help items-center gap-1 rounded-full
-        border border-border bg-surface2 px-1.5 py-0.5 text-[11px] font-medium
+        border border-border bg-surface2 px-1.5 py-0.5 text-[12px] font-medium
         text-muted">
       <UserRound className="size-3 shrink-0" />
       <span className="truncate">{name}</span>
@@ -97,7 +97,7 @@ function ReimbursedBadge({ transaction, onOpen }) {
   return (
     <button type="button" onClick={onOpen} title={`${title}\nClique para ver o grupo.`}
       className="inline-flex items-center gap-1 rounded-full border border-green/40
-        bg-green/10 px-1.5 py-0.5 text-[11px] font-semibold text-green
+        bg-green/10 px-1.5 py-0.5 text-[12px] font-semibold text-green
         hover:bg-green/20">
       <Link2 className="size-3" />
       {full ? 'abatido' : `abatido ${brl(info.amount)}${
@@ -242,7 +242,7 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
                     title={`Tags: ${tags.join(', ')}. Clique para filtrar.`}
                     className="inline-flex max-w-[160px] items-center gap-1
                       rounded-full border border-brand/30 bg-brand/10 px-1.5
-                      py-px text-[11px] font-medium text-brand
+                      py-px text-[12px] font-medium text-brand
                       hover:bg-brand/20">
                     <TagIcon className="size-3 shrink-0" />
                     <span className="truncate">{tags[0]}</span>
@@ -275,7 +275,7 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
         const qb = isQueued(t.id) ? (
           <span title="Enviado pra Fila do Claude — aguardando"
             className="inline-flex items-center gap-1 rounded-full border
-              border-blue/40 bg-blue/15 px-2 py-0.5 text-[11px] font-semibold
+              border-blue/40 bg-blue/15 px-2 py-0.5 text-[12px] font-semibold
               text-blue cursor-help">
             <MessageSquare className="size-3" />fila
           </span>
@@ -299,7 +299,7 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
         const xb = t.excluded ? (
           <span title="Rasurado — fora de todos os relatórios"
             className="inline-flex items-center gap-1 rounded-full border
-              border-amber/40 bg-amber/10 px-1.5 py-0.5 text-[11px] font-semibold
+              border-amber/40 bg-amber/10 px-1.5 py-0.5 text-[12px] font-semibold
               text-amber cursor-help no-underline">
             <EyeOff className="size-3" />rasurado
           </span>
@@ -314,7 +314,7 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
         const pm = pluggyGuess ? (
           <span title="Categoria sugerida pelo mapa da Pluggy — ainda não confirmada"
             className="inline-flex items-center gap-1 rounded-full border
-              border-blue/40 bg-blue/10 px-1.5 py-0.5 text-[11px] font-semibold
+              border-blue/40 bg-blue/10 px-1.5 py-0.5 text-[12px] font-semibold
               text-blue cursor-help">
             <Wand2 className="size-3" />Pluggy
           </span>

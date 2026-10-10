@@ -67,8 +67,8 @@ export function effectiveCategory(t) {
 // Chip: ícone colorido + nome. `onClick` torna clicável (filtrar/drill).
 function TaxonomyChip({ label, meta, size, onClick, title }) {
   const Icon = meta.Icon
-  const px = size === 'xs' ? 'px-1.5 py-0.5 text-[11px]'
-    : 'px-2 py-1 text-[12px]'
+  const px = size === 'xs' ? 'px-1.5 py-0.5 text-[12px]'
+    : 'px-2 py-1 text-[13.5px]'
   const isz = size === 'xs' ? 'size-3' : 'size-3.5'
   const cls = `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap
     rounded-full border font-medium

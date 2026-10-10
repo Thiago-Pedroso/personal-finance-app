@@ -31,7 +31,7 @@ const VARIANTS = {
 export function Button({ variant = 'default', className = '', children, ...p }) {
   return (
     <button {...p} className={`inline-flex items-center gap-2 rounded-xl
-      px-3.5 py-2 text-[13px] transition disabled:opacity-50
+      px-3.5 py-2 text-[13.5px] transition disabled:opacity-50
       disabled:pointer-events-none ${VARIANTS[variant]} ${className}`}>
       {children}
     </button>

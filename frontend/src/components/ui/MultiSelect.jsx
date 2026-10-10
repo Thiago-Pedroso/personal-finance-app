@@ -19,7 +19,7 @@ export function MultiSelect({ label, options, value, onChange, count, actions })
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 rounded-xl border border-border
-          bg-surface2 px-3 py-2 text-[13px] hover:border-faint">
+          bg-surface2 px-3 py-2 text-[13.5px] hover:border-faint">
         <span className="text-muted">{label}</span>
         {badge > 0 && (
           <span className="rounded-full bg-brand/20 px-1.5 text-[11px]
@@ -62,6 +62,6 @@ export function MultiSelect({ label, options, value, onChange, count, actions })
 }
 
 export function inputCls(extra = '') {
-  return `rounded-xl border border-border bg-surface2 px-3 py-2 text-[13px]
+  return `rounded-xl border border-border bg-surface2 px-3 py-2 text-[13.5px]
     placeholder:text-faint focus:border-faint ${extra}`
 }
