@@ -181,9 +181,7 @@ export function Carteira({ data, onSaveTargets, onRefresh, busy }) {
     () => orderPortfolioNodes(data.allocation, data.policy || []),
     [data.allocation, data.policy],
   )
-  const [open, setOpen] = useState(() => new Set([
-    orderedAllocation.find((node) => node.in_totals)?.node || orderedAllocation[0]?.node,
-  ]))
+  const [open, setOpen] = useState(() => new Set(orderedAllocation.map((node) => node.node)))
   const byNode = useMemo(() => {
     const out = {}
     data.positions.forEach((position) => {

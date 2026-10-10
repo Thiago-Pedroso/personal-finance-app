@@ -11,11 +11,11 @@ export function Card({ className = '', children, ...p }) {
 
 export function CardHead({ title, sub, right }) {
   return (
-    <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3">
+    <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
       <div>
-        <h3 className="text-[12px] font-semibold uppercase tracking-wider
-          text-muted">{title}</h3>
-        {sub && <p className="mt-1 text-[12px] text-faint">{sub}</p>}
+        <h3 className="text-[19px] font-bold tracking-[-0.02em]
+          text-strong">{title}</h3>
+        {sub && <p className="mt-1 text-[13px] text-secondary">{sub}</p>}
       </div>
       {right}
     </div>
