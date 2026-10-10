@@ -49,3 +49,15 @@ export const pctDelta = (cur, prev) =>
   !prev ? null : ((cur - prev) / Math.abs(prev)) * 100
 export const fmtPct = (p) =>
   p == null ? '—' : `${p > 0 ? '+' : ''}${p.toFixed(0)}%`
+
+const CORPORATE = /(^|\s)(INSTITUI[CÇ][AÃ]O DE PAGAMENTO|S\.?\/?A\.?|LTDA\.?|EIRELI)(?=\s|$)/gi
+const titleWord = (word) => word.length <= 3 ? word
+  : word[0] + word.slice(1).toLowerCase()
+// nome de conta legível: sem sufixo societário nem parênteses, e sem caixa alta gritada
+export const shortAccount = (name) => {
+  if (!name) return ''
+  const base = name.replace(/\(.*?\)/g, '').replace(CORPORATE, ' ')
+    .replace(/\s+/g, ' ').replace(/[\s,.\-–]+$/, '').trim()
+  if (!base) return name
+  return base === base.toUpperCase() ? base.split(' ').map(titleWord).join(' ') : base
+}

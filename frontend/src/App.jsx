@@ -267,7 +267,7 @@ function Shell() {
             openReimburse={openReimburse}
             saveEdit={d.saveEdit} presetCat={txnPreset} queuedIds={queuedIds}
             treatments={dash.treatments} excludedCount={dash.excluded_count}
-            title={`Transações — ${monthLabel(month)}`} />
+            title="Transações" page pageSize={100} />
         )}
         {space.space === 'financas' && tab === 'cats' && (
           <Categories dash={dash} mdata={mdata} month={month}
