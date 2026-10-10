@@ -16,6 +16,7 @@ from calendar import monthrange
 from collections import Counter, defaultdict
 from datetime import date, datetime, timezone
 
+from . import balance as BAL
 from . import budgets as B
 from . import ledger as L
 from . import reimbursements as RB
@@ -204,6 +205,8 @@ def _md(mj: dict, prev: dict | None) -> str:
     L_.append(f"- **Gastos:** R$ {mj['expense']:,.2f}")
     L_.append(f"- **Poupado:** R$ {mj['saved']:,.2f}")
     L_.append(f"- **Saldo:** R$ {mj['net']:,.2f}")
+    if mj.get("balance_total") is not None:
+        L_.append(f"- **Saldo total:** R$ {mj['balance_total']:,.2f}")
     if prev:
         d = mj["expense"] - prev["expense"]
         sign = "▲" if d > 0 else "▼"
@@ -559,18 +562,28 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
     for r in recs:
         r["invest"] = invest_status.get(r["id"])
 
+    anchor = BAL.load_anchor()
     months: dict = {}
+    after_anchor: dict = {}
     month_txns: dict = {}
     for r in recs:
         m = r["date"][:7]
         months.setdefault(m, _blank())
+        after_anchor.setdefault(m, _blank())
         month_txns.setdefault(m, []).append(r)   # lista mostra tudo (rasurado incluso)
         if not r.get("excluded"):                 # mas rasurado não entra nos agregados
             _add_record(months[m], r)
+            if BAL.counts_after(r["date"], anchor):
+                _add_record(after_anchor[m], r)
 
     ordered = sorted(months)
     # Agregados enxutos (vão para o dashboard.json — carga rápida, sem transações).
     month_jsons = {m: _month_json(m, months[m]) for m in ordered}
+    totals = BAL.running_totals(
+        {m: b["income"] - b["expense"] - b["saved"] for m, b in after_anchor.items()},
+        anchor)
+    for m in ordered:
+        month_jsons[m]["balance_total"] = totals[m]
 
     # ---- planejamento por mês (teto vs realizado, ritmo) + poupança acumulada
     bud = budgets if budgets is not None else B.load()
@@ -644,6 +657,8 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
         "poupanca_cats": sorted(c for c, t in _TREAT.items() if t == "poupança"),
         "movimento_cats": sorted(c for c, t in _TREAT.items() if t == "movimento"),
         "months": [month_jsons[m] for m in ordered],
+        # base do Saldo total; sem âncora, o total é o acumulado desde o primeiro mês
+        "balance_anchor": anchor,
         "by_category_12m": sorted(
             ({"category": k, **{kk: round(vv, 2) for kk, vv in v.items()}}
              for k, v in by_cat12.items()), key=lambda x: -x["expense"]),
