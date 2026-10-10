@@ -53,7 +53,7 @@ uv run python -m finance.categorize stats
 | `SubcategoryMeta` | cor e ícone opcionais por subcategoria | `finance/taxonomy.py` |
 | `PluggyMap` | categoria da Pluggy → taxonomia pessoal | `finance/pluggy_map.py` |
 | `Reimbursements` | abatimentos: qual entrada abate qual saída, e quanto | `finance/reimbursements.py` |
-| `Config` | blobs JSON: `budgets`, `sync_state`, `timezone`, `min_transaction_date`, `schema_version`, `invest_monthly_contribution`, `invest_contribution_mode`, `invest_allocation_sim`, `invest_destination_subcategories`, `free_balance_anchor` | `finance/budgets.py`, `finance/sync.py`, `finance/balance.py` |
+| `Config` | blobs JSON: `budgets`, `sync_state`, `timezone`, `min_transaction_date`, `schema_version`, `invest_monthly_contribution`, `invest_contribution_mode`, `invest_allocation_sim`, `invest_destination_subcategories`, `free_balance_anchor`, `iof` | `finance/budgets.py`, `finance/sync.py`, `finance/balance.py`, `finance/iof.py` |
 | `InvestTrades` | 1 movimentação por linha (a única entrada de fatos da carteira) | `finance/invest/trades.py` |
 | `InvestAssets` | catálogo: classe, conta, setor, alvo, como o valor é apurado | `finance/invest/assets.py` |
 | `InvestAccounts` | onde o dinheiro está custodiado (corretora, carteira, caixinhas) | `finance/invest/accounts.py` |
@@ -376,6 +376,12 @@ Entradas com "APLICAÇÃO COMPROMISSADA"/"RECOMPRA COMPROMISSADA" → `Investime
 ### Cobranças internacionais (cartão de crédito)
 A Pluggy às vezes grava o valor em USD em vez de BRL. Quando o valor real em BRL for informado,
 usar `amount_override`. Ex.: Pluggy gravou -6.26, valor real -77.00 → `"amount_override": -77.00`.
+
+Quando a Pluggy traz a cobrança sem o IOF, liste o lojista em `Config[iof]`:
+`{"rate": 0.035, "match": ["TEXTO DO LOJISTA"]}`. O `sync` grava nos lançamentos novos de
+cartão que casam `amount_override = valor × (1 + rate)` com a nota "IOF estimado". Ele pula
+override manual, split e dia que já tem linha de IOF na conta, e avisa se a linha chegar
+depois. Para lançamentos que já estão no Ledger: `uv run python -m finance.iof [--dry-run]`.
 
 ### PIX para terceiros como proxy de pagamento
 Quando se paga via PIX para alguém que comprou algo em seu nome:

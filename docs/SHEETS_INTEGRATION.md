@@ -188,6 +188,7 @@ com aviso. Em categoria de `fluxo`, o valor abatido sai da conta no mês de cada
 | `sync_state` | cursores de sincronização por conta |
 | `timezone` | fuso IANA usado nas datas locais, por exemplo `America/Sao_Paulo` |
 | `free_balance_anchor` | base do Saldo total: `{date, value}`, dinheiro livre no fim do dia `date` menos a dívida de cartão; ausente = acumulado desde o primeiro mês |
+| `iof` | IOF somado pelo `sync` em cobranças de cartão que a Pluggy traz sem ele: `{rate, match}`, com `match` = trechos da descrição; ausente = desligado |
 | `min_transaction_date` | piso opcional (`YYYY-MM-DD`); o sync descarta lançamentos anteriores |
 | `schema_version` | versão do esquema (atualmente `9`) |
 | `invest_monthly_contribution` | aporte mensal usado como padrão no simulador |
