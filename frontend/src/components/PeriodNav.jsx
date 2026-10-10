@@ -5,8 +5,7 @@ import { monthLong, monthShort } from '../lib/format.js'
 const isTyping = (target) =>
   target?.closest?.('input, textarea, select, [contenteditable="true"], [role="dialog"]')
 
-// Mês/Ano + setas + grade de meses; as setas do teclado também trocam o período.
-// A tipografia fica em <span>: a regra global de botão em index.css anula classes de fonte.
+// Mês/Ano + setas + grade de meses; as setas do teclado também trocam o período
 export function PeriodNav({ mode, setMode, months, month, setMonth, years, year, setYear }) {
   const [open, setOpen] = useState(false)
   const boxRef = useRef(null)
