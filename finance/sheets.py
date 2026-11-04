@@ -323,6 +323,39 @@ def read_records(tab: str) -> list[dict]:
     return out
 
 
+def _records_matrix(tab: str, records: list[dict]) -> list[list]:
+    schema = SCHEMAS[tab]
+    matrix = [[name for name, _ in schema]]
+    matrix.extend([_val_to_cell(kind, rec.get(name)) for name, kind in schema]
+                  for rec in records)
+    return matrix
+
+
+def _taxonomy_matrix(records: list[dict]) -> list[list]:
+    """Matriz exata que substitui a aba Taxonomy (exposta para os testes de falha)."""
+    return _records_matrix("Taxonomy", records)
+
+
+@_retry
+def write_taxonomy_records(records: list[dict]) -> None:
+    """Substitui a aba Taxonomy sem sumir com referências no meio de uma escrita parcial.
+
+    O Google Sheets trata resize e update como mutações remotas independentes. Encolher
+    antes poderia apagar um destino que Ledger ou Rules já usam, então: cresce antes
+    do update; ao encolher, grava o conteúdo completo e só depois corta as sobras.
+    """
+    matrix = _taxonomy_matrix(records)
+    rows, cols = max(len(matrix), 1), len(matrix[0])
+    ws = _ws("Taxonomy")
+    if rows > ws.row_count:
+        ws.resize(rows=rows, cols=cols)
+        ws.update(values=matrix, range_name="A1", value_input_option="RAW")
+    else:
+        ws.update(values=matrix, range_name="A1", value_input_option="RAW")
+        if rows < ws.row_count:
+            ws.resize(rows=rows, cols=cols)
+
+
 @_retry
 def write_records(tab: str, records: list[dict]) -> None:
     """Grava a aba tabular inteira a partir de uma lista de dicts (resize + update)."""

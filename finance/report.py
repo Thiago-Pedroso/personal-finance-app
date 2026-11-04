@@ -54,6 +54,10 @@ def _is_pending(r: dict) -> bool:
     Pluggy ainda não confirmado (categoria certa ou não, quem decide é o usuário)."""
     if r.get("excluded"):        # rasurado sai de tudo, inclusive das pendências
         return False
+    # Split normalmente não passa pelas checagens de categoria abaixo, mas a remoção de
+    # uma categoria/subcategoria marca o split para revisão (parte foi para Outros).
+    if r.get("needs_review"):
+        return True
     if r.get("splits"):
         return False
     if not r["category"]:
