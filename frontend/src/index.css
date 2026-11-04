@@ -72,6 +72,12 @@ body {
 @layer base {
   input, select, button, textarea { font: inherit; color: inherit; }
 }
+/* iOS dá zoom em qualquer campo com fonte < 16px: no celular, forçamos 16px */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select, textarea { font-size: 16px !important; }
+  input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; }
+}
 :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
