@@ -15,7 +15,12 @@ async function postJSON(url, body) {
   })
   const data = await r.json().catch(() => ({}))
   if (!r.ok || data.ok === false) {
-    throw new Error(data.error || data.stderr || `Falha (${r.status})`)
+    const error = new Error(data.error || data.stderr || `Falha (${r.status})`)
+    // Uma falha pode chegar depois de uma escrita durável (ex.: taxonomia gravada e
+    // relatório falhou). Os campos estruturados (persisted, phase) vão junto para a
+    // tela atualizar em vez de repetir.
+    Object.assign(error, data)
+    throw error
   }
   return data
 }
@@ -44,3 +49,10 @@ export const getInvestPending = () => getJSON('/api/invest/pending')
 export const postInvest = (payload) => postJSON('/api/invest/apply', payload)
 export const refreshInvest = () => postJSON('/api/invest/refresh', {})
 export const syncInvest = (opts = {}) => postJSON('/api/invest/sync', opts)
+
+// Taxonomia (criar/renomear/remover com migração do Ledger e das Regras). A prévia não
+// grava, mas entra na mesma fila de escrita para o fingerprint não correr contra uma edição.
+export const previewTaxonomy = (operation) =>
+  postJSON('/api/taxonomy/preview', { operation })
+export const applyTaxonomy = ({ operation, fingerprint }) =>
+  postJSON('/api/taxonomy/apply', { operation, fingerprint, confirmed: true })

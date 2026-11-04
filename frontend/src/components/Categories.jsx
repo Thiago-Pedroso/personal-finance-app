@@ -6,11 +6,13 @@ import { useDrill } from '../lib/useDrill.jsx'
 import { catMeta, subcategoryMeta } from '../lib/categories.jsx'
 import { brl, signedBrl, fmtPct, monthShortY, monthLabel } from '../lib/format.js'
 import { SensitiveAmount } from './ui/SensitiveValue.jsx'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Settings2 } from 'lucide-react'
+import { TaxonomyManager } from './TaxonomyManager.jsx'
 
 export function Categories({ dash, mdata, month, selectedCat, setSelectedCat,
-  goTxns }) {
+  goTxns, onSaved, toast }) {
   const drill = useDrill()
+  const [managing, setManaging] = useState(false)
   const i = dash.months.findIndex((m) => m.month === month)
   const cur = dash.months[i] || {}
   const prev = i > 0 ? dash.months[i - 1] : null
@@ -65,11 +67,16 @@ export function Categories({ dash, mdata, month, selectedCat, setSelectedCat,
               ({incomeDom ? 'receita' : 'gasto'})
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <select value={sel} onChange={(e) => setSelectedCat(e.target.value)}
-              className={inputCls()}>
+              className={`${inputCls()} min-w-0 basis-full sm:basis-auto`}>
               {allCats.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
+            <Button variant="ghost" onClick={() => setManaging(true)}
+              title="Criar, renomear ou remover categorias e subcategorias">
+              <Settings2 className="size-4" />
+              <span className="hidden sm:inline">Gerenciar</span>
+            </Button>
             <Button onClick={() => goTxns(sel)}>
               Ver lançamentos <ArrowRight className="size-4" />
             </Button>
@@ -141,6 +148,11 @@ export function Categories({ dash, mdata, month, selectedCat, setSelectedCat,
           </table>
         </div>
       </Card>
+      {managing && (
+        <TaxonomyManager open={managing} onClose={() => setManaging(false)}
+          taxonomy={dash.taxonomy || {}} treatments={dash.treatments || {}}
+          onSaved={onSaved} toast={toast} />
+      )}
     </div>
   )
 }

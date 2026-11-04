@@ -5,6 +5,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFile } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { randomUUID } from 'node:crypto'
+import { serializeWrite } from './src/lib/writeQueue.js'
 
 // Fonte da verdade dos dados = Google Sheets (via pipeline Python). Aqui o middleware só
 // lê os relatórios gerados localmente e delega escritas ao Python, que fala com o Sheets.
@@ -19,11 +21,15 @@ const BUDGET_INPUT = path.join(DATA, '.budget_input.json')
 const INVEST_DECISIONS = path.join(DATA, '.invest_decisions.json')
 const INVEST_PENDING = path.join(DATA, '.invest_pending.json')
 
-function readBody(req) {
+function readBody(req, max = Infinity) {
   return new Promise((resolve, reject) => {
-    let b = ''
-    req.on('data', (c) => (b += c))
+    let b = ''; let tooLarge = false
+    req.on('data', (c) => {
+      b += c
+      if (b.length > max) { tooLarge = true; req.destroy() }
+    })
     req.on('end', () => {
+      if (tooLarge) return reject(new Error('corpo muito grande'))
       try { resolve(b ? JSON.parse(b) : {}) } catch (e) { reject(e) }
     })
     req.on('error', reject)
@@ -57,6 +63,26 @@ async function applyBudget(b) {
     log: r.stdout.trim(), stderr: r.stderr.trim() }
 }
 
+// Taxonomia: a validação financeira (referências no Ledger, Regras, migração) é toda do
+// Python (`finance.taxonomy preview|apply`). Aqui só o envelope e o arquivo temporário.
+const MAX_TAXONOMY_BODY = 100_000
+async function taxonomyRequest(command, payload) {
+  const input = path.join(DATA, `.taxonomy-${randomUUID()}.json`)
+  try {
+    fs.writeFileSync(input, JSON.stringify(payload) + '\n', { flag: 'wx' })
+    const r = await run('uv', ['run', 'python', '-m', 'finance.taxonomy', command, input])
+    let result
+    try { result = JSON.parse(r.stdout.trim()) } catch {
+      result = { ok: false, error: r.stderr.trim() || 'Resposta inválida do backend' }
+    }
+    // persisted/phase vêm do Python: escrita durável pede refresh, nunca repetir
+    return { ...result, ok: r.ok && result.ok !== false,
+      stderr: result.stderr || r.stderr.trim() }
+  } finally {
+    fs.rmSync(input, { force: true })
+  }
+}
+
 // Investimentos: tudo passa pelo mesmo arquivo de decisões do caminho por conversa,
 // então a tela não tem validação própria nem um segundo jeito de gravar.
 async function applyInvest(payload) {
@@ -67,8 +93,9 @@ async function applyInvest(payload) {
 }
 
 // edições são serializadas para nunca correr o risco de corromper o ledger
-let lock = Promise.resolve()
-const serialize = (fn) => (lock = lock.then(fn, fn))
+// Uma fila só para toda escrita delegada ao Python (edição, orçamento, taxonomia,
+// carteira): cada processo lê, valida e grava sem correr contra outro.
+const serialize = serializeWrite
 
 // O relatório existe só para o disco estar certo no próximo F5 — ninguém espera por
 // ele. Roda fora do caminho da resposta e agrupado por uma janela de silêncio, para
@@ -347,6 +374,27 @@ function financeServer() {
           try {
             return json(res, 200, JSON.parse(fs.readFileSync(INVEST_PENDING, 'utf8')))
           } catch { return json(res, 200, { pending: [] }) }
+        }
+
+        // ---- taxonomia: envelope/mutex aqui; toda validação financeira no Python
+        if ((url === '/api/taxonomy/preview' || url === '/api/taxonomy/apply')
+            && req.method === 'POST') {
+          let payload
+          try { payload = await readBody(req, MAX_TAXONOMY_BODY) }
+          catch { return json(res, 400, { ok: false, error: 'JSON inválido ou corpo muito grande' }) }
+          const isPreview = url.endsWith('/preview')
+          const keys = Object.keys(payload || {})
+          const expected = isPreview ? ['operation'] : ['operation', 'fingerprint', 'confirmed']
+          if (!payload || typeof payload !== 'object' || keys.length !== expected.length
+              || !expected.every((key) => keys.includes(key)) || typeof payload.operation !== 'object'
+              || (!isPreview && (typeof payload.fingerprint !== 'string' || payload.confirmed !== true)))
+            return json(res, 400, { ok: false, error: 'payload inválido' })
+          try {
+            const result = await serialize(() => taxonomyRequest(isPreview ? 'preview' : 'apply', payload))
+            const conflict = result.persisted
+              || /prévia venceu|compatibilidade|parcial/i.test(result.error || '')
+            return json(res, result.ok ? 200 : conflict ? 409 : (result.status || 500), result)
+          } catch (e) { return json(res, 500, { ok: false, error: String(e) }) }
         }
 
         // ---- planejamento: grava budgets.json + recalcula (serializado)
