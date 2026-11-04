@@ -98,6 +98,12 @@ def normalize(tx, account, item_id, local_timezone: ZoneInfo | None = None) -> d
     if pd:
         part = pd.payer if tx.type == "CREDIT" else pd.receiver
         counterparty = getattr(part, "name", None) if part else None
+        # Em PIX o nome vem vazio com frequência, mas o CPF/CNPJ vem. Sem isso o
+        # lançamento fica "pix key transfer" e não dá pra saber pra quem foi.
+        if not counterparty and part is not None:
+            doc = getattr(part, "document_number", None)
+            if doc is not None and getattr(doc, "value", None):
+                counterparty = f"{doc.type or 'DOC'} {doc.value}"
     counterparty = counterparty or (m.name if m else None)
     return {
         "id": tx.id,
