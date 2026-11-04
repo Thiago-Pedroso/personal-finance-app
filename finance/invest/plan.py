@@ -114,7 +114,7 @@ def build(positions: dict, assets: dict, tree: dict, contribution: float,
             })
 
     allocated = sum(order["amount"] for order in orders)
-    leftover = _reallocate(orders, contribution - allocated)
+    _reallocate(orders, contribution - allocated)
     allocated = sum(order["amount"] for order in orders)
 
     after = {}

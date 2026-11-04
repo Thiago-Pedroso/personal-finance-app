@@ -1,0 +1,30 @@
+name: ci
+
+# Pega antes da produção o que o merge com o upstream deixou passar: import perdido,
+# componente sem import, função removida ainda chamada, módulo órfão.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv run --with pytest python -m pytest -q
+      - run: uv run --with pyflakes python -m pyflakes finance/*.py finance/invest/*.py
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm --prefix frontend ci
+      - run: npm --prefix frontend test
+      - run: npm --prefix frontend run build

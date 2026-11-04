@@ -151,7 +151,7 @@ def main() -> None:
         sys.exit(f"Fixtures não encontrados em {src} (esperado ledger.jsonl, rules.json, "
                  "taxonomy.yaml, budgets.json).")
 
-    print(f"Conferindo a planilha (SHEET_ID) e criando as abas que faltam...")
+    print("Conferindo a planilha (SHEET_ID) e criando as abas que faltam...")
     sheets.ensure_tabs()
 
     if not args.force:
