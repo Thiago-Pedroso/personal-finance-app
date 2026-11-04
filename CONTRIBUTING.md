@@ -36,16 +36,17 @@ chave (`credentials*.json`, `service_account*.json`, `.env.*`, `*.pem`). Ainda a
 ## Fluxo de contribuição
 
 1. Crie uma branch a partir da `main` (`git switch -c minha-feature`).
-2. Faça as mudanças e rode os testes:
+2. Faça as mudanças e rode as checagens (as mesmas da CI, `.github/workflows/ci.yml`):
    ```bash
-   PYTHONPATH=. uv run python tests/test_sheets_roundtrip.py
-   PYTHONPATH=. uv run python tests/test_pipeline_inmemory.py
-   PYTHONPATH=. uv run python tests/test_schema_migration.py
+   uv run --with pytest python -m pytest -q
+   uv run --with pyflakes python -m pyflakes finance/*.py finance/invest/*.py
+   npm --prefix frontend test        # testes + identificadores JSX/JS sem import e módulos órfãos
+   npm --prefix frontend run build
    ```
    Esses testes usam armazenamento e diretório de relatórios temporários. Eles não acessam a
    planilha configurada no `.env`.
-3. Abra um **Pull Request** contra a `main`. A CI roda uma varredura de segredos (gitleaks); o PR
-   é revisado antes do merge.
+3. Abra um **Pull Request** contra a `main`. A CI roda as checagens acima e uma varredura de
+   segredos (gitleaks); o PR é revisado antes do merge.
 4. PRs devem conter **apenas código/docs** — nunca `data/` (fora de `seed/`) nem segredos.
 
 ## Estilo
