@@ -6,7 +6,7 @@ from urllib.parse import parse_qs, urlparse
 from dotenv import load_dotenv
 import pluggy_sdk
 from pluggy_sdk import ApiClient, Configuration
-from pluggy_sdk.models import AuthRequest, Item
+from pluggy_sdk.models import AuthRequest, Investment, Item
 
 load_dotenv()
 
@@ -29,6 +29,32 @@ def _patched_item_from_dict(cls, obj):
 
 
 Item.from_dict = _patched_item_from_dict
+
+# Mesmo problema nos investimentos: type/subtype/status novos quebram a validação.
+# Aqui degradamos o valor desconhecido em vez de descartar a posição — perder
+# patrimônio real por causa de um rótulo novo é pior que rotular como OTHER.
+_INV_TYPES = {"COE", "EQUITY", "ETF", "FIXED_INCOME", "MUTUAL_FUND", "SECURITY", "OTHER"}
+_INV_STATUSES = {"ACTIVE", "PENDING", "TOTAL_WITHDRAWAL"}
+_original_investment_from_dict = Investment.from_dict.__func__
+
+
+@classmethod
+def _patched_investment_from_dict(cls, obj):
+    if obj:
+        obj = dict(obj)
+        if obj.get("type") not in _INV_TYPES:
+            obj["type"] = "OTHER"
+        # não lemos `subtype` em lugar nenhum; zerar evita manter à mão um espelho
+        # do enum do SDK, que enverga a cada produto novo da Pluggy.
+        obj["subtype"] = None
+        if obj.get("status") not in _INV_STATUSES:
+            obj["status"] = None
+        if obj.get("balance") is None:
+            obj["balance"] = 0
+    return _original_investment_from_dict(cls, obj)
+
+
+Investment.from_dict = _patched_investment_from_dict
 
 
 def get_api_key() -> str:
@@ -89,3 +115,23 @@ def fetch_transactions(
         if not after:
             break
     return out
+
+
+def item_health(client: ApiClient, item_id: str) -> dict:
+    """Frescor da conexão: status e há quanto tempo a Pluggy trouxe dado novo.
+
+    Os itens MeuPluggy recusam `items_update` (HTTP 400), então não dá para
+    forçar atualização — resta medir e avisar.
+    """
+    try:
+        it = pluggy_sdk.ItemsApi(client).items_retrieve(id=item_id)
+    except Exception as e:  # noqa: BLE001 - diagnóstico não pode derrubar o sync
+        return {"item_id": item_id, "status": f"ERRO ({type(e).__name__})",
+                "execution_status": None, "last_updated_at": None}
+    return {
+        "item_id": item_id,
+        "connector": getattr(it.connector, "name", None) if it.connector else None,
+        "status": it.status,
+        "execution_status": it.execution_status,
+        "last_updated_at": it.last_updated_at.isoformat() if it.last_updated_at else None,
+    }
