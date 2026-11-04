@@ -9,6 +9,7 @@ import { Spinner, Button } from './components/ui/primitives.jsx'
 import { Overview } from './components/Overview.jsx'
 import { Categories } from './components/Categories.jsx'
 import { Tags } from './components/Tags.jsx'
+import { Assinaturas } from './components/Assinaturas.jsx'
 import { Movements } from './components/Movements.jsx'
 import { Planejamento } from './components/Planejamento.jsx'
 import { Tools } from './components/Tools.jsx'
@@ -37,6 +38,7 @@ const TABS = [
   ['txns', 'Transações'],
   ['cats', 'Categorias'],
   ['tags', 'Tags'],
+  ['subs', 'Assinaturas'],
   ['plan', 'Planejamento'],
   ['tools', 'Ferramentas'],
   ['poup', 'Poupança'],
@@ -256,6 +258,10 @@ function Shell() {
         )}
         {space.space === 'financas' && tab === 'tags' && (
           <Tags dash={dash} mdata={mdata} period={month} />
+        )}
+        {space.space === 'financas' && tab === 'subs' && (
+          <Assinaturas txns={mdata.transactions || []} month={month}
+            openEdit={openEdit} />
         )}
         {space.space === 'financas' && tab === 'plan' && (d.mode === 'year' ? (
           <div className="rounded-2xl border border-border bg-surface/80 px-6
