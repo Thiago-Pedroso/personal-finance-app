@@ -389,14 +389,14 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
             {canConfirm && (
               <button onClick={() => saveEdit({ mode: 'value', ids: [t.id],
                 category: t.category, subcategory: t.subcategory })}
-                className="rounded-lg p-1.5 text-secondary hover:bg-surface2
-                  hover:text-green" title="Confirmar o palpite da Pluggy">
+                className="rounded-lg p-2.5 text-secondary hover:bg-surface2
+                  hover:text-green md:p-1.5" title="Confirmar o palpite da Pluggy">
                 <Check className="size-3.5" />
               </button>
             )}
             <button onClick={() => openEdit([t])}
-              className="rounded-lg p-1.5 text-secondary hover:bg-surface2
-                hover:text-strong" title="Editar">
+              className="rounded-lg p-2.5 text-secondary hover:bg-surface2
+                hover:text-strong md:p-1.5" title="Editar">
               <Pencil className="size-3.5" />
             </button>
           </div>
@@ -496,13 +496,13 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
             () => set('ids', []), 'green', Link2)}
           {f.sub && chip(f.sub, () => set('sub', ''))}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <div className="relative min-w-0 flex-1 sm:flex-none">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2
               text-subtle" />
             <input value={f.q} onChange={(e) => set('q', e.target.value)}
               placeholder="Buscar…" aria-label="Buscar lançamentos"
-              className={inputCls('w-56 pl-9')} />
+              className={inputCls('w-full pl-9 sm:w-56')} />
           </div>
           {compact && (
             <Button variant={showFilters ? 'default' : 'ghost'}
@@ -641,7 +641,72 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
         </div>
       )}
 
-      <div className="overflow-x-auto">
+      {/* celular: cada lançamento vira um cartão (a tabela de 7 colunas cortava o valor) */}
+      <div className="md:hidden">
+        {(() => {
+          let prevDay = null
+          const out = []
+          for (const r of pageRows) {
+            const t = r.original
+            const cell = Object.fromEntries(r.getAllCells().map((c) => [c.column.id, c]))
+            const render = (id) => cell[id]
+              && flexRender(cell[id].column.columnDef.cell, cell[id].getContext())
+            if (grouped && t.date !== prevDay) {
+              prevDay = t.date
+              const ag = dayAgg[t.date] || { count: 0, net: 0 }
+              out.push(
+                <div key={`h-${t.date}`} className="flex items-center justify-between
+                  gap-2 border-b border-border bg-surface2/50 px-3 py-2">
+                  <span className="text-[13.5px] font-bold text-strong">
+                    {longDate(t.date)}
+                    <span className="ml-2 text-[12px] font-semibold text-secondary">
+                      {ag.count}</span>
+                  </span>
+                  <span className={`tnum text-[13.5px] font-semibold ${
+                    ag.net >= 0 ? 'text-green' : 'text-red'}`}>
+                    <SensitiveAmount>{signedBrl(ag.net)}</SensitiveAmount></span>
+                </div>,
+              )
+            }
+            out.push(
+              <div key={r.id} className={`flex gap-3 border-b border-border/60 px-3 py-3
+                ${t.excluded ? 'opacity-45 line-through'
+                  : r.getIsSelected() ? 'bg-brand/[0.07]'
+                    : isQueued(t.id) ? 'border-l-2 border-l-blue/50 bg-blue/[0.05]' : ''}`}>
+                <div className="pt-0.5">{render('sel')}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1 text-[14.5px] [&>div]:min-w-0">
+                      {render('description')}</div>
+                    <span className={`tnum shrink-0 whitespace-nowrap text-[15px]
+                      font-semibold ${t.signed_amount >= 0 ? 'text-green' : 'text-red'}`}>
+                      <SensitiveAmount>{signedBrl(t.signed_amount)}</SensitiveAmount>
+                    </span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    {render('category')}
+                    {t.subcategory && !t.splits?.length && render('subcategory')}
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between gap-2
+                    text-[12.5px] text-secondary">
+                    <span className="truncate">
+                      {!grouped && <span className="tnum">{fullDate(t.date)} · </span>}
+                      {render('account_name')}</span>
+                    <div className="-my-1.5 -mr-1.5 shrink-0">{render('act')}</div>
+                  </div>
+                </div>
+              </div>,
+            )
+          }
+          if (rows.length === 0) {
+            out.push(<p key="empty" className="py-14 text-center text-[14px] text-subtle">
+              Nenhum lançamento com esses filtros.</p>)
+          }
+          return out
+        })()}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full text-[14px]">
           <thead className="bg-table-head">
             {table.getHeaderGroups().map((hg) => (

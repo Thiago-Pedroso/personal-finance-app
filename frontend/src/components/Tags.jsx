@@ -118,7 +118,7 @@ export function Tags({ dash, mdata, period }) {
             </Button>
           </div>
         </div>
-        <div className="grid gap-3 px-5 pb-5 pt-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 px-5 pb-5 pt-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-xl border border-border bg-surface2/50 p-3">
             <div className="text-[11px] uppercase tracking-wide text-faint">Gastos</div>
             <div className="mt-1 text-[20px] font-bold text-red tnum">
@@ -144,7 +144,7 @@ export function Tags({ dash, mdata, period }) {
             </div>
           </div>
         </div>
-        <div className="grid gap-5 border-t border-border px-5 pb-5 pt-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 border-t border-border px-5 pb-5 pt-4 lg:grid-cols-2">
           <div>
             <p className="mb-2 text-[12px] text-muted">
               {incomeDominant ? 'Receitas' : 'Gastos'} por categoria
@@ -169,7 +169,7 @@ export function Tags({ dash, mdata, period }) {
       <Card>
         <CardHead title="Tags usadas no período"
           sub="Os totais se sobrepõem quando um lançamento possui mais de uma tag" />
-        <div className="grid gap-3 px-5 pb-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 px-5 pb-5 sm:grid-cols-2 xl:grid-cols-3">
           {summaries.map((summary) => (
             <button key={summary.name} onClick={() => setSelectedTag(summary.name)}
               className={`rounded-xl border p-3 text-left transition ${

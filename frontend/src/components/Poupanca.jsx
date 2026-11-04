@@ -76,7 +76,7 @@ export function Poupanca({ dash, mdata, month }) {
           <PiggyBank className="size-6" /></span>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {present.length === 0 && (
           <Card className="p-8 text-center text-[13px] text-faint sm:col-span-2
             xl:col-span-3">Nada em poupança neste período.</Card>

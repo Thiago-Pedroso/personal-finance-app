@@ -175,7 +175,7 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
       </div>
 
       {/* totais */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         {[
           ['Renda planejada', brl(incPlan), 'text-text',
             `realizada ${brl(plan.income_realized || 0)}`],
@@ -400,7 +400,7 @@ export function Planejamento({ dash, mdata, month, onSaved }) {
         </Card>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* metas de poupança */}
         <Card>
           <CardHead title="Metas de poupança"

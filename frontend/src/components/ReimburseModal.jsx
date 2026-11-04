@@ -122,7 +122,7 @@ export function ReimburseModal({ open, onClose, txns, saveEdit }) {
           <Button variant="primary" disabled={!valid} onClick={save}>Abater</Button>
         </>
       }>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {summary('Entradas', credits, 'text-green')}
         {summary('Saídas', debits, 'text-red')}
       </div>

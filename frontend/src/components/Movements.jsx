@@ -88,7 +88,7 @@ export function Movements({ dash, mdata, month }) {
 
       <OpenSettlements groups={dash.open_settlements} />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {present.map((c) => {
           const cm = (mdata.movements || {})[c]
             || { in: 0, out: 0, count: 0, subcategories: {} }

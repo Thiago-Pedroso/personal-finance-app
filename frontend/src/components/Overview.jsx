@@ -230,7 +230,7 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
         </div>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi label={`Receitas${tag}`} value={cur.income} prev={prev?.income}
           kind="income" spark={sparkOf('income')} onClick={() => drill?.drill(
             `Receitas${tag} — ${monthLabel(month)}`,
@@ -300,7 +300,7 @@ export function Overview({ dash, month, mdata, setMonth, goCategory,
         </div>
       </Card>
 
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <Card>
           <CardHead
             title={focus ? (

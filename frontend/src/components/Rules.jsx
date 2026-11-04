@@ -92,8 +92,8 @@ export function Rules({ dash, mdata, period }) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-[13px]">
-          <thead>
+        <table className="w-full text-[13px] max-md:block">
+          <thead className="max-md:hidden">
             <tr className="border-y border-border text-left text-[11px] font-semibold
               uppercase tracking-wide text-faint">
               <th className="px-5 py-3">#</th>
@@ -103,15 +103,16 @@ export function Rules({ dash, mdata, period }) {
               <th className="px-5 py-3 text-right">Último</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="max-md:block">
             {visible.map((rule) => {
               const inPeriod = periodCounts[rule.id] || 0
               const unused = rule.count === 0
               return (
                 <tr key={rule.id} className={`border-b border-border/60 align-top
-                  ${unused ? 'opacity-50' : ''}`}>
-                  <td className="tnum px-5 py-3 text-faint">{rule.priority}</td>
-                  <td className="max-w-[420px] px-5 py-3">
+                  max-md:flex max-md:flex-wrap max-md:items-start max-md:py-1 ${unused ? 'opacity-50' : ''}`}>
+                  <td className="tnum px-5 py-3 text-faint max-md:hidden">{rule.priority}</td>
+                  <td className="max-w-[420px] px-5 py-3 max-md:w-full max-md:max-w-none
+                    max-md:px-4 max-md:pb-1.5">
                     <div>
                       <span className="text-muted">
                         {FIELD_LABELS[rule.field] || rule.field}{' '}
@@ -147,11 +148,12 @@ export function Rules({ dash, mdata, period }) {
                       </div>
                     )}
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-5 py-3 max-md:min-w-0 max-md:flex-1 max-md:px-4
+                    max-md:pt-1">
                     <CategoryTag size="xs" category={rule.category}
                       subcategory={rule.subcategory} />
                   </td>
-                  <td className="whitespace-nowrap px-5 py-3 text-right">
+                  <td className="whitespace-nowrap px-5 py-3 text-right max-md:px-4 max-md:pt-1">
                     {inPeriod > 0 ? (
                       <button type="button"
                         onClick={() => drill?.drill(
@@ -163,7 +165,8 @@ export function Rules({ dash, mdata, period }) {
                     ) : <span className="tnum text-faint">0</span>}
                     <div className="tnum text-[11px] text-faint">{rule.count} total</div>
                   </td>
-                  <td className="tnum whitespace-nowrap px-5 py-3 text-right text-faint">
+                  <td className="tnum whitespace-nowrap px-5 py-3 text-right text-faint
+                    max-md:hidden">
                     {rule.last_date ? fullDate(rule.last_date) : '-'}
                   </td>
                 </tr>

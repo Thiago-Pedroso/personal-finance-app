@@ -44,29 +44,30 @@ export function PeriodNav({ mode, setMode, months, month, setMonth, years, year,
     + 'hover:bg-surface2 hover:text-strong disabled:opacity-30 disabled:pointer-events-none'
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex w-full items-center gap-2 sm:w-auto sm:flex-wrap">
       <div className="flex gap-1 rounded-xl border border-border bg-surface2/70 p-1
         text-[13px]">
         {[['month', 'Mês'], ['year', 'Ano']].map(([key, label]) => (
           <button key={key} onClick={() => setMode(key)} aria-pressed={mode === key}
-            className={`rounded-lg px-3.5 py-1.5 transition ${mode === key
+            className={`min-h-9 rounded-lg px-2.5 py-1.5 transition sm:px-3.5 ${mode === key
               ? 'bg-brand shadow-[0_1px_8px_#5b9dff55]' : 'hover:bg-surface2'}`}>
             <span className={`text-[13px] font-semibold ${mode === key
               ? 'text-white' : 'text-secondary'}`}>{label}</span>
           </button>
         ))}
       </div>
-      <div ref={boxRef} className="relative flex items-center gap-1 rounded-xl border
-        border-border bg-surface2/70 p-1">
+      <div ref={boxRef} className="relative flex min-w-0 flex-1 items-center gap-1
+        rounded-xl border border-border bg-surface2/70 p-1 sm:flex-none">
         <button className={arrow} onClick={() => step(-1)} disabled={index <= 0}
           aria-label={mode === 'month' ? 'Mês anterior' : 'Ano anterior'}>
           <ChevronLeft className="size-5" />
         </button>
         <button onClick={() => setOpen((value) => !value)} aria-expanded={open}
           aria-haspopup="dialog"
-          className="min-w-[184px] rounded-lg px-3 py-1.5 text-center transition
+          className="min-w-0 flex-1 truncate rounded-lg px-0.5 py-1.5 text-center transition
+            sm:min-w-[184px] sm:px-3
             hover:bg-surface2">
-          <span className="text-[17px] font-bold tracking-[-0.01em] text-strong">
+          <span className="text-[15px] font-bold sm:text-[17px] tracking-[-0.01em] text-strong">
             {monthLong(current)}</span>
         </button>
         <button className={arrow} onClick={() => step(1)}
@@ -76,7 +77,8 @@ export function PeriodNav({ mode, setMode, months, month, setMonth, years, year,
         </button>
 
         {open && (
-          <div className="absolute right-0 top-full z-30 mt-2 w-[296px] rounded-2xl
+          <div className="absolute right-0 top-full z-30 mt-2 w-[min(296px,calc(100vw-2rem))]
+            rounded-2xl
             border border-border bg-surface p-3 shadow-2xl">
             {mode === 'year' ? (
               <div className="grid grid-cols-3 gap-1.5">
@@ -99,7 +101,7 @@ export function PeriodNav({ mode, setMode, months, month, setMonth, years, year,
                     return (
                       <button key={key} disabled={!enabled}
                         onClick={() => { setMonth(key); setOpen(false) }}
-                        className={`rounded-lg py-1.5 transition disabled:cursor-default ${
+                        className={`rounded-lg py-2 transition disabled:cursor-default sm:py-1.5 ${
                           key === month ? 'bg-brand' : enabled ? 'hover:bg-surface2' : ''}`}>
                         <span className={`text-[13.5px] font-semibold capitalize ${
                           key === month ? 'text-white'
