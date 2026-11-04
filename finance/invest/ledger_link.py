@@ -200,3 +200,55 @@ def destination_pending(records: list[dict], trades: list[dict], treatments: dic
                             "message": f"Movimentação de {tickers} aponta para um "
                                        "lançamento que não existe mais no Ledger."})
     return pending
+
+
+# "Dinheiro reservado Cofrinho Viagem" / "Dinheiro retirado Carro": alguns bancos digitais
+# descrevem aporte e resgate de cofrinho assim, com o nome do cofrinho no fim.
+_COFRINHO = re.compile(r"^DINHEIRO (RESERVADO|RETIRADO) (.+)$")
+_STOP = {"DE", "DA", "DO", "E", "COFRINHO", "CAIXINHA"}
+
+
+def _words(text: str) -> set:
+    return {w for w in re.split(r"[^A-Z0-9]+", norm(text)) if w and w not in _STOP}
+
+
+def cofrinho_suggestions(records: list[dict], pending: list[dict], assets: dict,
+                         accounts: dict) -> list[dict]:
+    """Sugere o destino dos aportes/resgates de cofrinho que estão sem destino.
+
+    Para cada pendência `destination_missing` cuja descrição é "Dinheiro reservado/retirado
+    <nome>", procura uma caixinha (`valuation: balance`) da mesma instituição (o
+    `item_id` do lançamento é o `pluggy_item_id` da conta) cujo nome ou ticker tenha as
+    palavras do <nome>. Achou uma só: sugere ligar ao ticker dela. Não achou: sugere criar
+    a caixinha com esse nome. Nunca grava: quem confirma é o usuário (`links` no
+    `.invest_decisions.json` ou o botão na tela de Reservas)."""
+    by_id = {record["id"]: record for record in records}
+    account_of_item = {str(acc.get("pluggy_item_id")): key for key, acc in accounts.items()
+                       if acc.get("pluggy_item_id")}
+    out: list[dict] = []
+    for item in pending:
+        if item.get("kind") != "destination_missing":
+            continue
+        record = by_id.get(item.get("ledger_id"))
+        match = _COFRINHO.match(norm(record.get("description"))) if record else None
+        if not match:
+            continue
+        name = match.group(2).strip()
+        account = account_of_item.get(str(record.get("item_id")))
+        wanted = _words(name)
+        candidates = [ticker for ticker, asset in assets.items()
+                      if asset.get("valuation") == "balance"
+                      and (account is None or asset.get("account") == account)
+                      and wanted and wanted <= (_words(asset.get("name") or "")
+                                                | _words(ticker.replace("-", " ")))]
+        amount = round(float(item.get("needed") or 0.0), 2)
+        out.append({
+            "ledger_id": record["id"], "date": record.get("date"),
+            "description": record.get("description"),
+            "side": "in" if match.group(1) == "RESERVADO" else "out",
+            "amount": amount, "account": account,
+            "name": name.title() if name.isupper() else name,
+            "ticker": candidates[0] if len(candidates) == 1 else None,
+            "candidates": candidates if len(candidates) > 1 else [],
+        })
+    return sorted(out, key=lambda s: (s["ticker"] is None, s["name"], s["date"] or ""))
