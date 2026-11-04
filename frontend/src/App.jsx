@@ -13,6 +13,7 @@ import { Movements } from './components/Movements.jsx'
 import { Planejamento } from './components/Planejamento.jsx'
 import { Tools } from './components/Tools.jsx'
 import { Poupanca } from './components/Poupanca.jsx'
+import { Pessoas } from './components/Pessoas.jsx'
 import { Review } from './components/Review.jsx'
 import { Rules } from './components/Rules.jsx'
 import { TransactionsTable } from './components/TransactionsTable.jsx'
@@ -36,6 +37,7 @@ const TABS = [
   ['overview', 'Visão Geral'],
   ['txns', 'Transações'],
   ['cats', 'Categorias'],
+  ['people', 'Pessoas'],
   ['tags', 'Tags'],
   ['plan', 'Planejamento'],
   ['tools', 'Ferramentas'],
@@ -271,6 +273,9 @@ function Shell() {
         {space.space === 'financas' && tab === 'poup' && (
           <Poupanca dash={dash} mdata={mdata} month={month} />
         )}
+        {space.space === 'financas' && tab === 'people' && (
+          <Pessoas dash={dash} goTxns={(name, m) => { pickMonth(m); goTxns({ people: [name] }) }} />
+        )}
         {space.space === 'financas' && tab === 'movs' && (
           <Movements dash={dash} mdata={mdata} month={month} />
         )}
@@ -294,6 +299,7 @@ function Shell() {
           taxonomy={dash.taxonomy} allTxns={mdata.transactions || []}
           availableTags={dash.tags || []}
           knownSettlers={(dash.open_settlements || []).map((group) => group.name)}
+          knownPeople={dash.people || []}
           onSaved={onSaved} saveEdit={d.saveEdit} treatments={dash.treatments}
           destinations={dash.invest_destinations || []}
           simulator={dash.invest_simulator || []}

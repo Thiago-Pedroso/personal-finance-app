@@ -40,7 +40,7 @@ const MATCHES = [
 ]
 
 export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTags,
-  knownSettlers, onSaved, saveEdit, treatments, destinations, simulator,
+  knownSettlers, knownPeople, onSaved, saveEdit, treatments, destinations, simulator,
   destinationSubcategories }) {
   const t = useToast()
   const first = txns[0] || {}
@@ -63,6 +63,9 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
   const [settleWith, setSettleWith] = useState(
     () => (txns.length === 1 ? txns[0]?.settle_with : '') || '')
   const [settleTouched, setSettleTouched] = useState(false)
+  const [person, setPerson] = useState(
+    () => (txns.length === 1 ? txns[0]?.person : '') || '')
+  const [personTouched, setPersonTouched] = useState(false)
   const [tagInput, setTagInput] = useState('')
   const [tagsToAdd, setTagsToAdd] = useState([])
   const [tagsToRemove, setTagsToRemove] = useState([])
@@ -82,13 +85,20 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
   const [rows, setRows] = useState(() => existingSplits
     ? existingSplits.map((s) => ({ amt: String(Math.abs(s.amount)),
         category: s.category || '', subcategory: s.subcategory || '',
-        note: s.note || '', settle_with: s.settle_with || '' }))
+        note: s.note || '', settle_with: s.settle_with || '',
+        person: s.person || '' }))
     : [{ amt: String(absTotal), category: first.category || '',
         subcategory: first.subcategory || '', note: '' }])
 
   const cats = Object.keys(taxonomy || {})
   const subs = taxonomy?.[cat] || []
   const thirdPartyCat = cats.includes('Terceiros') ? 'Terceiros' : 'Compartilhado'
+  // beneficiários já usados: autocomplete no mesmo estilo de "Com quem"
+  const people = useMemo(() => [...new Set([
+    ...(knownPeople || []),
+    ...(allTxns || []).flatMap((x) => [x.person,
+      ...(x.splits || []).map((part) => part.person)]),
+  ].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [knownPeople, allTxns])
   const settlers = useMemo(() => [...new Set([
     ...(knownSettlers || []),
     ...(allTxns || []).flatMap((x) => [x.settle_with,
@@ -204,6 +214,7 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
       ? splitOk
       : !!cat && (mode !== 'rule' || (!!ruleValue && amountOk)))
   const onlyDestination = mode === 'value' && destTouched && !settleTouched
+    && !personTouched
     && cat === (first.category || '') && sub === (first.subcategory || '')
     && note.trim() === (first.note || '').trim()
 
@@ -239,6 +250,9 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
       if ((mode === 'value' || mode === 'rule') && settleTouched) {
         payload.settle_with = settleWith.trim() || null
       }
+      if ((mode === 'value' || mode === 'rule') && personTouched) {
+        payload.person = person.trim() || null
+      }
       if (mode === 'split') {
         payload.category = null
         payload.splits = rows.map((r) => ({
@@ -246,6 +260,7 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
           category: r.category, subcategory: r.subcategory || null,
           note: r.note || '',
           ...(r.settle_with?.trim() ? { settle_with: r.settle_with.trim() } : {}),
+          ...(r.person?.trim() ? { person: r.person.trim() } : {}),
         }))
       }
       if (showDestination && destTouched) {
@@ -491,8 +506,12 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
                   <input value={r.settle_with || ''} list="settlers"
                     onChange={(e) => setRow(i, 'settle_with', e.target.value)}
                     placeholder="com quem (opcional)"
-                    className={inputCls('w-44')} />
+                    className={inputCls('w-32 sm:w-44')} />
                 </div>
+                <input value={r.person || ''} list="people"
+                  onChange={(e) => setRow(i, 'person', e.target.value)}
+                  placeholder="para quem foi (opcional)"
+                  className={inputCls('mt-2 w-full')} />
               </div>
             ))}
           </div>
@@ -546,8 +565,22 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
             className={inputCls('mt-1 w-full')} />
         </label>
       )}
+      {(mode === 'value' || mode === 'rule') && (
+        <label className="mt-3 block text-[12px] text-muted">
+          Para quem
+          <span className="text-faint"> (opcional, beneficiário: presente, ajuda, serviço
+            pago para outra pessoa)</span>
+          <input value={person} list="people"
+            onChange={(e) => { setPerson(e.target.value); setPersonTouched(true) }}
+            placeholder={txns.length > 1 ? 'deixe vazio para não alterar' : 'Ex.: Vovó'}
+            className={inputCls('mt-1 w-full')} />
+        </label>
+      )}
       <datalist id="settlers">
         {settlers.map((name) => <option key={name} value={name} />)}
+      </datalist>
+      <datalist id="people">
+        {people.map((name) => <option key={name} value={name} />)}
       </datalist>
 
       {/* construtor de regra */}

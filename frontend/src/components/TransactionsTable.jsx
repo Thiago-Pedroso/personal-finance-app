@@ -33,7 +33,7 @@ import {
   Search, Pencil, ChevronLeft, ChevronRight, X, ArrowUpDown,
   ArrowUp, ArrowDown, SlidersHorizontal, MessageSquare,
   PiggyBank, ArrowLeftRight, EyeOff, Wand2, Check, Tag as TagIcon, Link2, UserRound,
-  Landmark, CircleAlert,
+  Landmark, CircleAlert, Gift,
 } from 'lucide-react'
 import { STATUS_LABEL } from '../lib/destinations.js'
 
@@ -84,6 +84,22 @@ function SettleChips({ transaction }) {
   ))
 }
 
+// para quem foi (beneficiário), no lançamento ou numa parte do split
+export const personsOf = (t) => [...new Set([t.person,
+  ...(t.splits || []).map((part) => part.person)].filter(Boolean))]
+
+function PersonChips({ transaction }) {
+  return personsOf(transaction).map((name) => (
+    <span key={name} title={`Para ${name}`}
+      className="inline-flex max-w-[140px] cursor-help items-center gap-1 rounded-full
+        border border-violet/40 bg-violet/10 px-1.5 py-0.5 text-[12px] font-medium
+        text-violet">
+      <Gift className="size-3 shrink-0" />
+      <span className="truncate">{name}</span>
+    </span>
+  ))
+}
+
 function ReimbursedBadge({ transaction, onOpen }) {
   const info = transaction.reimbursed
   if (!info?.links?.length) return null
@@ -106,7 +122,7 @@ function ReimbursedBadge({ transaction, onOpen }) {
   )
 }
 
-const EMPTY = { q: '', cats: [], tags: [], ids: [], idsLabel: '', accs: [], flow: '',
+const EMPTY = { q: '', cats: [], tags: [], people: [], ids: [], idsLabel: '', accs: [], flow: '',
   rev: false,
   d0: '', d1: '', a0: '', a1: '', sub: '', rule: '', queued: false, excl: false,
   hiddenCats: [], hiddenSubs: [] }
@@ -145,6 +161,9 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
   const tagOpts = useMemo(
     () => [...new Set(txns.flatMap((transaction) => transaction.tags || []))].sort(),
     [txns])
+  const personOpts = useMemo(
+    () => [...new Set(txns.flatMap(personsOf))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [txns])
   // opções de subcategoria: restringe às categorias selecionadas e tira as ocultas
   const subOpts = useMemo(() => {
     const inScope = txns.filter((t) => {
@@ -176,6 +195,7 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
       if (f.hiddenSubs.length && tsubs.every((s) => f.hiddenSubs.includes(s))) return false
       if (f.tags.length && !f.tags.every(
         (tag) => (t.tags || []).includes(tag))) return false
+      if (f.people.length && !personsOf(t).some((p) => f.people.includes(p))) return false
       if (f.accs.length && !f.accs.includes(t.account_name)) return false
       if (f.flow === 'in' && t.signed_amount <= 0) return false
       if (f.flow === 'out' && t.signed_amount >= 0) return false
@@ -188,7 +208,8 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
       if (a1 != null && abs > a1) return false
       if (q) {
         const hay = (`${t.description} ${t.counterparty || ''} ${t.category || ''} `
-          + `${t.subcategory || ''} ${(t.tags || []).join(' ')}`).toLowerCase()
+          + `${t.subcategory || ''} ${(t.tags || []).join(' ')} `
+          + personsOf(t).join(' ')).toLowerCase()
         if (!hay.includes(q)) return false
       }
       return true
@@ -306,7 +327,7 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
         ) : null
         // palpite do mapa da Pluggy, ainda não confirmado por ninguém
         const pluggyGuess = t.category_source === 'pluggy-map' && !t.reviewed
-        const sw = <SettleChips transaction={t} />
+        const sw = <><SettleChips transaction={t} /><PersonChips transaction={t} /></>
         const ib = <InvestBadge transaction={t} onOpen={() => openEdit([t])} />
         const rb = <ReimbursedBadge transaction={t} onOpen={() => drill?.drill(
           `Abatimento: ${t.description}`,
@@ -421,7 +442,8 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
 
   const selected = table.getSelectedRowModel().rows.map((r) => r.original)
   const active = JSON.stringify(f) !== JSON.stringify(EMPTY)
-  const extraActive = [f.hiddenSubs.length > 0, f.tags.length > 0, !!f.d0, !!f.d1,
+  const extraActive = [f.hiddenSubs.length > 0, f.tags.length > 0, f.people.length > 0,
+    !!f.d0, !!f.d1,
     f.a0 !== '', f.a1 !== '', f.rev, f.queued, f.excl, !!f.sub].filter(Boolean).length
   const pageRows = table.getRowModel().rows
   const colCount = table.getVisibleLeafColumns().length
@@ -562,6 +584,10 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
             ]} />
           <MultiSelect label="Tags" options={tagOpts} value={f.tags}
             onChange={(value) => set('tags', value)} />
+          {personOpts.length > 0 && (
+            <MultiSelect label="Pessoas" options={personOpts} value={f.people}
+              onChange={(value) => set('people', value)} />
+          )}
           <div className="flex items-center gap-1 text-[13px] text-secondary">
             <input type="date" value={f.d0} onChange={(e) => set('d0', e.target.value)}
               aria-label="Data inicial" className={inputCls('w-[140px]')} />
