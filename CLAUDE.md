@@ -79,7 +79,7 @@ planilha. É opcional: quem só controla gastos nunca cria essas abas.
 uv run python -m finance.invest show          # resumo da carteira
 uv run python -m finance.invest plan 3000     # simula um aporte
 uv run python -m finance.invest report        # gera data/reports/invest.json
-uv run python -m finance.invest sync          # confere com as corretoras via Pluggy
+uv run python -m finance.invest sync          # confere com as corretoras (Pluggy) e a Binance
 uv run python -m finance.invest apply         # aplica data/.invest_decisions.json
 uv run python -m finance.seed --invest        # carteira de demonstração (sintética)
 ```
@@ -157,6 +157,9 @@ grave com `manual_transactions`.
   atualização de saldo como aporte.
 - **A Pluggy compara, não escreve**: diferença de quantidade pede a movimentação que falta;
   diferença de valor em ativo por saldo vira `BALANCE`.
+- **A Binance também** (`invest sync`, com `BINANCE_API_KEY`): quantidade de cripto
+  diferente vira `quantity_mismatch` com a compra/venda sugerida em `binance_trades` do
+  `.invest_pending.json`. Só grava depois de confirmada em `trades`. Ver `docs/BINANCE.md`.
 - **Proventos** saem da descrição do próprio ledger (`RENDIMENTOS DE CLIENTES VISC11 S/ 10`).
   Quando a quantidade não bate com a carteira, é sinal de compra não registrada.
 - **Nunca sugerir venda** para rebalancear: só entra dinheiro novo.

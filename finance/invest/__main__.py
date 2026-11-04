@@ -4,7 +4,7 @@
   uv run python -m finance.invest apply [arquivo]   # aplica .invest_decisions.json
   uv run python -m finance.invest show              # resumo da carteira no terminal
   uv run python -m finance.invest plan 3000         # simula um aporte
-  uv run python -m finance.invest sync              # confere com as corretoras (Pluggy)
+  uv run python -m finance.invest sync              # confere com as corretoras (Pluggy, Binance)
 """
 
 import argparse
@@ -13,12 +13,14 @@ import sys
 from datetime import date
 from pathlib import Path
 
+from .. import binance_client as BC
 from .. import ledger as L
 from .. import sheets
 from .. import taxonomy as TX
 from ..config import INVEST_DECISIONS_FILE, INVEST_PENDING_FILE
 from . import accounts as ACC
 from . import assets as A
+from . import binance_sync as BS
 from . import decisions as D
 from . import ledger_link as LL
 from . import plan as PL
@@ -112,6 +114,14 @@ def cmd_sync(args) -> int:
     pending.extend(PS.reconcile_accounts(PS.fetch_accounts(), positions, assets, today,
                                          records))
     pending.extend(destinations)
+    print("Lendo a Binance...")
+    binance = BC.fetch_positions(today)   # sem BINANCE_API_KEY: [] sem erro
+    if binance:
+        binance_pending = BS.reconcile(binance, positions, assets, today)
+        pending.extend(binance_pending)
+        print(f"  {len(binance)} moeda(s), {len(binance_pending)} divergência(s)")
+    else:
+        print("  sem credencial ou sem saldo: conferência da cripto pulada")
 
     buckets_report = {}
     for account in accounts.values():
@@ -140,7 +150,9 @@ def cmd_sync(args) -> int:
 
     INVEST_PENDING_FILE.write_text(json.dumps(
         {"generated_at": today, "pending": pending, "buckets": buckets_report,
-         "suggested_trades": updates, "income": income},
+         "suggested_trades": updates, "income": income,
+         # compra/venda sugerida pela Binance: só com confirmação (.invest_decisions)
+         "binance_trades": BS.suggested(pending)},
         ensure_ascii=False, indent=2) + "\n")
     print(f"\n{len(pending)} pendência(s):")
     for item in pending:
@@ -161,6 +173,10 @@ def cmd_sync(args) -> int:
             hints.append(f"{len(updates)} saldo(s) com --apply-balances")
         if income:
             hints.append(f"{len(income)} provento(s) com --apply-income")
+        crypto = BS.suggested(pending)
+        if crypto:
+            hints.append(f"{len(crypto)} movimentação(ões) de cripto em binance_trades "
+                         "(confirme em .invest_decisions.json)")
         if hints:
             print("Sugestões prontas: " + ", ".join(hints) + ".")
     return 0
