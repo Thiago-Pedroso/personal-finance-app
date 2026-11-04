@@ -43,4 +43,6 @@ export const getInvestPending = () => getJSON('/api/invest/pending')
 //             contribution?, contribution_mode?, allocation_sim? }
 export const postInvest = (payload) => postJSON('/api/invest/apply', payload)
 export const refreshInvest = () => postJSON('/api/invest/refresh', {})
+// Patrimônio: bens e dívidas informados à mão ({ assets: [], debts: [] })
+export const postWealthManual = (manual) => postJSON('/api/wealth/manual', manual)
 export const syncInvest = (opts = {}) => postJSON('/api/invest/sync', opts)

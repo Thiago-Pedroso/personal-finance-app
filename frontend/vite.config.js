@@ -18,6 +18,7 @@ const QUEUE = path.join(DATA, '.claude_queue.jsonl')
 const BUDGET_INPUT = path.join(DATA, '.budget_input.json')
 const INVEST_DECISIONS = path.join(DATA, '.invest_decisions.json')
 const INVEST_PENDING = path.join(DATA, '.invest_pending.json')
+const WEALTH_INPUT = path.join(DATA, '.wealth_input.json')
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -63,6 +64,15 @@ async function applyInvest(payload) {
   fs.writeFileSync(INVEST_DECISIONS, JSON.stringify(payload, null, 2) + '\n')
   const r = await run('uv', ['run', 'python', '-m', 'finance.invest', 'apply'])
   return { ok: r.ok, step: r.ok ? 'done' : 'invest',
+    log: r.stdout.trim(), stderr: r.stderr.trim() }
+}
+
+// Patrimônio: bens e dívidas informados à mão (Config[wealth_manual]). O Python valida,
+// grava e atualiza só esse pedaço do invest.json.
+async function applyWealth(payload) {
+  fs.writeFileSync(WEALTH_INPUT, JSON.stringify(payload, null, 2) + '\n')
+  const r = await run('uv', ['run', 'python', '-m', 'finance.wealth', 'set', WEALTH_INPUT])
+  return { ok: r.ok, step: r.ok ? 'done' : 'wealth',
     log: r.stdout.trim(), stderr: r.stderr.trim() }
 }
 
@@ -313,6 +323,19 @@ function financeServer() {
           } catch (e) {
             return json(res, 500, { ok: false, error: String(e) })
           }
+        }
+
+        // ---- patrimônio: bens e dívidas manuais (serializado com as outras escritas)
+        if (url === '/api/wealth/manual' && req.method === 'POST') {
+          let payload
+          try { payload = await readBody(req) }
+          catch { return json(res, 400, { ok: false, error: 'JSON inválido' }) }
+          if (!payload || typeof payload !== 'object' || !Array.isArray(payload.assets)
+              || !Array.isArray(payload.debts))
+            return json(res, 400, { ok: false, error: 'esperado {assets: [], debts: []}' })
+          const result = await serialize(() => applyWealth(
+            { assets: payload.assets, debts: payload.debts }))
+          return json(res, result.ok ? 200 : 400, result)
         }
 
         // ---- investimentos

@@ -7,6 +7,7 @@ import { DrillProvider } from './lib/useDrill.jsx'
 import { PrivacyProvider, usePrivacy } from './lib/usePrivacy.jsx'
 import { Spinner, Button } from './components/ui/primitives.jsx'
 import { Overview } from './components/Overview.jsx'
+import { Patrimonio } from './components/Patrimonio.jsx'
 import { Categories } from './components/Categories.jsx'
 import { Tags } from './components/Tags.jsx'
 import { Movements } from './components/Movements.jsx'
@@ -34,6 +35,7 @@ const SPACE_TABS = [
 
 const TABS = [
   ['overview', 'Visão Geral'],
+  ['wealth', 'Patrimônio'],
   ['txns', 'Transações'],
   ['cats', 'Categorias'],
   ['tags', 'Tags'],
@@ -276,6 +278,9 @@ function Shell() {
         )}
         {space.space === 'financas' && tab === 'rules' && (
           <Rules dash={dash} mdata={mdata} period={month} />
+        )}
+        {space.space === 'financas' && tab === 'wealth' && (
+          <Patrimonio dash={dash} onError={d.setError} />
         )}
         {space.space === 'financas' && tab === 'review' && (
           <Review dash={dash} queue={d.queue} queuedIds={queuedIds}

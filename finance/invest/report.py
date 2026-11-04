@@ -14,6 +14,7 @@ from datetime import date, datetime, timezone
 from .. import ledger as L
 from .. import sheets
 from .. import taxonomy as TX
+from .. import wealth as W
 from ..config import INVEST_PENDING_FILE, REPORTS_DIR, ensure_dirs
 from . import accounts as ACC
 from . import assets as A
@@ -30,6 +31,17 @@ CONTRIBUTION_MODE_KEY = "invest_contribution_mode"
 # Simulador livre de alocação (aba própria): rascunho puro, nunca vira trade nem
 # InvestPolicy. {"base": float | None, "items": [{"label", "amount"}]}.
 ALLOCATION_SIM_KEY = "invest_allocation_sim"
+# Fatura de cartão em aberto, gravada pelo `invest sync`. Não é posição: a tela usa
+# para mostrar o patrimônio com e sem a dívida.
+DEBTS_KEY = "invest_debts"
+
+
+def debts_block(raw) -> dict:
+    """Normaliza o blob de dívidas; sem sync ainda, devolve vazio."""
+    raw = raw if isinstance(raw, dict) else {}
+    items = [item for item in raw.get("items") or [] if isinstance(item, dict)]
+    total = sum(float(item.get("balance") or 0) for item in items)
+    return {"as_of": raw.get("as_of"), "items": items, "total": round(total, 2)}
 
 
 def problems(tree: dict, assets: dict, positions: dict, quote_map: dict) -> list[str]:
@@ -149,6 +161,29 @@ def history_from(snapshots: list[dict]) -> list[dict]:
     return [by_day[day] for day in sorted(by_day)]
 
 
+def history_by_role(snapshots: list[dict], tree: dict) -> list[dict]:
+    """Série diária por papel (investido, reservado, a aportar, livre) para a tela
+    Patrimônio. Nó que não está mais na política conta como estratégia, igual ao
+    `PF.wealth`."""
+    keys = {"strategy": "invested", "reserved": "reserved", "to_invest": "to_invest",
+            "free": "free"}
+    by_day: dict = {}
+    for row in snapshots:
+        day = str(row.get("date") or "")
+        if not day:
+            continue
+        point = by_day.setdefault(day, {"date": day, **{k: 0.0 for k in keys.values()}})
+        point[keys[P.role_of(tree, str(row.get("node") or ""))]] += float(
+            row.get("value") or 0.0)
+    out = []
+    for day in sorted(by_day):
+        point = {k: (round(v, 2) if isinstance(v, float) else v)
+                 for k, v in by_day[day].items()}
+        point["total"] = round(sum(point[k] for k in keys.values()), 2)
+        out.append(point)
+    return out
+
+
 def generate(write_snapshot: bool = True) -> dict:
     ensure_dirs()
     tree = P.load()
@@ -186,6 +221,9 @@ def generate(write_snapshot: bool = True) -> dict:
                    records=list(L.load_ledger().values()),
                    treatments=TX.load_treatments(),
                    subcategories=LL.load_destination_subcategories())
+    report["debts"] = debts_block(sheets.read_config(DEBTS_KEY, None))
+    report["wealth_history"] = history_by_role(snapshots, tree)
+    report["manual_wealth"] = W.block(sheets.read_config(W.MANUAL_KEY, None))
     path = REPORTS_DIR / "invest.json"
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     total = report["totals"]

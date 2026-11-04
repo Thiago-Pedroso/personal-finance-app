@@ -22,23 +22,46 @@ function compositionColor(slice) {
   return COMPOSITION_COLORS[hash % COMPOSITION_COLORS.length]
 }
 
-function Wealth({ money, toInvest }) {
+function Wealth({ money, toInvest, debts }) {
+  // fatura em aberto é dívida, não posição. "Quanto acumulei?" e "quanto sobra se eu
+  // quitar tudo hoje?" são perguntas legítimas e respondem diferente: daí o botão
+  const [withDebt, setWithDebt] = useState(true)
+  const debt = debts?.total || 0
+  const hasDebt = debt > 0.005
+  const total = hasDebt && withDebt ? money.total - debt : money.total
   const lines = [
     ['Investido', money.invested, 'na estratégia'],
     ['Reservado', money.reserved, 'guardado com destino'],
     ['A aportar', money.to_invest, 'guardado para investir, ainda em conta'],
     ['Livre', money.free, 'sem compromisso'],
   ].filter(([, value]) => Math.abs(value) > 0.005)
+  if (hasDebt && withDebt) lines.push(['Dívida', -debt, 'fatura de cartão em aberto'])
   return (
     <Card className="p-5 sm:p-6">
-      <p className="text-[15px] font-bold text-secondary">Patrimônio total</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[15px] font-bold text-secondary">
+          {hasDebt && withDebt ? 'Patrimônio líquido' : 'Patrimônio total'}</p>
+        {hasDebt && (
+          <div className="flex rounded-full border border-border/70 p-0.5 text-[12.5px]">
+            {[[true, 'Com dívida'], [false, 'Sem dívida']].map(([value, label]) => (
+              <button key={label} type="button" onClick={() => setWithDebt(value)}
+                title={value ? `Abate ${brl(debt)} de fatura de cartão`
+                  : 'Mostra o que você acumulou, sem abater a fatura'}
+                className={`rounded-full px-3 py-1 transition ${withDebt === value
+                  ? 'bg-white/[0.08] font-semibold text-strong'
+                  : 'text-subtle hover:text-secondary'}`}>{label}</button>
+            ))}
+          </div>
+        )}
+      </div>
       <p className="tnum mt-2 text-[30px] font-bold tracking-[-0.03em] text-strong
-        sm:text-[34px]"><Money value={money.total} /></p>
+        sm:text-[34px]"><Money value={total} /></p>
       <div className="mt-6 grid gap-4 border-t border-border/70 pt-5 sm:grid-cols-2">
         {lines.map(([label, value, hint]) => (
           <div key={label} title={hint}>
             <p className="text-[13px] text-subtle">{label}</p>
-            <p className="tnum mt-1 text-[17px] font-semibold text-strong">
+            <p className={`tnum mt-1 text-[17px] font-semibold ${label === 'Dívida'
+              ? 'text-red' : 'text-strong'}`}>
               <Money value={value} /></p>
             {label === 'A aportar' && toInvest.length > 0 && (
               <ul className="mt-1 flex flex-col gap-0.5 text-[12px] text-faint">
@@ -46,6 +69,16 @@ function Wealth({ money, toInvest }) {
                   <li key={position.ticker} className="flex justify-between gap-3">
                     <span className="truncate">{position.name}</span>
                     <span className="tnum"><Money value={position.value} /></span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {label === 'Dívida' && (
+              <ul className="mt-1 flex flex-col gap-0.5 text-[12px] text-faint">
+                {debts.items.map((item) => (
+                  <li key={item.account_id || item.name} className="flex justify-between gap-3">
+                    <span className="truncate">{item.name}</span>
+                    <span className="tnum"><Money value={item.balance} /></span>
                   </li>
                 ))}
               </ul>
@@ -236,7 +269,7 @@ export function Visao({ data, goTab, onRefresh, busy, onOpenLedger }) {
       )}
 
       <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr_.85fr]">
-        <Wealth money={money} toInvest={toInvest} />
+        <Wealth money={money} toInvest={toInvest} debts={data.debts} />
         <div className="grid gap-5">
           <Tile label="Rentabilidade" sub={`custo ${brl(totals.cost)}`}>
             <Profit value={totals.profit} pctValue={totals.profit_pct} />

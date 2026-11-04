@@ -3,7 +3,7 @@ import {
   CartesianGrid, Tooltip, Cell, PieChart, Pie, BarChart, AreaChart, Area,
 } from 'recharts'
 import { Receipt } from 'lucide-react'
-import { brl, brl0, monthShortY } from '../lib/format.js'
+import { brl, brl0, fullDate, monthShortY } from '../lib/format.js'
 import { catColor, catMeta } from '../lib/categories.jsx'
 import { readableAccent } from '../lib/colors.js'
 import { usePrivacy } from '../lib/usePrivacy.jsx'
@@ -37,7 +37,7 @@ export function Sparkline({ data, color = '#79838f', width = 76, height = 26 }) 
   )
 }
 
-function TipBox({ rows, label }) {
+export function TipBox({ rows, label }) {
   return (
     <div className="rounded-xl border border-border bg-surface2/95 px-3.5 py-2.5
       text-[12.5px] shadow-xl backdrop-blur">
@@ -326,6 +326,42 @@ export function TrendBars({ data, color = '#f4685f' }) {
             </div>) : null} />
         <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={26} fill={color} />
       </BarChart>
+    </ResponsiveContainer>
+  )
+}
+
+// Patrimônio por papel ao longo do tempo (InvestSnapshots), empilhado: investido,
+// reservado, a aportar e livre. `debt` (opcional) desenha a linha do líquido.
+export const WEALTH_SERIES = [
+  ['invested', 'Investido', '#5b9dff'],
+  ['reserved', 'Reservado', '#b08cff'],
+  ['to_invest', 'A aportar', '#f2954e'],
+  ['free', 'Livre', '#41cf8f'],
+]
+export function WealthStackChart({ points, debt = 0 }) {
+  const { valuesHidden } = usePrivacy()
+  const data = (points || []).map((p) => ({ ...p, lbl: fullDate(p.date).slice(0, 5),
+    liquid: debt ? p.total - debt : undefined }))
+  return (
+    <ResponsiveContainer width="100%" height={240}>
+      <ComposedChart data={data} margin={{ top: 8, right: 8, left: 4, bottom: 0 }}>
+        <CartesianGrid stroke="#2c313a" strokeDasharray="3 5" vertical={false} />
+        <XAxis dataKey="lbl" tick={{ fill: '#8a97a6', fontSize: 10 }}
+          axisLine={{ stroke: '#28323f' }} tickLine={false}
+          interval="preserveStartEnd" minTickGap={14} />
+        <YAxis tickFormatter={valuesHidden ? () => '' : brl0} width={64}
+          tick={{ fill: '#5d6b7a', fontSize: 10 }} axisLine={false} tickLine={false} />
+        <Tooltip content={({ active, payload, label }) => active && payload?.length ? (
+          <TipBox label={label} rows={payload.filter((r) => r.value != null)
+            .map((r) => ({ k: r.name, v: r.value, c: r.color || r.stroke }))} />
+        ) : null} />
+        {WEALTH_SERIES.map(([key, name, color]) => (
+          <Area key={key} type="monotone" dataKey={key} name={name} stackId="w"
+            stroke={color} fill={color} fillOpacity={0.18} strokeWidth={1.5} />
+        ))}
+        {debt > 0 && <Line type="monotone" dataKey="liquid" name="Líquido (dívida atual)"
+          stroke="#eef1f6" strokeDasharray="4 4" dot={false} strokeWidth={1.5} />}
+      </ComposedChart>
     </ResponsiveContainer>
   )
 }

@@ -76,8 +76,8 @@ def normalize_account(raw, item_id: str) -> dict:
     }
 
 
-def fetch_accounts(item_ids=None) -> list[dict]:
-    """Saldo das contas. Cartão fica de fora: fatura é dívida, não saldo."""
+def fetch_all_accounts(item_ids=None) -> list[dict]:
+    """Todas as contas, cartão incluído. Uma request por item."""
     client = pc.build_client(pc.get_api_key())
     out = []
     for item_id in (item_ids or pc.item_ids()):
@@ -86,9 +86,29 @@ def fetch_accounts(item_ids=None) -> list[dict]:
         except Exception as error:
             print(f"  ! item {str(item_id)[:8]}: {str(error)[:120]}")
             continue
-        out.extend(normalize_account(raw, item_id) for raw in accounts
-                   if getattr(raw, "type", None) != "CREDIT")
+        out.extend(normalize_account(raw, item_id) for raw in accounts)
     return out
+
+
+def fetch_accounts(item_ids=None) -> list[dict]:
+    """Saldo das contas. Cartão fica de fora: fatura é dívida, não saldo."""
+    return [account for account in fetch_all_accounts(item_ids)
+            if account["type"] != "CREDIT"]
+
+
+def debts_from(accounts_data: list[dict], today: str) -> dict:
+    """Fatura de cartão em aberto, que é dívida e não entra na carteira. Fica separada
+    para a tela poder responder as duas perguntas: quanto acumulei e quanto sobra se
+    eu quitar tudo hoje. A Pluggy informa o total usado do limite (parcelado incluso)."""
+    items = [{"name": account["name"], "item_id": account["item_id"],
+              "account_id": account["account_id"],
+              "balance": round(account["balance"], 2),
+              "currency": account["currency"]}
+             for account in accounts_data
+             if account["type"] == "CREDIT" and account["balance"] > 0.005
+             and (account["currency"] or "BRL").upper() == "BRL"]
+    return {"as_of": today, "items": items,
+            "total": round(sum(item["balance"] for item in items), 2)}
 
 
 def money(value: float, currency: str = "BRL") -> str:
