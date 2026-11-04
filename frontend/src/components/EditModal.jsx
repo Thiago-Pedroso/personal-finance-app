@@ -7,9 +7,10 @@ import { signedBrl, brl, dayMonth } from '../lib/format.js'
 import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 import { DestinationEditor } from './DestinationEditor.jsx'
 import { neededDestination, destinationBalance } from '../lib/destinations.js'
+import { buildPairIndex, fluxo } from '../lib/pairs.js'
 import {
   Pencil, Tags, Sparkles, MessageSquare, SplitSquareHorizontal, Plus, Trash2,
-  Users, EyeOff, Eye, X, StickyNote, Link2,
+  Users, EyeOff, Eye, X, StickyNote, Link2, ArrowRightLeft,
 } from 'lucide-react'
 
 const MODES = [
@@ -73,6 +74,11 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
   const [destRows, setDestRows] = useState(() => existingLinks.map((link) => ({
     ticker: link.ticker, amount: String(link.amount) })))
   const [destTouched, setDestTouched] = useState(false)
+
+  // de onde saiu → para onde foi (só faz sentido com 1 lançamento)
+  const par = useMemo(() => (txns.length === 1
+    ? buildPairIndex(allTxns).get(first.id) || null : null), [txns, first, allTxns])
+  const fl = fluxo(first, par)
 
   const single = txns.length === 1
   const allExcluded = txns.length > 0 && txns.every((x) => x.excluded)
@@ -329,6 +335,27 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
           </Button>
         </>
       }>
+      {/* de onde saiu → para onde foi */}
+      {single && (
+        <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1
+          rounded-xl border border-border bg-surface2/60 px-3 py-2 text-[12.5px]">
+          <ArrowRightLeft className="size-3.5 shrink-0 text-faint" />
+          {fl ? (<>
+            <b className="text-text">{fl.de}</b>
+            <span className="text-faint">→</span>
+            <b className="text-text">{fl.para}</b>
+            {fl.outraData && (
+              <span className="text-faint">· outro lado em {dayMonth(fl.outraData)}</span>
+            )}
+          </>) : (<>
+            <span className="text-faint">{sign < 0 ? 'saiu de' : 'entrou em'}</span>
+            <b className="text-text">{first.account_name}</b>
+            <span className="text-faint">· sem par no período (a outra ponta pode
+              estar numa conta não conectada)</span>
+          </>)}
+        </div>
+      )}
+
       {/* modo */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {MODES.filter((m) => !m.single || single).map((m) => {

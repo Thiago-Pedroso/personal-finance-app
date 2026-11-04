@@ -45,7 +45,7 @@ def _is_rendimento(sub: str | None) -> bool:
 
 # Campos de cada transação embutidos nos arquivos mensais (consumidos pelo front).
 _TXN_FIELDS = ("id", "date", "time", "description", "counterparty", "signed_amount",
-               "type", "account_name", "category", "subcategory",
+               "type", "account_name", "account_id", "category", "subcategory",
                "category_source", "reviewed", "needs_review", "note",
                "amount_override", "excluded", "tags", "rule_id", "settle_with")
 

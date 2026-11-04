@@ -10,6 +10,7 @@ import {
   effectiveCategory, CategoryTag, SubcategoryTag,
 } from '../lib/categories.jsx'
 import { signedBrl, brl, fullDate, longDate, shortAccount } from '../lib/format.js'
+import { buildPairIndex, fluxo } from '../lib/pairs.js'
 import { SensitiveAmount } from './ui/SensitiveValue.jsx'
 import { useDrill } from '../lib/useDrill.jsx'
 
@@ -142,6 +143,8 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
     () => [...new Set(txns.flatMap(effLabels))].sort(), [txns])
   const accOpts = useMemo(
     () => [...new Set(txns.map((t) => t.account_name))].sort(), [txns])
+  // uma passada só: o índice é reusado por todas as linhas da tabela
+  const pares = useMemo(() => buildPairIndex(txns), [txns])
   const tagOpts = useMemo(
     () => [...new Set(txns.flatMap((transaction) => transaction.tags || []))].sort(),
     [txns])
@@ -367,8 +370,19 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
       },
     },
     { accessorKey: 'account_name', header: 'Conta', enableSorting: false,
-      cell: (c) => <span className="whitespace-nowrap text-[13.5px] text-secondary"
-        title={c.getValue()}>{shortAccount(c.getValue())}</span> },
+      // transferência entre contas próprias: mostra o caminho, não só onde caiu.
+      // As duas pontas exibem a MESMA frase, então dá pra ver que é um dinheiro só.
+      cell: (c) => {
+        const fl = fluxo(c.row.original, pares.get(c.row.original.id))
+        if (!fl) return <span className="whitespace-nowrap text-[13.5px] text-secondary"
+          title={c.getValue()}>{shortAccount(c.getValue())}</span>
+        return (
+          <span className="whitespace-nowrap text-[13.5px] text-secondary"
+            title={`transferência entre contas: ${fl.de} → ${fl.para}`}>
+            {shortAccount(fl.de)} <span className="text-faint">→</span> {shortAccount(fl.para)}
+          </span>
+        )
+      } },
     {
       accessorKey: 'signed_amount', header: 'Valor', meta: { align: 'right' },
       cell: (c) => (
@@ -403,7 +417,7 @@ export function TransactionsTable({ txns, openEdit, openReimburse, saveEdit, tit
         )
       },
     },
-  ], [openEdit, saveEdit, queuedIds, treatments, drill])  // eslint-disable-line react-hooks/exhaustive-deps
+  ], [openEdit, saveEdit, queuedIds, treatments, drill, pares])  // eslint-disable-line react-hooks/exhaustive-deps
 
   // agrupa por dia quando ordenado por data (padrão) — some a coluna Data
   const grouped = (sorting[0]?.id || 'date') === 'date'
