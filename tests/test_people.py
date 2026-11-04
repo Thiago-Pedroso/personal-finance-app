@@ -29,20 +29,20 @@ def test_move_tags_to_person():
 
 def test_summary_por_pessoa_com_split_presente_e_pendencia():
     recs = [
-        rec("p1", -100, person="Julia"),                                  # presente
-        rec("p2", -50, person="Julia", cat="Saúde", sub="Veterinário", d="2026-06-01"),
-        rec("p3", 30, person="Julia", cat="Renda", sub="Outros", d="2026-06-02"),
+        rec("p1", -100, person="Marina"),                                  # presente
+        rec("p2", -50, person="Marina", cat="Saúde", sub="Veterinário", d="2026-06-01"),
+        rec("p3", 30, person="Marina", cat="Renda", sub="Outros", d="2026-06-02"),
         rec("s1", -80, splits=[
             {"amount": -60, "category": "Alimentação", "subcategory": "Restaurante"},
             {"amount": -20, "category": "Alimentação", "subcategory": "Restaurante",
              "person": "Artur"}]),
-        rec("x", -999, person="Julia", excluded=True),
+        rec("x", -999, person="Marina", excluded=True),
     ]
-    open_groups = [{"name": "Julia", "receivable": 40.0, "payable": 0.0,
+    open_groups = [{"name": "Marina", "receivable": 40.0, "payable": 0.0,
                     "items": [{"id": "p2", "open": 40.0}]}]
     out = P.summary(recs, open_groups, {"Renda": "fluxo"})
-    assert out["people"] == ["Julia", "Artur"]
-    j = out["by_person"]["Julia"]
+    assert out["people"] == ["Marina", "Artur"]
+    j = out["by_person"]["Marina"]
     assert (j["sent"], j["received"], j["net"], j["count"]) == (150.0, 30.0, -120.0, 3)
     assert j["gifts"] == 100.0
     assert j["by_category"][0] == {"category": "Compras", "sent": 100.0}

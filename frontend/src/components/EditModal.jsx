@@ -561,7 +561,7 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
           <span className="text-faint"> (opcional, quem vai acertar esse valor com você)</span>
           <input value={settleWith} list="settlers"
             onChange={(e) => { setSettleWith(e.target.value); setSettleTouched(true) }}
-            placeholder={txns.length > 1 ? 'deixe vazio para não alterar' : 'Ex.: FUNAPE, Julia'}
+            placeholder={txns.length > 1 ? 'deixe vazio para não alterar' : 'Ex.: FUNAPE, Marina'}
             className={inputCls('mt-1 w-full')} />
         </label>
       )}
