@@ -11,6 +11,7 @@ import { Categories } from './components/Categories.jsx'
 import { Tags } from './components/Tags.jsx'
 import { Movements } from './components/Movements.jsx'
 import { Planejamento } from './components/Planejamento.jsx'
+import { Parcelamentos } from './components/Parcelamentos.jsx'
 import { Tools } from './components/Tools.jsx'
 import { Poupanca } from './components/Poupanca.jsx'
 import { Review } from './components/Review.jsx'
@@ -38,6 +39,7 @@ const TABS = [
   ['cats', 'Categorias'],
   ['tags', 'Tags'],
   ['plan', 'Planejamento'],
+  ['installments', 'Parcelas'],
   ['tools', 'Ferramentas'],
   ['poup', 'Poupança'],
   ['movs', 'Movimentações'],
@@ -267,6 +269,9 @@ function Shell() {
           <Planejamento dash={dash} mdata={mdata} month={month}
             onSaved={d.refresh} />
         ))}
+        {space.space === 'financas' && tab === 'installments' && (
+          <Parcelamentos data={dash.installments} />
+        )}
         {space.space === 'financas' && tab === 'tools' && <Tools dash={dash} />}
         {space.space === 'financas' && tab === 'poup' && (
           <Poupanca dash={dash} mdata={mdata} month={month} />
