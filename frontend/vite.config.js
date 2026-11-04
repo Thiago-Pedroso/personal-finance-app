@@ -95,6 +95,7 @@ async function applyRowEdit(p) {
       amount: Number(s.amount), category: s.category,
       subcategory: s.subcategory || null, note: s.note || '',
       ...(s.settle_with ? { settle_with: s.settle_with } : {}),
+      ...(s.person ? { person: s.person } : {}),
     }))
     if (p.note != null) fields.note = String(p.note)
   } else {
@@ -106,6 +107,8 @@ async function applyRowEdit(p) {
   }
   if (p.settle_with !== undefined && p.mode !== 'tags')
     fields.settle_with = p.settle_with || null
+  if (p.person !== undefined && p.mode !== 'tags')
+    fields.person = p.person || null
   if (p.excluded !== undefined) fields.excluded = !!p.excluded
   if (!Object.keys(fields).length)
     return { ok: false, step: 'edit', stderr: 'nada para gravar' }
@@ -171,6 +174,7 @@ async function applyEdit(p) {
         subcategory: s.subcategory || null,
         note: s.note || '',
         ...(s.settle_with ? { settle_with: s.settle_with } : {}),
+        ...(s.person ? { person: s.person } : {}),
       })),
     })
   } else if (p.category) {
@@ -179,6 +183,7 @@ async function applyEdit(p) {
       subcategory: p.subcategory || null, source: 'manual',
       note: noteVal,
       ...(p.settle_with !== undefined ? { settle_with: p.settle_with || null } : {}),
+      ...(p.person !== undefined ? { person: p.person || null } : {}),
     })
   }
   if (learn && p.rule && p.rule.value) {

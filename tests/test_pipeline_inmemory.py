@@ -62,6 +62,32 @@ def _seed():
     STORE["Config"] = {"budgets": copy.deepcopy(fx["budgets"]), "sync_state": {}}
 
 
+def test_categorize_apply_sets_person():
+    """`"person"` no .decisions.json grava o beneficiário, inclusive em parte de split."""
+    from finance import categorize
+
+    install_fake_sheets()
+    _seed()
+    ensure_dirs()
+    ids = [r["id"] for r in STORE["Ledger"][:2]]
+    first = next(r for r in STORE["Ledger"] if r["id"] == ids[1])
+    amount = first["amount_override"] if first.get("amount_override") is not None \
+        else first["signed_amount"]
+    DECISIONS_FILE.write_text(json.dumps({"assignments": [
+        {"ids": [ids[0]], "person": "  Maria   Clara "},
+        {"ids": [ids[1]], "splits": [
+            {"amount": amount, "category": "Alimentação", "subcategory": "Restaurante",
+             "note": "", "person": "Pedro"}]},
+    ]}))
+    try:
+        categorize.apply(learn=False)
+        led = {r["id"]: r for r in STORE["Ledger"]}
+        assert led[ids[0]]["person"] == "Maria Clara"
+        assert led[ids[1]]["splits"][0]["person"] == "Pedro"
+    finally:
+        DECISIONS_FILE.unlink(missing_ok=True)
+
+
 def test_end_to_end():
     from finance import ledger as L, rules as R, taxonomy as T, budgets as B
 

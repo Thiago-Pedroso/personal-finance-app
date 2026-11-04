@@ -28,7 +28,7 @@ from gspread.utils import ValueRenderOption, rowcol_to_a1
 
 from .config import DEFAULT_TIMEZONE, GOOGLE_SA_CREDENTIALS, ROOT, SHEET_ID
 
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 # Escopos: Sheets (ler/gravar) + Drive (abrir a planilha por ID / criar abas).
 _SCOPES = [
@@ -56,7 +56,7 @@ LEDGER_SCHEMA = [
     ("rule_id", "opt"), ("needs_review", "bool"), ("reviewed", "bool"),
     ("splits", "json"), ("note", "opt"), ("amount_override", "fnum"),
     ("excluded", "bool"), ("synced_at", "opt"), ("tags", "json"),
-    ("settle_with", "opt"),
+    ("settle_with", "opt"), ("person", "opt"),
 ]
 
 RULES_SCHEMA = [

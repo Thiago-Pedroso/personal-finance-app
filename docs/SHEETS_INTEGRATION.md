@@ -102,6 +102,7 @@ Espelha o que `finance/ledger.py::normalize()` produz. Colunas:
 | `synced_at` | opt | timestamp do sync |
 | `tags` | json | lista de etiquetas pessoais, por exemplo `["Viagem"]` |
 | `settle_with` | opt | com quem o valor vai ser acertado (pessoa ou instituição); marca pendência até ser abatido |
+| `person` | opt | para quem foi o gasto (beneficiário: presente, ajuda, serviço pago para outra pessoa); não é pendência. Também existe em cada parte de `splits` |
 
 ### Aba `Rules` — uma regra por linha
 
@@ -190,7 +191,7 @@ com aviso. Em categoria de `fluxo`, o valor abatido sai da conta no mês de cada
 | `free_balance_anchor` | base do Saldo total: `{date, value}`, dinheiro livre no fim do dia `date` menos a dívida de cartão; ausente = acumulado desde o primeiro mês |
 | `iof` | IOF somado pelo `sync` em cobranças de cartão que a Pluggy traz sem ele: `{rate, match}`, com `match` = trechos da descrição; ausente = desligado |
 | `min_transaction_date` | piso opcional (`YYYY-MM-DD`); o sync descarta lançamentos anteriores |
-| `schema_version` | versão do esquema (atualmente `9`) |
+| `schema_version` | versão do esquema (atualmente `11`) |
 | `invest_monthly_contribution` | aporte mensal usado como padrão no simulador |
 | `invest_contribution_mode` | modo do simulador de aporte: `spread` ou `focus` |
 | `invest_allocation_sim` | rascunho da aba Simulador: `{base, items: [{label, amount}]}` — nunca vira trade |

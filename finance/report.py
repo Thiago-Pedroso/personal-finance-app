@@ -19,6 +19,7 @@ from datetime import date, datetime, timezone
 from . import balance as BAL
 from . import budgets as B
 from . import ledger as L
+from . import people as PEOPLE
 from . import reimbursements as RB
 from . import rules as R
 from . import taxonomy as T
@@ -47,7 +48,8 @@ def _is_rendimento(sub: str | None) -> bool:
 _TXN_FIELDS = ("id", "date", "time", "description", "counterparty", "signed_amount",
                "type", "account_name", "category", "subcategory",
                "category_source", "reviewed", "needs_review", "note",
-               "amount_override", "excluded", "tags", "rule_id", "settle_with")
+               "amount_override", "excluded", "tags", "rule_id", "settle_with",
+               "person")
 
 def _is_pending(r: dict) -> bool:
     """Precisa de ação do usuário: sem categoria, anomalia, ou palpite da
@@ -688,6 +690,10 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
         "reimbursement_suggestions": RB.suggestions(recs, by_tx),
     }
     dash["pending"] = len(dash["review"])
+    # Pessoas: beneficiários (person) + pendências (settle_with) do mesmo nome
+    people = PEOPLE.summary(recs, dash["open_settlements"], _TREAT)
+    dash["people"] = people["people"]
+    dash["people_summary"] = people["by_person"]
     (REPORTS_DIR / "dashboard.json").write_text(
         json.dumps(dash, ensure_ascii=False, indent=2) + "\n")
     if rules is None:

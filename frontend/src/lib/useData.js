@@ -83,6 +83,7 @@ function patchOf(payload, tx) {
     }
     if (payload.note != null) p.note = payload.note
     if (payload.settle_with !== undefined) p.settle_with = payload.settle_with || null
+    if (payload.person !== undefined) p.person = payload.person || null
   }
   if (payload.excluded !== undefined) p.excluded = !!payload.excluded
   if (Array.isArray(payload.destinations)) p.invest = localInvest(tx, payload.destinations)
