@@ -11,7 +11,11 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# override=True: o .env do projeto vence uma variável exportada no shell. Sem isso,
+# um SHEET_ID esquecido no ambiente aponta o pipeline para outra planilha em
+# silêncio — foi assim que relatórios do banco de demonstração sobrescreveram os
+# reais duas vezes, sem nenhum aviso na saída.
+load_dotenv(override=True)
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
@@ -38,6 +42,11 @@ INVEST_PENDING_FILE = DATA / ".invest_pending.json"
 SHEET_ID = os.environ.get("SHEET_ID", "").strip()
 # Caminho do JSON da Service Account (gitignored). Default: ./credentials.json na raiz.
 GOOGLE_SA_CREDENTIALS = os.environ.get("GOOGLE_SA_CREDENTIALS", "credentials.json").strip()
+
+# Acima disso a conexão é considerada velha e o painel avisa. Os itens MeuPluggy
+# não aceitam atualização por API (HTTP 400), então saber a idade do dado é a
+# única defesa contra decidir em cima de extrato desatualizado.
+CONEXAO_VELHA_HORAS = 48
 
 # Janela máxima de histórico que a Pluggy disponibiliza no backfill.
 BACKFILL_DAYS = 365

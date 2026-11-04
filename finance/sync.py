@@ -13,7 +13,7 @@ from . import iof
 from . import ledger as L
 from . import pluggy_client as pc
 from . import sheets
-from .config import BACKFILL_DAYS, ensure_dirs
+from .config import BACKFILL_DAYS, CONEXAO_VELHA_HORAS, ensure_dirs
 from .transaction_dates import load_timezone
 
 
@@ -38,6 +38,33 @@ def _load_min_date() -> str | None:
             f"Config[min_transaction_date] inválido: {value!r}. Use o formato YYYY-MM-DD."
         )
     return value
+
+
+def _idade_horas(iso: str | None, agora: datetime) -> float | None:
+    if not iso:
+        return None
+    return (agora - datetime.fromisoformat(iso)).total_seconds() / 3600
+
+
+def _avisar_conexoes(conexoes: list, agora: datetime) -> None:
+    """Imprime a idade de cada conexão. O sync puxa o CACHE da Pluggy: se o item
+    não foi atualizado, o dado vem velho e nada na saída denunciaria isso."""
+    print("\nConexões:")
+    for c in conexoes:
+        idade = _idade_horas(c.get("last_updated_at"), agora)
+        contas = ", ".join(c.get("accounts") or []) or c.get("item_id", "")[:8]
+        if idade is None:
+            print(f"  {contas}: sem data de atualização (status {c.get('status')})")
+            continue
+        alerta = "  <-- VELHA" if idade > CONEXAO_VELHA_HORAS else ""
+        print(f"  {contas}: atualizada há {idade:.0f}h "
+              f"(status {c.get('status')}){alerta}")
+    velhas = [c for c in conexoes
+              if (_idade_horas(c.get("last_updated_at"), agora) or 0) > CONEXAO_VELHA_HORAS]
+    if velhas:
+        print(f"\n  {len(velhas)} conexão(ões) com mais de {CONEXAO_VELHA_HORAS}h. "
+              "Itens MeuPluggy não aceitam atualização por API — force pelo app "
+              "do Meu Pluggy e rode o sync de novo.")
 
 
 def main() -> None:
@@ -65,10 +92,16 @@ def main() -> None:
         print(f"Piso de data ativo: descartando lançamentos anteriores a {min_date}.")
 
     total_added = total_updated = total_discarded = 0
+    # Frescor de cada conexão (nome das contas identifica a conexão para o usuário).
+    conexoes: list = []
     with pc.build_client(api_key) as client:
         for item_id in items:
             print(f"=== Item {item_id} ===")
-            for acc in pc.list_accounts(client, item_id):
+            contas = pc.list_accounts(client, item_id)
+            saude = pc.item_health(client, item_id)
+            saude["accounts"] = [a.marketing_name or a.name for a in contas]
+            conexoes.append(saude)
+            for acc in contas:
                 acc_id = str(acc.id)
                 name = acc.marketing_name or acc.name
                 st = state.get(acc_id)
@@ -111,6 +144,7 @@ def main() -> None:
 
     L.save_ledger(ledger)
     _save_state(state)
+    _avisar_conexoes(conexoes, run_started)
     print(f"\nLedger: {len(ledger)} transações (+{total_added} novas, ~{total_updated} atualizadas).")
     if total_discarded:
         print(f"{total_discarded} descartadas por serem anteriores a {min_date}.")

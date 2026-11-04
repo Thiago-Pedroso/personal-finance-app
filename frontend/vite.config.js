@@ -371,5 +371,13 @@ function financeServer() {
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), financeServer()],
-  server: { port: 5273, open: true },
+  // Num servidor (VPS) não há navegador para abrir, e o acesso chega por outro hostname
+  // (ex.: Tailscale): FINANCE_NO_OPEN=1 e FINANCE_ALLOWED_HOSTS=".ts.net" ajustam isso.
+  server: {
+    port: 5273,
+    open: !process.env.FINANCE_NO_OPEN,
+    allowedHosts: process.env.FINANCE_ALLOWED_HOSTS
+      ? process.env.FINANCE_ALLOWED_HOSTS.split(',').map((h) => h.trim())
+      : undefined,
+  },
 })

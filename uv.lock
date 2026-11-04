@@ -188,7 +188,7 @@ dependencies = [
 requires-dist = [
     { name = "google-auth", specifier = ">=2.0" },
     { name = "gspread", specifier = ">=6.0" },
-    { name = "pluggy-sdk", specifier = ">=1.0.0.post53" },
+    { name = "pluggy-sdk", specifier = ">=1.0.0.post64" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pyyaml", specifier = ">=6.0" },
 ]
