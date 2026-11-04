@@ -313,7 +313,8 @@ export function TrendBars({ data, color = '#f4685f' }) {
       <BarChart data={data} margin={{ top: 6, right: 6, left: 4, bottom: 0 }}>
         <CartesianGrid stroke="#2c313a" strokeDasharray="3 5" vertical={false} />
         <XAxis dataKey="lbl" tick={{ fill: '#8a97a6', fontSize: 10 }}
-          axisLine={{ stroke: '#28323f' }} tickLine={false} interval={0} />
+          axisLine={{ stroke: '#28323f' }} tickLine={false}
+          interval="preserveStartEnd" minTickGap={6} />
         <YAxis tickFormatter={valuesHidden ? () => '' : brl0} width={58}
           tick={{ fill: '#5d6b7a', fontSize: 10 }} axisLine={false}
           tickLine={false} />

@@ -235,7 +235,7 @@ export function Visao({ data, goTab, onRefresh, busy, onOpenLedger }) {
           onOpenLedger={onOpenLedger} />
       )}
 
-      <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr_.85fr]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.15fr_.85fr_.85fr]">
         <Wealth money={money} toInvest={toInvest} />
         <div className="grid gap-5">
           <Tile label="Rentabilidade" sub={`custo ${brl(totals.cost)}`}>
@@ -255,7 +255,7 @@ export function Visao({ data, goTab, onRefresh, busy, onOpenLedger }) {
         </Tile>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1.45fr_1fr]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
         <Card>
           <InvestmentCardHeader title="Evolução do patrimônio"
             description="A linha azul mostra o valor de mercado. A tracejada mostra quanto foi investido." />
@@ -299,7 +299,7 @@ export function Visao({ data, goTab, onRefresh, busy, onOpenLedger }) {
         </Card>
       </div>
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,.7fr)]">
+      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,.7fr)]">
         <Card>
           <InvestmentCardHeader title="Alocação da carteira"
             description="A barra azul mostra a alocação atual. O marcador branco indica o objetivo." />

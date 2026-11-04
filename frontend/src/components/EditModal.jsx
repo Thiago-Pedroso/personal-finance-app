@@ -491,7 +491,7 @@ export function EditModal({ open, onClose, txns, taxonomy, allTxns, availableTag
                   <input value={r.settle_with || ''} list="settlers"
                     onChange={(e) => setRow(i, 'settle_with', e.target.value)}
                     placeholder="com quem (opcional)"
-                    className={inputCls('w-44')} />
+                    className={inputCls('w-32 sm:w-44')} />
                 </div>
               </div>
             ))}

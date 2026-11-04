@@ -290,7 +290,7 @@ export function Caixinhas({ data, onApply, busy, onOpenLedger }) {
                   )}
                 </div>
               )} />
-            <div className="grid gap-3 px-5 pb-5 sm:grid-cols-2 sm:px-6
+            <div className="grid grid-cols-1 gap-3 px-5 pb-5 sm:grid-cols-2 sm:px-6
               sm:pb-6 xl:grid-cols-3">
               {rows.map((row) => (
                 <button key={row.ticker} onClick={() => setViewing(row)}

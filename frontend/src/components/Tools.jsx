@@ -83,7 +83,7 @@ function Projetor({ inp }) {
     <Card className="overflow-hidden">
       <CardHead title="Projetor de Patrimônio"
         sub="seus números reais, editáveis — o resultado recalcula na hora" />
-      <div className="grid gap-6 px-5 pb-6 lg:grid-cols-[minmax(0,340px)_1fr]">
+      <div className="grid grid-cols-1 gap-6 px-5 pb-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
         {/* entradas */}
         <div className="flex flex-col gap-4">
           <Field label="Aporte inicial" hint="saldo das metas (Reserva)">
@@ -267,7 +267,7 @@ function AuditorCard({ recurring }) {
     <Card>
       <CardHead title="Auditor de recorrentes"
         sub="assinaturas e contas regulares detectadas — anualizadas pela cadência" />
-      <div className="grid gap-5 px-5 pb-5 lg:grid-cols-[minmax(0,240px)_1fr]">
+      <div className="grid grid-cols-1 gap-5 px-5 pb-5 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)]">
         <div className="rounded-2xl border border-border bg-surface2/30 p-4">
           <div className="text-[11px] font-semibold uppercase tracking-wider
             text-muted">Gasto recorrente</div>
@@ -333,7 +333,7 @@ export function Tools({ dash }) {
 
       <Projetor inp={inp} />
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ReservaCard inp={inp} />
         <SavingsRateCard months={dash?.months || []} />
       </div>

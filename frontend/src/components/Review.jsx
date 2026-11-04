@@ -164,7 +164,7 @@ export function Review({ dash, queue, queuedIds, onRemoveQueue,
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Stat label="Anomalias (valor atípico)" value={dash.needs_review}
           tone={dash.needs_review ? 'text-amber' : 'text-green'} />
         <Stat label="Sem categoria / palpite Pluggy" value={semCat}

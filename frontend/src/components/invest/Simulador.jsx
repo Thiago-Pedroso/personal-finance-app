@@ -100,7 +100,7 @@ export function Simulador({ data, onApply, busy }) {
         title="Simulador de alocação"
         description="Divida um valor livremente entre nomes que você escolhe — caixinha, ativo ou algo que ainda nem existe. Não mexe na política nem na carteira." />
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(300px,.8fr)]">
+      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(300px,.8fr)]">
         <Card>
           <InvestmentCardHeader title="Linhas"
             description="A ordem decide o Restante — o Livre no fim não muda com a ordem."

@@ -220,7 +220,7 @@ export function Aporte({ data, onApply, busy }) {
               ? 'Próximo aporte salvo'
               : 'Sem aporte definido'} />
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,.7fr)]">
+      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,.7fr)]">
         <Card>
           <InvestmentCardHeader title="Política de alocação"
             description="Cada card representa uma decisão da sua própria estratégia."
@@ -234,7 +234,7 @@ export function Aporte({ data, onApply, busy }) {
                   Salvar política</Button>
               </span>
             ) : null} />
-          <div className="grid gap-4 px-5 pb-5 lg:grid-cols-2 sm:px-6 sm:pb-6">
+          <div className="grid grid-cols-1 gap-4 px-5 pb-5 lg:grid-cols-2 sm:px-6 sm:pb-6">
             {groups.map((group) => (
               <PolicyGroup key={group.parent} group={group} values={policy}
                 onChange={changePolicyGroup} />

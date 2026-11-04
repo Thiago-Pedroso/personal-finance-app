@@ -75,7 +75,7 @@ export function Categories({ dash, mdata, month, selectedCat, setSelectedCat,
             </Button>
           </div>
         </div>
-        <div className="grid gap-5 px-5 pb-5 pt-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 px-5 pb-5 pt-4 lg:grid-cols-2">
           <div>
             <p className="mb-2 text-[12px] text-muted">
               {incomeDom ? 'Receita' : 'Gasto'} mês a mês (13 meses)</p>
@@ -99,10 +99,10 @@ export function Categories({ dash, mdata, month, selectedCat, setSelectedCat,
             <thead>
               <tr className="border-b border-border text-left text-[11px]
                 uppercase tracking-wide text-faint">
-                <th className="px-4 py-2.5">Categoria</th>
-                <th className="px-4 py-2.5 text-right">{monthLabel(month)}</th>
-                <th className="px-4 py-2.5 text-right">Anterior</th>
-                <th className="px-4 py-2.5 text-right">Variação</th>
+                <th className="px-2 py-2.5 sm:px-4">Categoria</th>
+                <th className="px-2 py-2.5 sm:px-4 text-right">{monthLabel(month)}</th>
+                <th className="hidden px-2 py-2.5 text-right sm:table-cell sm:px-4">Anterior</th>
+                <th className="px-2 py-2.5 sm:px-4 text-right">Variação</th>
               </tr>
             </thead>
             <tbody>
@@ -111,7 +111,7 @@ export function Categories({ dash, mdata, month, selectedCat, setSelectedCat,
                   className="cursor-pointer border-b border-border/60
                     hover:bg-white/[0.03]"
                   onClick={() => setSelectedCat(x.c)}>
-                  <td className="px-4 py-2">
+                  <td className="px-2 py-2 sm:px-4">
                     <span className="flex items-center gap-2">
                       {(() => { const M = catMeta(x.c); return (
                         <M.Icon className="size-3.5"
@@ -119,16 +119,16 @@ export function Categories({ dash, mdata, month, selectedCat, setSelectedCat,
                       {x.c}
                     </span>
                   </td>
-                  <td className="px-4 py-2 text-right tnum">
+                  <td className="px-2 py-2 sm:px-4 text-right tnum">
                     <button onClick={(e) => { e.stopPropagation()
                       drill?.drill(`${x.c} — ${monthLabel(month)}`,
                         { cats: [x.c] }) }}
                       className="hover:text-green">
                       <SensitiveAmount>{brl(x.a)}</SensitiveAmount>
                     </button></td>
-                  <td className="px-4 py-2 text-right tnum text-faint">
+                  <td className="hidden px-2 py-2 text-right tnum text-faint sm:table-cell sm:px-4">
                     <SensitiveAmount>{brl(x.b)}</SensitiveAmount></td>
-                  <td className={`px-4 py-2 text-right tnum ${
+                  <td className={`px-2 py-2 sm:px-4 text-right tnum ${
                     x.d > 0 ? 'text-red' : x.d < 0 ? 'text-green' : 'text-faint'}`}>
                     {x.d === 0 ? '—' : <>
                       <SensitiveAmount>{signedBrl(x.d)}</SensitiveAmount>{' '}
