@@ -67,9 +67,37 @@ def test_end_to_end():
 
     install_fake_sheets()
     _seed()
+    # Histórico parcelado mínimo em meses distintos: a aba deve recebê-lo
+    # integralmente no dashboard, não apenas no arquivo mensal selecionado.
+    installment_records = [
+        {
+            "id": "test-installment-1", "date": "2026-01-31",
+            "description": "LOJA TESTE PARCELA 1/3", "counterparty": "Loja Teste",
+            "merchant_name": "Loja Teste", "signed_amount": -100.0,
+            "amount_override": None, "excluded": False, "installment": "1/3",
+            "type": "DEBIT", "account_name": "Cartão de teste",
+            "account_id": "test-credit", "category": "Compras",
+            "subcategory": "Online", "category_source": "manual",
+            "reviewed": True, "needs_review": False, "note": None,
+            "splits": None,
+        },
+        {
+            "id": "test-installment-2", "date": "2026-02-28",
+            "description": "LOJA TESTE PARCELA 2/3", "counterparty": "Loja Teste",
+            "merchant_name": "Loja Teste", "signed_amount": -100.0,
+            "amount_override": None, "excluded": False, "installment": "2/3",
+            "type": "DEBIT", "account_name": "Cartão de teste",
+            "account_id": "test-credit", "category": "Compras",
+            "subcategory": "Online", "category_source": "manual",
+            "reviewed": True, "needs_review": False, "note": None,
+            "splits": None,
+        },
+    ]
+    STORE["Ledger"].extend(copy.deepcopy(installment_records))
+
     # leitura pelas abas via os módulos migrados
     led = L.load_ledger()
-    assert len(led) == 94, f"esperado 94 tx, veio {len(led)}"
+    assert len(led) == 96, f"esperado 96 tx, veio {len(led)}"
     assert R.load_rules()["rules"], "regras não carregaram"
     tax = T.load()
     assert "Alimentação" in tax and "Restaurante" in tax["Alimentação"]
@@ -117,9 +145,20 @@ def test_end_to_end():
     finally:
         sys.argv = argv
     dash = json.loads((REPORTS_DIR / "dashboard.json").read_text())
-    assert dash["total_transactions"] == 94
+    assert dash["total_transactions"] == 96
     assert dash["months"], "dashboard sem meses"
     assert dash["tags"] == ["Evento"]
+    # Parcelas: o histórico inteiro, agrupado por compra, vai no dashboard
+    inst = dash["installments"]
+    assert set(inst) >= {"plans", "loans", "schedule", "totals"}
+    assert len(inst["schedule"]) == 12
+    loja = next(p for p in inst["plans"] if p["description"] == "LOJA TESTE")
+    assert loja["paid_installments"] == 2 and loja["total_installments"] == 3
+    assert {t["id"] for t in loja["transactions"]} == {"test-installment-1",
+                                                       "test-installment-2"}
+    monthly = json.loads((REPORTS_DIR / "2026-01.json").read_text())
+    assert next(t for t in monthly["transactions"]
+                if t["id"] == "test-installment-1")["installment"] == "1/3"
     tagged_month = json.loads((REPORTS_DIR / f"{saved['date'][:7]}.json").read_text())
     tagged_transaction = next(transaction for transaction in tagged_month["transactions"]
                               if transaction["id"] == target)
