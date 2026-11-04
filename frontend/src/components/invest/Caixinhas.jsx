@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import {
-  ArrowDownLeft, ArrowUpRight, CheckCircle2, ExternalLink, PiggyBank, Plus, Scale,
-  TriangleAlert,
+  ArrowDownLeft, ArrowUpRight, CheckCircle2, Clock, ExternalLink, Link2, PiggyBank, Plus,
+  RefreshCw, Scale, TriangleAlert,
 } from 'lucide-react'
 
 import { brl, fullDate, money } from '../../lib/format.js'
 import { buildBucketReconciliations } from '../../lib/investBuckets.js'
 import { envelopeHistory, linkedCount } from '../../lib/investEnvelopes.js'
+import { balanceAgeDays, groupSuggestions, isStaleBalance, STALE_DAYS }
+  from '../../lib/investCofrinhos.js'
 import { Modal } from '../ui/Modal.jsx'
 import { Button, Card, Empty } from '../ui/primitives.jsx'
 import { InvestmentCardHeader, InvestmentPageHeader, Money } from './shared.jsx'
@@ -47,7 +49,12 @@ function UpdateModal({ bucket, onClose, onConfirm, busy }) {
   const rate = currency === 'BRL' ? 1 : (bucket.fx_rate || null)
   const current = currency === 'BRL' ? bucket.value : (bucket.native_value || 0)
   const [value, setValue] = useState(String(current.toFixed(2)))
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  // data local: toISOString() é UTC e, à noite no Brasil, já seria o dia seguinte
+  const [date, setDate] = useState(() => {
+    const now = new Date()
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      .toISOString().slice(0, 10)
+  })
   const parsed = Number(String(value).replace(',', '.')) || 0
   const difference = parsed - current
 
@@ -60,7 +67,7 @@ function UpdateModal({ bucket, onClose, onConfirm, busy }) {
       <div className="flex flex-col gap-3">
         <label className="flex items-center gap-3 text-[14px]">
           <span className="w-[70px] text-secondary">Data</span>
-          <input value={date} onChange={(e) => setDate(e.target.value)}
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
             className="rounded-lg border border-border bg-surface2 px-3 py-2" />
         </label>
         <label className="flex items-center gap-3 text-[14px]">
@@ -196,8 +203,8 @@ function EnvelopeModal({ row, data, onClose, onUpdate, onOpenLedger }) {
   )
 }
 
-function NewBucketModal({ accountId, node, onClose, onConfirm, busy }) {
-  const [name, setName] = useState('')
+function NewBucketModal({ accountId, node, initialName = '', onClose, onConfirm, busy }) {
+  const [name, setName] = useState(initialName)
   const [value, setValue] = useState('')
   const ticker = name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').slice(0, 24)
 
@@ -242,6 +249,10 @@ export function Caixinhas({ data, onApply, busy, onOpenLedger }) {
   const reconciliations = buildBucketReconciliations({
     accounts: data.accounts, positions: data.positions, reports: pending,
   })
+  const suggestions = groupSuggestions(data.link_suggestions || [])
+  const roles = roleOfNode(data)
+  const reservedNode = (data.policy || []).find((n) => roles[n.node] === 'reserved'
+    && n.is_leaf)?.node || null
 
   if (!groups.length) {
     return (
@@ -292,11 +303,15 @@ export function Caixinhas({ data, onApply, busy, onOpenLedger }) {
               )} />
             <div className="grid gap-3 px-5 pb-5 sm:grid-cols-2 sm:px-6
               sm:pb-6 xl:grid-cols-3">
-              {rows.map((row) => (
-                <button key={row.ticker} onClick={() => setViewing(row)}
-                  className="flex min-h-[112px] flex-col justify-between rounded-2xl
-                    border border-border bg-surface2/40 p-4 text-left
-                    transition hover:border-brand/40 hover:bg-surface2/70">
+              {rows.map((row) => {
+                const stale = isStaleBalance(row)
+                const age = balanceAgeDays(row)
+                return (
+                <div key={row.ticker} className={`flex min-h-[112px] flex-col rounded-2xl
+                  border bg-surface2/40 transition hover:bg-surface2/70 ${stale
+                    ? 'border-amber/50' : 'border-border hover:border-brand/40'}`}>
+                  <button onClick={() => setViewing(row)}
+                    className="flex flex-1 flex-col justify-between p-4 text-left">
                   <div>
                     <p className="text-[16px] font-bold text-strong">{row.name}</p>
                     <p className="mt-1 flex flex-wrap gap-x-2.5 text-[13px] text-subtle">
@@ -311,12 +326,91 @@ export function Caixinhas({ data, onApply, busy, onOpenLedger }) {
                       <span className="ml-2 text-[13px] font-semibold text-faint">
                         {money(row.native_value, row.currency)}</span>
                     )}</span>
-                </button>
-              ))}
+                  </button>
+                  {row.valuation === 'balance' && (
+                    <div className="flex flex-wrap items-center justify-between gap-2
+                      border-t border-border/70 px-4 py-2">
+                      {stale ? (
+                        <span className="flex items-center gap-1.5 text-[12.5px]
+                          font-semibold text-amber"
+                          title={`Saldo manual: atualize a cada ${STALE_DAYS} dias ou menos`}>
+                          <Clock className="size-3.5" />
+                          {age == null ? 'saldo nunca informado'
+                            : `desatualizado há ${age} dias`}</span>
+                      ) : (
+                        <span className="text-[12.5px] text-faint">
+                          saldo manual{age != null && ` · há ${age} ${age === 1
+                            ? 'dia' : 'dias'}`}</span>
+                      )}
+                      <Button variant="ghost" className="!px-2.5 !py-1.5 text-[12.5px]"
+                        onClick={() => setUpdating(row)}>
+                        <RefreshCw className="size-3.5" /> Atualizar saldo</Button>
+                    </div>
+                  )}
+                </div>
+                )
+              })}
             </div>
           </Card>
         )
       })}
+
+      {suggestions.length > 0 && (
+        <Card>
+          <InvestmentCardHeader title="Cofrinhos no extrato sem destino"
+            description={'Lançamentos "Dinheiro reservado/retirado …" do Fluxo que ainda '
+              + 'não estão ligados a uma caixinha. Ligar registra o aporte (BUY) ou o '
+              + 'resgate (SELL) na caixinha, com a origem no Fluxo.'} />
+          <div className="grid grid-cols-1 gap-3 px-5 pb-5 sm:px-6 sm:pb-6">
+            {suggestions.map((group) => (
+              <div key={group.key} className="min-w-0 rounded-2xl border border-border
+                bg-surface2/40 p-4">
+                <div className="flex flex-col justify-between gap-3 sm:flex-row
+                  sm:items-start">
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-bold text-strong">{group.name}</p>
+                    <p className="mt-1 text-[13px] text-subtle">
+                      {group.items.length} lançamento(s) · entrou{' '}
+                      <span className="tnum text-green">{brl(group.in)}</span> · saiu{' '}
+                      <span className="tnum text-red">{brl(group.out)}</span>
+                      {group.ticker
+                        ? <> · caixinha <b className="text-text">{group.ticker}</b></>
+                        : group.net <= 0.005
+                          ? ' · tudo que entrou já saiu (cofrinho zerado?)'
+                          : ' · ainda não existe na carteira'}
+                    </p>
+                  </div>
+                  {group.ticker ? (
+                    <Button variant="primary" disabled={busy}
+                      onClick={() => onApply({ links: group.links })}>
+                      <Link2 className="size-4" /> Ligar {group.items.length}</Button>
+                  ) : (
+                    <Button variant="ghost" disabled={busy}
+                      onClick={() => setCreating({ accountId: group.account,
+                        node: reservedNode, name: group.name })}>
+                      <Plus className="size-4" /> Criar caixinha</Button>
+                  )}
+                </div>
+                <ul className="mt-3 flex flex-col gap-1 text-[12.5px]">
+                  {group.items.map((item) => (
+                    <li key={item.ledger_id} className="flex items-center justify-between
+                      gap-3">
+                      <button type="button" onClick={() => onOpenLedger?.(
+                        { ledger_id: item.ledger_id, date: item.date })}
+                        className="min-w-0 truncate text-left text-subtle hover:text-text">
+                        <span className="tnum text-faint">{fullDate(item.date)}</span>{' '}
+                        {item.description}</button>
+                      <span className={`tnum shrink-0 font-semibold ${item.side === 'in'
+                        ? 'text-green' : 'text-red'}`}>
+                        {item.side === 'in' ? '+' : '−'}{brl(item.amount)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {reconciliations.length > 0 && (
         <Card>
@@ -388,6 +482,7 @@ export function Caixinhas({ data, onApply, busy, onOpenLedger }) {
       )}
       {creating && (
         <NewBucketModal accountId={creating.accountId} node={creating.node} busy={busy}
+          initialName={creating.name || ''}
           onClose={() => setCreating(null)} onConfirm={createBucket} />
       )}
     </div>
