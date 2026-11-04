@@ -9,15 +9,6 @@ import { Operacoes } from './Operacoes.jsx'
 import { Simulador } from './Simulador.jsx'
 import { Visao } from './Visao.jsx'
 
-export const INVEST_TABS = [
-  ['visao', 'Visão Geral'],
-  ['carteira', 'Carteira'],
-  ['aporte', 'Aporte'],
-  ['caixinhas', 'Reservas e saldo'],
-  ['operacoes', 'Movimentações'],
-  ['simulador', 'Simulador'],
-]
-
 export function InvestSpace({ tab, setTab, onError, onOpenLedger }) {
   const invest = useInvest(true)
 

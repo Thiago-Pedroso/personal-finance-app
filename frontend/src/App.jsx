@@ -19,31 +19,12 @@ import { TransactionsTable } from './components/TransactionsTable.jsx'
 import { EditModal } from './components/EditModal.jsx'
 import { ReimburseModal } from './components/ReimburseModal.jsx'
 import { DrillDrawer } from './components/DrillDrawer.jsx'
-import { Eye, EyeOff, RefreshCw, Wallet, MessageSquare, TrendingUp }
-  from 'lucide-react'
-import { InvestSpace, INVEST_TABS } from './components/invest/InvestSpace.jsx'
+import { Eye, EyeOff, RefreshCw, Menu, MessageSquare } from 'lucide-react'
+import { InvestSpace } from './components/invest/InvestSpace.jsx'
 import { PeriodNav } from './components/PeriodNav.jsx'
+import { Sidebar, NavDrawer, BottomBar } from './components/Navigation.jsx'
 import { useSpace } from './lib/useSpace.js'
-
-// Dois espaços lado a lado, em vez de um menu escondido atrás do título: o contador de
-// pendências de cada lado é o que traz a pessoa de volta, e some num dropdown.
-const SPACE_TABS = [
-  ['financas', 'Finanças', Wallet],
-  ['investimentos', 'Investimentos', TrendingUp],
-]
-
-const TABS = [
-  ['overview', 'Visão Geral'],
-  ['txns', 'Transações'],
-  ['cats', 'Categorias'],
-  ['tags', 'Tags'],
-  ['plan', 'Planejamento'],
-  ['tools', 'Ferramentas'],
-  ['poup', 'Poupança'],
-  ['movs', 'Movimentações'],
-  ['rules', 'Regras'],
-  ['review', 'Revisar'],
-]
+import { NAV, findItem } from './lib/nav.js'
 
 function Shell() {
   const d = useData()
@@ -56,6 +37,9 @@ function Shell() {
   const [txnPreset, setTxnPreset] = useState(null)
   const [edit, setEdit] = useState({ open: false, rows: [] })
   const [now, setNow] = useState(() => Date.now())
+  const [drawer, setDrawer] = useState(false)
+  // trocar de tela volta ao topo (o menu fica fixo; o conteúdo é que rola)
+  useEffect(() => { window.scrollTo(0, 0) }, [tab, space.space])
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 60000)
     return () => clearInterval(timer)
@@ -125,34 +109,55 @@ function Shell() {
     ? (dash.pending ?? dash.needs_review + dash.uncategorized) + d.queue.length
     : 0
 
+  const badges = { financas: pend, pending: pend }
+  const current = findItem(space.space, tab)
+  const go = (s, t) => space.go(s, t)
+
   return (
-    <div className="relative z-[1] mx-auto w-full max-w-[1240px] px-4 pb-24 pt-7
-      sm:px-6 lg:px-8 xl:max-w-[1560px] 2xl:max-w-[1800px]">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="flex items-center gap-2 text-[22px] font-bold
-            tracking-tight">
-            <span className="grid size-8 place-items-center rounded-xl
-              bg-brand/10 text-brand ring-1 ring-brand/20">
-              <Wallet className="size-[18px]" />
-            </span>
-            Finance Control
-          </h1>
+    <div className="relative z-[1] flex min-h-dvh">
+      <Sidebar space={space.space} tab={tab} onGo={go} badges={badges} />
+      <NavDrawer open={drawer} onOpenChange={setDrawer} space={space.space} tab={tab}
+        onGo={go} badges={badges} />
+      <div className="mx-auto w-full min-w-0 max-w-[1240px] flex-1 px-4 pb-28 pt-3
+        sm:px-6 sm:pt-6 lg:px-8 lg:pb-24 xl:max-w-[1560px] 2xl:max-w-[1800px]">
+      <header className="flex flex-wrap items-center justify-between gap-x-2 gap-y-3
+        sm:gap-4">
+        <div className="flex min-w-0 items-center gap-1">
+          <button onClick={() => setDrawer(true)} aria-label="Abrir menu"
+            className="-ml-2 grid size-10 shrink-0 place-items-center rounded-xl text-muted
+              hover:bg-surface2 hover:text-text lg:hidden">
+            <Menu className="size-5" />
+          </button>
+          <div className="min-w-0">
+            <p className="truncate text-[11.5px] font-medium uppercase tracking-wider
+              text-faint">{NAV[space.space].label}</p>
+            <h1 className="truncate text-[19px] font-bold tracking-tight sm:text-[22px]">
+              {current?.label}</h1>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        {/* telas com o histórico inteiro (periodless no nav.js) não têm seletor de mês */}
+        {dash && !investOnly && !current?.periodless && (
+          <div className="order-last w-full sm:order-none sm:ml-auto sm:w-auto">
+            <PeriodNav mode={d.mode} setMode={d.setMode}
+              months={dash.months.map((m) => m.month)} month={d.month}
+              setMonth={d.setMonth} years={d.years} year={d.year} setYear={d.setYear} />
+          </div>
+        )}
+        <div className="flex items-center gap-1 sm:gap-2">
           {dash && !investOnly && d.queue.length > 0 && (
             <button onClick={() => setTab('review')}
               className="flex items-center gap-2 rounded-xl border border-blue/40
                 bg-blue/10 px-3 py-2 text-[13px] text-blue hover:bg-blue/20"
               title="Itens que você mandou pro Claude">
               <MessageSquare className="size-4" />
-              Fila do Claude
+              <span className="hidden sm:inline">Fila do Claude</span>
               <span className="rounded-full bg-blue/25 px-1.5 text-[11px]
                 font-bold">{d.queue.length}</span>
             </button>
           )}
           <Button variant="ghost" onClick={toggleValues}
-            className={valuesHidden ? 'bg-surface2 text-brand' : ''}
+            className={`max-sm:size-10 max-sm:justify-center max-sm:p-0 ${
+              valuesHidden ? 'bg-surface2 text-brand' : ''}`}
             aria-label="Modo de privacidade financeira"
             aria-pressed={valuesHidden}
             title={valuesHidden ? 'Mostrar valores' : 'Ocultar valores'}>
@@ -169,13 +174,16 @@ function Shell() {
           )}
           {!investOnly && (
             <div className="flex flex-col items-end">
-              <Button variant="ghost" onClick={d.refresh} disabled={d.busy}>
+              <Button variant="ghost" onClick={d.refresh} disabled={d.busy}
+                aria-label="Atualizar"
+                title={dash ? `Atualizado ${timeAgo(dash.generated_at, now)}` : 'Atualizar'}
+                className="max-sm:size-10 max-sm:justify-center max-sm:p-0">
                 <RefreshCw className={`size-4 ${d.busy
                   ? 'animate-[spin_.8s_linear_infinite]' : ''}`} />
-                Atualizar
+                <span className="hidden sm:inline">Atualizar</span>
               </Button>
               {dash && (
-                <span className="-mt-0.5 pr-3.5 text-[12px] text-subtle"
+                <span className="-mt-0.5 hidden pr-3.5 text-[12px] text-subtle sm:inline"
                   title={new Date(dash.generated_at).toLocaleString('pt-BR')}>
                   Atualizado {timeAgo(dash.generated_at, now)}
                 </span>
@@ -185,55 +193,12 @@ function Shell() {
         </div>
       </header>
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <nav className="flex flex-wrap gap-1.5">
-          {SPACE_TABS.map(([key, label, Icon]) => (
-            <button key={key} onClick={() => space.go(key)}
-              className={`flex items-center gap-2 rounded-xl border px-4 py-2
-                text-[13.5px] font-semibold transition ${space.space === key
-                  ? 'border-brand/40 bg-brand/15 text-brand-soft'
-                  : 'border-border bg-surface2/60 text-muted hover:text-text'}`}>
-              <Icon className="size-4" />
-              {label}
-              {key === 'financas' && pend > 0 && (
-                <span className="rounded-full bg-amber/20 px-1.5 text-[11px] font-bold
-                  text-amber">{pend}</span>
-              )}
-            </button>
-          ))}
-        </nav>
-        {dash && !investOnly && (
-          <PeriodNav mode={d.mode} setMode={d.setMode}
-            months={dash.months.map((m) => m.month)} month={d.month}
-            setMonth={d.setMonth} years={d.years} year={d.year} setYear={d.setYear} />
-        )}
-      </div>
-
-      <nav className={`sticky top-0 z-20 -mx-5 mt-3 flex gap-1 border-b
-        border-border px-5 pt-2 backdrop-blur-md ${investOnly
-          ? 'flex-nowrap overflow-x-auto' : 'flex-wrap'}`}>
-        {(space.space === 'investimentos' ? INVEST_TABS : TABS).map(([k, label]) => (
-          <button key={k} onClick={() => setTab(k)}
-            className={`relative min-h-11 shrink-0 px-4 py-2.5 text-[14px] font-semibold
-              transition ${tab === k
-                ? 'text-text' : 'text-muted hover:text-text'}`}>
-            {label}
-            {k === 'review' && pend > 0 && (
-              <span className="ml-2 rounded-full bg-amber/20 px-1.5 text-[11px]
-                font-bold text-amber">{pend}</span>
-            )}
-            {tab === k && <span className="absolute inset-x-3 -bottom-px h-0.5
-              rounded-full bg-brand" />}
-          </button>
-        ))}
-      </nav>
-
       {d.error && (
         <div className="mt-4 rounded-xl border border-red/30 bg-red/10 px-4
           py-3 text-[13px] text-red">⚠ {d.error}</div>
       )}
 
-      <main className="mt-6">
+      <main className="mt-4 sm:mt-5">
         {space.space === 'investimentos' && (
           <InvestSpace tab={tab} setTab={setTab} onError={d.setError}
             onOpenLedger={openLedger} />
@@ -288,6 +253,10 @@ function Shell() {
         <DrillDrawer txns={mdata.transactions || []} openEdit={openEdit}
           openReimburse={openReimburse} saveEdit={d.saveEdit} queuedIds={queuedIds} treatments={dash.treatments} />
       )}
+      </div>
+
+      <BottomBar space={space.space} tab={tab} onGo={go} badges={badges}
+        onMore={() => setDrawer(true)} />
 
       {dash && edit.open && (
         <EditModal open={edit.open} onClose={closeEdit} txns={edit.rows}
