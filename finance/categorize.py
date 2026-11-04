@@ -246,6 +246,8 @@ def apply(learn: bool, do_report: bool = False) -> None:
                     rec.get("tags"), a.get("tags_add"), a.get("tags_remove"))
             if "settle_with" in a:
                 rec["settle_with"] = (a["settle_with"] or "").strip() or None
+            if "person" in a:
+                rec["person"] = L.clean_person(a["person"])
             if not changes_classification:
                 if "note" in a:
                     rec["note"] = (a["note"] or None)

@@ -92,6 +92,11 @@ def test_unformatted_numeric_cells_and_locale():
     assert sheets._cell_to_val("fnum", "1.234,56") == 1234.56
 
 
+def test_documented_schema_version_matches_sheets_authority():
+    documentation = (Path(__file__).parents[1] / "docs" / "SHEETS_INTEGRATION.md").read_text()
+    assert f"schema_version` | versão do esquema (atualmente `{sheets.SCHEMA_VERSION}`)" in documentation
+
+
 def test_taxonomy_subcategory_split():
     rec = {"Category": "Alimentação",
            "Subcategories": "Supermercado, Restaurante, Delivery"}

@@ -13,10 +13,11 @@ from pathlib import Path
 
 from . import sheets
 from .config import REPORTS_DIR
-from .ledger import normalize_tags, update_tags
+from .ledger import clean_person, normalize_tags, update_tags
 
 EDITABLE = {"category", "subcategory", "note", "tags", "splits",
-            "amount_override", "excluded", "tags_add", "tags_remove", "settle_with"}
+            "amount_override", "excluded", "tags_add", "tags_remove", "settle_with",
+            "person"}
 
 
 def _taxonomy() -> dict:
@@ -61,7 +62,8 @@ def apply_edits(edits: list[dict]) -> dict:
     for edit in edits:
         _validate(edit.get("fields") or {}, tax)
 
-    if any("settle_with" in (e.get("fields") or {}) for e in edits):
+    if any(("settle_with" in (e.get("fields") or {}) or "person" in (e.get("fields") or {}))
+           for e in edits):
         sheets.ensure_current_schema()   # a coluna pode ainda não existir na planilha
     precisa_tags = any(("tags_add" in (e.get("fields") or {})
                         or "tags_remove" in (e.get("fields") or {})) for e in edits)
@@ -76,6 +78,8 @@ def apply_edits(edits: list[dict]) -> dict:
             base["tags"] = normalize_tags(base["tags"])
         if "settle_with" in base:
             base["settle_with"] = (base["settle_with"] or "").strip() or None
+        if "person" in base:
+            base["person"] = clean_person(base["person"])
         # uma edição manual passa a valer sobre regra e mapa, como no categorize
         if "category" in base:
             base.update(category_source="manual", rule_id=None,

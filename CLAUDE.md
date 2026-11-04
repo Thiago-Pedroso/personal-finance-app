@@ -202,6 +202,9 @@ Campos relevantes:
 - `settle_with` — com quem o valor vai ser acertado (pessoa ou instituição), em qualquer
   categoria; também existe em cada parte de `splits`. Enquanto não for totalmente abatido,
   aparece como pendência em "Em aberto"
+- `person` — **para quem** foi o gasto (beneficiário: presente, ajuda, serviço pago para
+  outra pessoa). Não é pendência (isso é `settle_with`); também existe em cada parte de
+  `splits`. Alimenta a aba **Pessoas**
 - `needs_review` / `reviewed` — controle de qualidade interno
 
 **Valor efetivo** = `amount_override` se definido, senão `signed_amount`.
@@ -267,6 +270,10 @@ recorrente, promova pra regra (ver `rules` abaixo) em vez de corrigir manualment
       "ids": ["uuid-1", "uuid-2"],
       "tags_add": ["Viagem Recife"],
       "tags_remove": ["Trabalho"]
+    },
+    {
+      "ids": ["uuid-do-veterinario"],
+      "person": "Nome da pessoa"
     }
   ],
   "reimbursements": [
@@ -307,6 +314,11 @@ e sai da lista; os que não pedem ação continuam até sair da janela (`--days`
 
 Depois: `uv run python -m finance.categorize apply --learn --report` (o `--learn` só é
 necessário quando o arquivo tem `rules`; sem elas, `apply --report` basta).
+
+`person` (beneficiário) vale no lançamento ou em cada parte de `splits`; `"person": null`
+limpa. Para nomes de pessoa use `person`, não tag. Quem já usava tag com nome de pessoa
+migra com `uv run python -m finance.migrate --person-tags "Ana,Pedro"` (`--dry-run` mostra
+antes).
 
 Tags são manuais e podem ser aplicadas em massa pelo dashboard ou pelo arquivo de decisões.
 Não crie regras automáticas para tags. Valores reais de tags pertencem à planilha privada do

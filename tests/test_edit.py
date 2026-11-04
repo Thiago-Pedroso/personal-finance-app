@@ -55,6 +55,15 @@ def test_categoria_manual_vence_regra_e_mapa():
     assert fields["reviewed"] is True and fields["rule_id"] is None
 
 
+def test_person_e_aparado_e_vazio_vira_none():
+    enviados = _fake_backend()
+    sheets.ensure_current_schema = lambda: []
+    edit.apply_edits([{"ids": ["aaa"], "fields": {"person": "  Ana   Paula "}},
+                      {"ids": ["bbb"], "fields": {"person": "  "}}])
+    assert enviados[0][1] == {"person": "Ana Paula"}
+    assert enviados[1][1] == {"person": None}
+
+
 def test_varios_ids_viram_um_batch_so():
     enviados = _fake_backend()
     res = edit.apply_edits([{"ids": IDS, "fields": {"excluded": True}}])

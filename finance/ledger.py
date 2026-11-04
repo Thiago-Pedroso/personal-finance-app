@@ -22,9 +22,15 @@ from .transaction_dates import (
 # Campos da NOSSA categorização — preservados ao re-sincronizar.
 _OURS = ("category", "subcategory", "category_source", "rule_id", "needs_review",
          "reviewed", "splits", "note", "amount_override", "excluded", "tags",
-         "settle_with")
+         "settle_with", "person")
 MAX_TAG_LENGTH = 80
 _TEMPLATE_FIELDS = tuple(name for name, _ in sheets.LEDGER_SCHEMA)
+
+
+def clean_person(value) -> str | None:
+    """Nome do beneficiário: espaços aparados, vazio vira None."""
+    name = " ".join(str(value or "").split())
+    return name or None
 
 
 def tag_key(value: str) -> str:
@@ -144,6 +150,9 @@ def normalize(tx, account, item_id, local_timezone: ZoneInfo | None = None) -> d
         "tags": [],
         # com quem esse valor vai ser acertado (pessoa ou instituição). None = ninguém.
         "settle_with": None,
+        # para quem foi o gasto (beneficiário: presente, ajuda, serviço pago para
+        # outra pessoa). Diferente de settle_with, não é pendência. None = ninguém.
+        "person": None,
     }
 
 

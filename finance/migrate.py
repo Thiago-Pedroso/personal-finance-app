@@ -1,6 +1,7 @@
 import argparse
 
 from . import ledger as L
+from . import people as P
 from . import sheets
 from .transaction_dates import date_migration_preview, load_timezone
 
@@ -9,6 +10,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Atualiza schema e datas da Pluggy.")
     parser.add_argument("--dry-run", action="store_true",
                         help="mostra as mudanças de data sem gravar")
+    parser.add_argument("--person-tags", default="",
+                        help="tags que são nomes de pessoa, separadas por vírgula: viram o "
+                             "campo person (beneficiário) e saem das tags. Ex.: "
+                             "--person-tags \"Ana,Pedro\"")
     args = parser.parse_args()
 
     schema_changes = [] if args.dry_run else sheets.ensure_current_schema()
@@ -29,7 +34,13 @@ def main() -> None:
     if skipped_count:
         print(f"Registros da Pluggy sem datetime válido, preservados: {skipped_count}")
 
-    if args.dry_run or not changed_dates:
+    names = [n for n in args.person_tags.split(",") if n.strip()]
+    moved = P.move_tags_to_person(ledger, names) if names else []
+    if names:
+        action = "seriam movidas" if args.dry_run else "movidas"
+        print(f"Tags de pessoa {action} para o campo person: {len(moved)} lançamento(s)")
+
+    if args.dry_run or not (changed_dates or moved):
         return
     for transaction_id, expected_date in changed_dates.items():
         ledger[transaction_id]["date"] = expected_date
