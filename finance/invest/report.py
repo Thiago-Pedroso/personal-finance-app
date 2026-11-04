@@ -94,6 +94,7 @@ def build(assets: dict, trades: list, quote_map: dict, tree: dict, accounts: dic
     records = records or []
     treatments = treatments or {}
     spread = PF.allocation(positions, tree)
+    audit = LL.destination_pending(records, trades, treatments, assets, subcategories)
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "contribution": contribution,
@@ -118,8 +119,9 @@ def build(assets: dict, trades: list, quote_map: dict, tree: dict, accounts: dic
         "problems": problems(tree, assets, positions, quote_map),
         "allocation_sim": allocation_sim or {"base": None, "items": []},
         "links": ledger_links(records, trades, treatments, assets, subcategories),
-        "audit": LL.destination_pending(records, trades, treatments, assets,
-                                        subcategories),
+        "audit": audit,
+        # aportes/resgates de cofrinho sem destino: ticker sugerido (ou criar caixinha)
+        "link_suggestions": LL.cofrinho_suggestions(records, audit, assets, accounts),
         "destination_subcategories": list(subcategories),
     }
 
