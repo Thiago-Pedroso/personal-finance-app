@@ -109,8 +109,14 @@ def cmd_sync(args) -> int:
     bucket_items = {account["pluggy_item_id"] for account in accounts.values()
                     if account["kind"] == "bucket" and account["pluggy_item_id"]}
     pending = PS.reconcile(investments, positions, assets, today, bucket_items)
-    pending.extend(PS.reconcile_accounts(PS.fetch_accounts(), positions, assets, today,
-                                         records))
+    all_accounts = PS.fetch_all_accounts()
+    pending.extend(PS.reconcile_accounts(
+        [account for account in all_accounts if account["type"] != "CREDIT"],
+        positions, assets, today, records))
+    # fatura de cartão em aberto: dívida, fora da carteira (tela Patrimônio e Visão)
+    debts = PS.debts_from(all_accounts, today)
+    sheets.write_config(R.DEBTS_KEY, debts)
+    print(f"Dívida em cartão: {_money(debts['total'])} ({len(debts['items'])} cartão(ões))")
     pending.extend(destinations)
 
     buckets_report = {}

@@ -101,3 +101,11 @@ def test_class_out_of_the_targets_does_not_need_to_add_up():
               for t, q in QUOTES.items()}
     report = R.build(assets, TRADES, quotes, P.load(TEMPLATE), {}, 0.0)
     assert report["problems"] == []
+
+
+def test_debts_block_tolerates_missing_and_sums_items():
+    from finance.invest import report as REP
+    assert REP.debts_block(None) == {"as_of": None, "items": [], "total": 0}
+    block = REP.debts_block({"as_of": "2026-11-03", "items": [
+        {"name": "A", "balance": 10.5}, {"name": "B", "balance": "2"}]})
+    assert block["total"] == 12.5 and len(block["items"]) == 2

@@ -53,7 +53,7 @@ uv run python -m finance.categorize stats
 | `SubcategoryMeta` | cor e ícone opcionais por subcategoria | `finance/taxonomy.py` |
 | `PluggyMap` | categoria da Pluggy → taxonomia pessoal | `finance/pluggy_map.py` |
 | `Reimbursements` | abatimentos: qual entrada abate qual saída, e quanto | `finance/reimbursements.py` |
-| `Config` | blobs JSON: `budgets`, `sync_state`, `timezone`, `min_transaction_date`, `schema_version`, `invest_monthly_contribution`, `invest_contribution_mode`, `invest_allocation_sim`, `invest_destination_subcategories`, `free_balance_anchor`, `iof` | `finance/budgets.py`, `finance/sync.py`, `finance/balance.py`, `finance/iof.py` |
+| `Config` | blobs JSON: `budgets`, `sync_state`, `timezone`, `min_transaction_date`, `schema_version`, `invest_monthly_contribution`, `invest_contribution_mode`, `invest_allocation_sim`, `invest_destination_subcategories`, `free_balance_anchor`, `iof`, `invest_debts`, `wealth_manual` | `finance/budgets.py`, `finance/sync.py`, `finance/balance.py`, `finance/iof.py`, `finance/wealth.py` |
 | `InvestTrades` | 1 movimentação por linha (a única entrada de fatos da carteira) | `finance/invest/trades.py` |
 | `InvestAssets` | catálogo: classe, conta, setor, alvo, como o valor é apurado | `finance/invest/assets.py` |
 | `InvestAccounts` | onde o dinheiro está custodiado (corretora, carteira, caixinhas) | `finance/invest/accounts.py` |
@@ -124,6 +124,17 @@ Três tipos de lugar, pelo `valuation` do ativo:
 
 Só se registra **fato**: dinheiro na corretora é "a aportar" até virar posição. Intenção
 ("esse dinheiro é para a viagem") fica no Simulador, nunca na carteira.
+
+### Patrimônio (tela própria em Finanças)
+
+Soma o `wealth` da carteira (investido, reservado, a aportar, livre), os **bens** e as
+**dívidas** informados à mão e a fatura em aberto do Open Finance (`Config[invest_debts]`,
+gravada pelo `invest sync`). Bens e dívidas sem cotação (carro, imóvel, empréstimo,
+financiamento) ficam em `Config[wealth_manual]` (`{"assets": [...], "debts": [...]}`, valor
+sempre positivo) e são editados na própria tela ou com
+`uv run python -m finance.wealth set arquivo.json`. A evolução vem do `InvestSnapshots`, por
+papel (`invest.json` → `wealth_history`). A Visão Geral de Investimentos ganha o botão
+com/sem dívida de cartão.
 
 ### Ligação com o Fluxo (destino)
 

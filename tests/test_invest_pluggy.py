@@ -173,3 +173,20 @@ def test_account_already_in_sync_says_nothing():
                       "type": "BANK", "balance": 8000.60, "currency": "BRL"}]
     assert PS.reconcile_accounts(accounts_data, {"CONTA-XP": {"value": 8000.60}},
                                  assets, TODAY) == []
+
+
+def test_debts_from_keeps_only_open_brl_card_bills():
+    accounts = [
+        {"item_id": "i1", "account_id": "a1", "name": "Conta", "type": "BANK",
+         "balance": 100.0, "currency": "BRL"},
+        {"item_id": "i1", "account_id": "c1", "name": "Cartão A", "type": "CREDIT",
+         "balance": 1234.567, "currency": "BRL"},
+        {"item_id": "i2", "account_id": "c2", "name": "Cartão B", "type": "CREDIT",
+         "balance": 0.0, "currency": "BRL"},
+        {"item_id": "i3", "account_id": "c3", "name": "Card USD", "type": "CREDIT",
+         "balance": 50.0, "currency": "USD"},
+    ]
+    debts = PS.debts_from(accounts, "2026-11-03")
+    assert debts["as_of"] == "2026-11-03"
+    assert [item["name"] for item in debts["items"]] == ["Cartão A"]
+    assert debts["total"] == 1234.57

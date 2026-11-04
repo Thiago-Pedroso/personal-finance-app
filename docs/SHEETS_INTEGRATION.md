@@ -194,6 +194,8 @@ com aviso. Em categoria de `fluxo`, o valor abatido sai da conta no mês de cada
 | `invest_monthly_contribution` | aporte mensal usado como padrão no simulador |
 | `invest_contribution_mode` | modo do simulador de aporte: `spread` ou `focus` |
 | `invest_allocation_sim` | rascunho da aba Simulador: `{base, items: [{label, amount}]}` — nunca vira trade |
+| `invest_debts` | fatura de cartão em aberto, gravada pelo `invest sync`: `{as_of, items: [{name, item_id, account_id, balance, currency}], total}`; não é posição |
+| `wealth_manual` | bens e dívidas informados à mão para a tela Patrimônio: `{assets: [...], debts: [...]}`, cada item `{id, name, kind, value, as_of, note}` com valor positivo |
 | `invest_destination_subcategories` | subcategorias de poupança que pedem destino na carteira; ausente = `["Aporte", "Resgate"]` |
 
 ---
