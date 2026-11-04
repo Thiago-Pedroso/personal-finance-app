@@ -128,7 +128,23 @@ def test_end_to_end():
           f"pendências={dash['pending']}  categorias12m={len(dash['by_category_12m'])}")
 
 
+def test_split_fallback_marked_for_review_is_not_hidden():
+    """A remoção de taxonomia marca o split para revisão; a aba Revisar precisa vê-lo."""
+    from finance import report
+    flagged = {"id": "fallback-split", "category": "Outros", "subcategory": "A revisar",
+               "excluded": False, "needs_review": True, "reviewed": False,
+               "splits": [{"amount": -10.0, "category": "Outros", "subcategory": "A revisar"}]}
+    ordinary = {**flagged, "id": "ordinary-split", "needs_review": False,
+                "splits": [{"amount": -10.0, "category": "Alimentação", "subcategory": "Restaurante"}]}
+    uncategorized = {"id": "uncategorized", "category": None, "subcategory": None,
+                     "excluded": False, "needs_review": True, "reviewed": False, "splits": None}
+    assert report._is_pending(flagged)
+    assert not report._is_pending(ordinary)
+    assert report._is_pending(uncategorized)
+
+
 if __name__ == "__main__":
-    test_end_to_end()
-    print("ok  test_end_to_end")
+    for name, fn in sorted(globals().items()):
+        if name.startswith("test_") and callable(fn):
+            fn(); print(f"ok  {name}")
     print("\nPipeline end-to-end (em memória) passou.")

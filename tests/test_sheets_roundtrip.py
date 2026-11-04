@@ -102,6 +102,62 @@ def test_taxonomy_subcategory_split():
     assert subs == ["Supermercado", "Restaurante", "Delivery"]
 
 
+class _NonAtomicWorksheet:
+    """Small Sheets double: resize and update are separately durable calls."""
+    def __init__(self, values, fail=None):
+        self.values = [list(row) for row in values]
+        self.row_count = len(values)
+        self.col_count = len(values[0])
+        self.fail = fail
+        self.calls = []
+
+    def resize(self, rows, cols):
+        self.calls.append(("resize", rows, cols))
+        if rows < len(self.values): self.values = self.values[:rows]
+        else: self.values.extend([[""] * cols for _ in range(rows - len(self.values))])
+        self.row_count, self.col_count = rows, cols
+        if self.fail == "resize": raise RuntimeError("resize failed after persistence")
+
+    def update(self, *, values, range_name, value_input_option):
+        self.calls.append(("update", len(values)))
+        # Updating A1 does not resize the remote worksheet; rows below the
+        # replacement remain until a later explicit resize.
+        self.values[:len(values)] = [list(row) for row in values]
+        if self.fail == "update": raise RuntimeError("update failed before acknowledgement")
+
+
+def test_taxonomy_write_expands_before_update_and_updates_before_shrinking():
+    old = [["Category", "Subcategories", "Treatment"], ["Casa", "Aluguel", "fluxo"]]
+    destination = [{"Category": "Casa", "Subcategories": "Aluguel", "Treatment": "fluxo"},
+                   {"Category": "Moradia", "Subcategories": "Aluguel", "Treatment": "fluxo"}]
+    final = [{"Category": "Moradia", "Subcategories": "Aluguel", "Treatment": "fluxo"}]
+    original_ws = sheets._ws
+    try:
+        growing = _NonAtomicWorksheet(old, fail="update")
+        sheets._ws = lambda tab: growing
+        try: sheets.write_taxonomy_records(destination)
+        except RuntimeError: pass
+        else: raise AssertionError("injected update failure must propagate")
+        # A failed bridge update cannot shrink away the old taxonomy.  The
+        # update may be ambiguously acknowledged, so either old or bridge data
+        # is safe; the key invariant is that all prior rows remain addressable.
+        cols = len(sheets.TAXONOMY_SCHEMA)
+        assert growing.calls[:2] == [("resize", 3, cols), ("update", 3)]
+        assert growing.row_count == 3
+
+        shrinking = _NonAtomicWorksheet([sheets._taxonomy_matrix(destination)[0],
+                                         *sheets._taxonomy_matrix(destination)[1:]], fail="resize")
+        sheets._ws = lambda tab: shrinking
+        try: sheets.write_taxonomy_records(final)
+        except RuntimeError: pass
+        else: raise AssertionError("injected shrink failure must propagate")
+        # The complete replacement was installed before a failed cleanup shrink.
+        assert shrinking.calls[:2] == [("update", 2), ("resize", 2, cols)]
+        assert shrinking.values == sheets._taxonomy_matrix(final)
+    finally:
+        sheets._ws = original_ws
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):

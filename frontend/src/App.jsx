@@ -252,7 +252,8 @@ function Shell() {
         )}
         {space.space === 'financas' && tab === 'cats' && (
           <Categories dash={dash} mdata={mdata} month={month}
-            selectedCat={selCat} setSelectedCat={setSelCat} goTxns={goTxns} />
+            selectedCat={selCat} setSelectedCat={setSelCat} goTxns={goTxns}
+            onSaved={d.refresh} toast={toast} />
         )}
         {space.space === 'financas' && tab === 'tags' && (
           <Tags dash={dash} mdata={mdata} period={month} />
