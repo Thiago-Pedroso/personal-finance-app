@@ -1,7 +1,7 @@
 name: ci
 
-# Pega antes da produção o que o merge com o upstream deixou passar: import perdido,
-# componente sem import, função removida ainda chamada, módulo órfão.
+# Testes, pyflakes e checagem estática do frontend em todo PR: pega import perdido,
+# componente sem import, função removida ainda chamada e módulo órfão antes do merge.
 on:
   pull_request:
   push:

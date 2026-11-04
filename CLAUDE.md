@@ -21,6 +21,15 @@ Controle financeiro pessoal operado via Claude Code. As transações chegam do O
 5. git commit                                  # commitar só CÓDIGO/DOCS (dados já estão no Sheets)
 ```
 
+Antes de abrir PR, as checagens (as mesmas do CI em `.github/workflows/ci.yml`):
+
+```bash
+uv run --with pytest python -m pytest -q
+uv run --with pyflakes python -m pyflakes finance/*.py finance/invest/*.py
+npm --prefix frontend test        # inclui scripts/check-undefined.mjs (no-undef + órfãos)
+npm --prefix frontend run build
+```
+
 Mexeu na carteira? `uv run python -m finance.invest report` depois de qualquer `apply`,
 pelo mesmo motivo do passo 4.
 

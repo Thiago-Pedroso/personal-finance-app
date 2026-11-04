@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Checagem estática do frontend, no espírito do eslint `no-undef` + `react/jsx-no-undef`,
 // sem adicionar dependência: usa o @babel/parser/@babel/traverse que já vêm com o
-// @vitejs/plugin-react. Pega o tipo de erro que o merge com o upstream deixou passar:
+// @vitejs/plugin-react. Pega o tipo de erro que o build do Vite não acusa:
 //   1. identificador usado sem import/declaração (componente JSX, função, ícone);
 //   2. módulo em src/ que ninguém importa a partir do main.jsx (código órfão).
 //   3. import nomeado que o módulo de destino não exporta mais.
