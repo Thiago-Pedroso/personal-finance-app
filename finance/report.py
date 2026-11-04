@@ -18,6 +18,7 @@ from datetime import date, datetime, timezone
 
 from . import balance as BAL
 from . import budgets as B
+from . import installments as INST
 from . import ledger as L
 from . import reimbursements as RB
 from . import rules as R
@@ -44,7 +45,8 @@ def _is_rendimento(sub: str | None) -> bool:
 
 
 # Campos de cada transação embutidos nos arquivos mensais (consumidos pelo front).
-_TXN_FIELDS = ("id", "date", "time", "description", "counterparty", "signed_amount",
+_TXN_FIELDS = ("id", "date", "time", "description", "counterparty", "installment",
+               "signed_amount",
                "type", "account_name", "category", "subcategory",
                "category_source", "reviewed", "needs_review", "note",
                "amount_override", "excluded", "tags", "rule_id", "settle_with")
@@ -684,6 +686,9 @@ def generate(recs=None, taxonomy=None, treatments=None, budgets=None,
         "invest_simulator": invest.get("simulator", []),
         "invest_destination_subcategories": list(invest.get("subcategories", [])),
         "total_transactions": len(recs),
+        # Parcelas: compras parceladas, parcelamento de fatura e empréstimos, do
+        # histórico inteiro (não depende do período escolhido no dashboard)
+        "installments": INST.build(recs),
         "open_settlements": RB.open_items(recs, by_tx),
         "reimbursement_suggestions": RB.suggestions(recs, by_tx),
     }
