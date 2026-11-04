@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 // Espaço e aba vivem no hash (#/investimentos/carteira), então o F5 não perde o lugar e
 // dá para mandar link de uma tela específica.
 export const SPACES = {
-  financas: ['overview', 'txns', 'cats', 'tags', 'plan', 'tools', 'poup', 'movs',
+  financas: ['overview', 'wealth', 'txns', 'cats', 'tags', 'plan', 'tools', 'poup', 'movs',
              'rules', 'review'],
   investimentos: ['visao', 'carteira', 'aporte', 'caixinhas', 'operacoes',
                   'simulador'],
