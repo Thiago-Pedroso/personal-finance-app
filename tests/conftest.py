@@ -1,3 +1,5 @@
+import socket
+
 import pytest
 
 from finance import sheets
@@ -15,3 +17,20 @@ def restore_sheets_backend():
     todos os arquivos antes de rodar, então um patch de módulo vaza nos outros."""
     for name, real in _REAL.items():
         setattr(sheets, name, real)
+
+
+@pytest.fixture(autouse=True)
+def block_network(request, monkeypatch):
+    """Falha na hora se um teste tentar sair para a rede (Sheets, Pluggy, cotação).
+    Sem isso, um mock esquecido vira uma chamada real que trava ou passa por sorte."""
+    if request.node.get_closest_marker("sheets"):
+        return
+
+    def refuse(self, address, *args, **kwargs):
+        if self.family == socket.AF_UNIX:
+            return real_connect(self, address, *args, **kwargs)
+        # OSError, para que quem abriu o socket o feche como num erro de rede real.
+        raise OSError(f"teste tentou acessar a rede: {address!r}")
+
+    real_connect = socket.socket.connect
+    monkeypatch.setattr(socket.socket, "connect", refuse)

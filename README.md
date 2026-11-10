@@ -367,7 +367,11 @@ CLAUDE.md       # contrato de operação (lido pelo Claude Code a cada sessão)
 ## Testes
 
 ```bash
-PYTHONPATH=. uv run python tests/test_sheets_roundtrip.py   # coerção de tipos (sem rede)
-PYTHONPATH=. uv run python tests/test_pipeline_inmemory.py  # pipeline end-to-end (em memória)
-PYTHONPATH=. uv run python tests/test_schema_migration.py    # migração aditiva (sem rede)
+uv run pytest           # backend (sem rede, sem .env e sem credentials.json)
+cd frontend && npm test # funções puras do frontend
 ```
+
+A CI roda os dois, mais o build do frontend, em todo PR. A suíte do backend roda em ordem
+aleatória a cada execução (a seed aparece no cabeçalho), recusa acesso à rede e trata warning
+como erro. Teste que precise da planilha real
+leva `@pytest.mark.sheets` e fica fora da suíte padrão; rode com `uv run pytest -m sheets`.

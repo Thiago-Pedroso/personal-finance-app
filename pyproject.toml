@@ -10,3 +10,21 @@ dependencies = [
     "gspread>=6.0",
     "google-auth>=2.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "pytest-randomly>=5.1.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+# Testes que precisam da planilha real levam @pytest.mark.sheets e ficam fora da
+# suíte padrão (e da CI). Para rodá-los: uv run pytest -m sheets
+# Ordem aleatória (pytest-randomly) a cada execução: estado que vaza de um teste
+# para outro aparece logo. A seed sai no cabeçalho; repita com -p "randomly_seed=N"
+# ou desligue com -p no:randomly.
+addopts = "-m 'not sheets' --strict-markers"
+filterwarnings = ["error"]
+markers = ["sheets: precisa da planilha real (SHEET_ID e credentials.json)"]
